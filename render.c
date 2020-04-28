@@ -1,34 +1,8 @@
 #include <u.h>
 #include <libc.h>
 #include <draw.h>
-#include <memdraw.h>
 #include <geometry.h>
 #include <graphics.h>
-
-//static Memimage*
-//imagetomemimage(Image *src)
-//{
-//	Memimage *dst;
-//	uchar *buf;
-//	uint buflen;
-//
-//	buflen = Dx(src->r)*Dy(src->r);
-//	buflen *= (chantodepth(src->chan)+7)/8;
-//	buf = malloc(buflen);
-//	if(buf == nil)
-//		sysfatal("malloc: %r");
-//	dst = allocmemimage(src->r, src->chan);
-//	if(dst == nil)
-//		sysfatal("allocmemimage: %r");
-//	if(src->repl){
-//		dst->flags |= Frepl;
-//		dst->clipr = Rect(-1e6, -1e6, 1e6, 1e6);
-//	}
-//	unloadimage(src, src->r, buf, buflen);
-//	loadmemimage(dst, src->r, buf, buflen);
-//	free(buf);
-//	return dst;
-//}
 
 static Point2
 flatten(Camera *c, Point3 p)
@@ -50,6 +24,24 @@ flatten(Camera *c, Point3 p)
 	mulm(S, T);
 	p2 = xform(p2, S);
 	return p2;
+}
+
+Point3
+world2vcs(Camera *c, Point3 p)
+{
+	return rframexform3(p, *c);
+}
+
+Point3
+vcs2ndc(Camera *c, Point3 p)
+{
+	return xform3(p, c->proj);
+}
+
+Point3
+world2ndc(Camera *c, Point3 p)
+{
+	return vcs2ndc(c, world2vcs(c, p));
 }
 
 /* requires p to be in NDC */
@@ -94,7 +86,7 @@ perspective(Matrix3 m, double fov, double a, double n, double f)
 {
 	double cotan;
 
-	cotan = 1/tan(fov/2*DEG);
+	cotan = 1/tan(fov/2);
 	identity3(m);
 	m[0][0] =  cotan/a;
 	m[1][1] =  cotan;
@@ -118,8 +110,8 @@ orthographic(Matrix3 m, double l, double r, double b, double t, double n, double
 void
 line3(Camera *c, Point3 p0, Point3 p1, int end0, int end1, Image *src)
 {
-	p0 = WORLD2NDC(c, p0);
-	p1 = WORLD2NDC(c, p1);
+	p0 = world2ndc(c, p0);
+	p1 = world2ndc(c, p1);
 	if(isclipping(p0) || isclipping(p1))
 		return;
 	line(c->viewport, toviewport(c, p0), toviewport(c, p1), end0, end1, 0, src, ZP);
@@ -128,7 +120,7 @@ line3(Camera *c, Point3 p0, Point3 p1, int end0, int end1, Image *src)
 Point
 string3(Camera *c, Point3 p, Image *src, Font *f, char *s)
 {
-	p = WORLD2NDC(c, p);
+	p = world2ndc(c, p);
 	if(isclipping(p))
 		return Pt(-1,-1);
 	return string(c->viewport, toviewport(c, p), src, ZP, f, s);

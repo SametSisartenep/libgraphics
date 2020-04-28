@@ -3,20 +3,45 @@ typedef enum {
 	Ppersp		/* perspective */
 } Projection;
 
+typedef struct Color Color;
 typedef struct Vertex Vertex;
+typedef struct Framebuffer Framebuffer;
+typedef struct Viewport Viewport;
 typedef struct Camera Camera;
 
-struct Vertex {
-	Point3 p;	/* position */
-	Point3 n;	/* surface normal */
+struct Color
+{
+	double r, g, b;
 };
 
-struct Camera {
+struct Vertex
+{
+	Point3 p;	/* position */
+	Point3 n;	/* surface normal */
+	Color c;	/* shading color */
+};
+
+struct Framebuffer
+{
+	Rectangle r;	/* frame geometry */
+	int bpp;	/* bytes per pixel */
+	uchar *color;	/* pixel color buffer */
+	float *depth;	/* pixel depth buffer */
+};
+
+struct Viewport
+{
+	RFrame;
+	Framebuffer;
+};
+
+struct Camera
+{
 	RFrame3;		/* VCS */
 	Image *viewport;
 	double fov;		/* vertical FOV */
 	struct {
-		double n, f;
+		double n, f;	/* near and far clipping planes */
 	} clip;
 	Matrix3 proj;		/* VCS to NDC xform */
 	Projection ptype;
@@ -29,10 +54,11 @@ void aimcamera(Camera*, Point3);
 void reloadcamera(Camera*);
 
 /* rendering */
-#define FPS2MS(n)		(1000/(n))
-#define WORLD2VCS(cp, p)	(rframexform3((p), *(cp)))
-#define VCS2NDC(cp, p)		(xform3((p), (cp)->proj))
-#define WORLD2NDC(cp, p)	(VCS2NDC((cp), WORLD2VCS((cp), (p))))
+#define FPS	(60)		/* frame rate */
+#define MS2FR	(1e3/FPS)	/* ms per frame */
+Point3 world2vcs(Camera*, Point3);
+Point3 vcs2ndc(Camera*, Point3);
+Point3 world2ndc(Camera*, Point3);
 int isclipping(Point3);
 Point toviewport(Camera*, Point3);
 Point2 fromviewport(Camera*, Point);
