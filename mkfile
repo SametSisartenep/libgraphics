@@ -4,6 +4,7 @@ LIB=libgraphics.a$O
 OFILES=\
 	camera.$O\
 	render.$O\
+	triangle.$O\
 
 HFILES=graphics.h ../libgeometry/geometry.h
 

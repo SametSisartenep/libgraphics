@@ -15,7 +15,7 @@ verifycfg(Camera *c)
 {
 	assert(c->viewport != nil);
 	if(c->ptype == Ppersp)
-		assert(c->fov > 0 && c->fov < 360);
+		assert(c->fov > 0 && c->fov < 360*DEG);
 	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
 }
 
