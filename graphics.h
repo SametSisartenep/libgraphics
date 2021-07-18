@@ -67,6 +67,7 @@ Point3 world2vcs(Camera*, Point3);
 Point3 vcs2ndc(Camera*, Point3);
 Point3 world2ndc(Camera*, Point3);
 int isclipping(Point3);
+int clipline3(Point3*, Point3*);
 Point toviewport(Camera*, Point3);
 Point2 fromviewport(Camera*, Point);
 void perspective(Matrix3, double, double, double, double);

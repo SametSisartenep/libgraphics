@@ -55,6 +55,68 @@ isclipping(Point3 p)
 	return 0;
 }
 
+/* Liang-Barsky algorithm, requires p0, p1 to be in NDC */
+int
+clipline3(Point3 *p0, Point3 *p1)
+{
+	Point3 q0, q1, v;
+	int m0, m1, i;
+	double ti, to, th;
+	double c0[3*2] = {
+		p0->w + p0->x, p0->w - p0->x, p0->w + p0->y,
+		p0->w - p0->y,         p0->z, p0->w - p0->z,
+	}, c1[3*2] = {
+		p1->w + p1->x, p1->w - p1->x, p1->w + p1->y,
+		p1->w - p1->y,         p1->z, p1->w - p1->z,
+	};
+
+	/* bit-encoded regions */
+	m0 = (c0[0] < 0) << 0 |
+	     (c0[1] < 0) << 1 |
+	     (c0[2] < 0) << 2 |
+	     (c0[3] < 0) << 3 |
+	     (c0[4] < 0) << 4 |
+	     (c0[5] < 0) << 5;
+	m1 = (c1[0] < 0) << 0 |
+	     (c1[1] < 0) << 1 |
+	     (c1[2] < 0) << 2 |
+	     (c1[3] < 0) << 3 |
+	     (c1[4] < 0) << 4 |
+	     (c1[5] < 0) << 5;
+
+	if((m0 & m1) != 0)
+		return 1;	/* trivially rejected */
+	if((m0 | m1) == 0)
+		return 0;	/* trivially accepted */
+
+	ti = 0;
+	to = 1;
+	for(i = 0; i < 3*2; i++){
+		if(c1[i] < 0){
+			th = c0[i] / (c0[i]-c1[i]);
+			if(th < to)
+				to = th;
+		}else if(c0[i] < 0){
+			th = c0[i] / (c0[i]-c1[i]);
+			if(th < ti)
+				ti = th;
+		}
+		if(ti > to)
+			return 1;
+	}
+
+	/* chop line to fit inside NDC */
+	q0 = *p0;
+	q1 = *p1;
+	v = subpt3(q1, q0);
+	if(m0 != 0)
+		*p0 = addpt3(q0, mulpt3(v, ti));
+	if(m1 != 0)
+		*p1 = addpt3(q0, mulpt3(v, to));
+
+	return 0;
+}
+
 Point
 toviewport(Camera *c, Point3 p)
 {
@@ -112,7 +174,7 @@ line3(Camera *c, Point3 p0, Point3 p1, int end0, int end1, Image *src)
 {
 	p0 = world2ndc(c, p0);
 	p1 = world2ndc(c, p1);
-	if(isclipping(p0) || isclipping(p1))
+	if(clipline3(&p0, &p1))
 		return;
 	line(c->viewport, toviewport(c, p0), toviewport(c, p1), end0, end1, 0, src, ZP);
 }
