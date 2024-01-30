@@ -1,6 +1,6 @@
 libgraphics
 
-Libgraphics provides 3D computer graphics through draw(3).
+Libgraphics provides 3D computer graphics through memdraw(2).
 
 Still in early stages of research, subject to change, drastically, at
 any given time.

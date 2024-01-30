@@ -1,18 +1,24 @@
+#define HZ2MS(hz)	(1000/(hz))
+
 typedef enum {
-	Portho,		/* orthographic */
-	Ppersp		/* perspective */
+	ORTHOGRAPHIC,
+	PERSPECTIVE
 } Projection;
 
 typedef struct Color Color;
 typedef struct Vertex Vertex;
-typedef struct Framebuffer Framebuffer;
+typedef struct VSparams VSparams;
+typedef struct FSparams FSparams;
+typedef struct SUparams SUparams;
+typedef struct Shader Shader;
+typedef struct Framebuf Framebuf;
+typedef struct Framebufctl Framebufctl;
 typedef struct Viewport Viewport;
 typedef struct Camera Camera;
-typedef struct Triangle Triangle;
 
 struct Color
 {
-	double r, g, b;
+	double r, g, b, a;
 };
 
 struct Vertex
@@ -23,61 +29,122 @@ struct Vertex
 	Point2 uv;	/* texture coordinate */
 };
 
-struct Framebuffer
+typedef Vertex Triangle[3];
+
+/* shader params */
+struct VSparams
 {
-	Rectangle r;	/* frame geometry */
-	int bpp;	/* bytes per pixel */
-	uchar *color;	/* pixel color buffer */
-	float *depth;	/* pixel depth buffer */
+	SUparams *su;
+	Point3 *p;
+	Point3 *n;
+	uint idx;
+};
+
+struct FSparams
+{
+	SUparams *su;
+	Memimage *frag;
+	Point p;
+	Point3 bc;
+	uchar *cbuf;
+};
+
+/* shader unit params */
+struct SUparams
+{
+	Framebuf *fb;
+	OBJElem **b, **e;
+	int id;
+	Channel *donec;
+
+	/* TODO replace with a Scene */
+	OBJ *model;
+	Memimage *modeltex;
+
+	double var_intensity[3];
+
+	uvlong uni_time;
+
+	Point3 (*vshader)(VSparams*);
+	Memimage *(*fshader)(FSparams*);
+};
+
+struct Shader
+{
+	char *name;
+	Point3 (*vshader)(VSparams*);		/* vertex shader */
+	Memimage *(*fshader)(FSparams*);	/* fragment shader */
+};
+
+struct Framebuf
+{
+	Memimage *cb;	/* color buffer */
+	double *zbuf;	/* z/depth buffer */
+	Lock zbuflk;
+	Rectangle r;
+};
+
+struct Framebufctl
+{
+	Framebuf *fb[2];	/* double buffering */
+	uint idx;		/* front buffer index */
+	Lock swplk;
+
+	void (*draw)(Framebufctl*, Memimage*);
+	void (*swap)(Framebufctl*);
+	void (*reset)(Framebufctl*);
 };
 
 struct Viewport
 {
 	RFrame;
-	Framebuffer;
+	Framebufctl *fbctl;
 };
 
 struct Camera
 {
 	RFrame3;		/* VCS */
-	Image *viewport;
+	Viewport *vp;
 	double fov;		/* vertical FOV */
 	struct {
 		double n, f;	/* near and far clipping planes */
 	} clip;
 	Matrix3 proj;		/* VCS to NDC xform */
-	Projection ptype;
+	Projection projtype;
+
+	struct {
+		uvlong min, avg, max, acc, n, v;
+	} stats;
 };
 
-struct Triangle
-{
-	Point p0, p1, p2;
-};
-
-/* Camera */
-void configcamera(Camera*, Image*, double, double, double, Projection);
+/* camera */
+void configcamera(Camera*, Viewport*, double, double, double, Projection);
 void placecamera(Camera*, Point3, Point3, Point3);
 void aimcamera(Camera*, Point3);
 void reloadcamera(Camera*);
+void shootcamera(Camera*, OBJ*, Memimage*, Shader*);
 
-/* rendering */
-#define FPS	(60)		/* frame rate */
-#define MS2FR	(1e3/FPS)	/* ms per frame */
+/* viewport */
+Viewport *mkviewport(Rectangle);
+void rmviewport(Viewport*);
+
+/* render */
 Point3 world2vcs(Camera*, Point3);
 Point3 vcs2ndc(Camera*, Point3);
 Point3 world2ndc(Camera*, Point3);
-int isclipping(Point3);
-int clipline3(Point3*, Point3*);
-Point toviewport(Camera*, Point3);
-Point2 fromviewport(Camera*, Point);
+Point3 ndc2viewport(Camera*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
-/* temporary debug helpers */
-void line3(Camera*, Point3, Point3, int, int, Image*);
-Point string3(Camera*, Point3, Image*, Font*, char*);
 
-/* triangle */
-Triangle Trian(int, int, int, int, int, int);
-Triangle Trianpt(Point, Point, Point);
-void triangle(Image*, Triangle, int, Image*, Point);
-void filltriangle(Image*, Triangle, Image*, Point);
+/* util */
+double fmin(double, double);
+double fmax(double, double);
+Memimage *rgb(ulong);
+Memimage *readtga(char*);
+Memimage *readpng(char*);
+
+/* shadeop */
+double step(double, double);
+double smoothstep(double, double, double);
+
+extern Rectangle UR;	/* unit rectangle */
