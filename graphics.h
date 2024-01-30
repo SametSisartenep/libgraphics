@@ -35,8 +35,7 @@ typedef Vertex Triangle[3];
 struct VSparams
 {
 	SUparams *su;
-	Point3 *p;
-	Point3 *n;
+	Vertex *v;
 	uint idx;
 };
 

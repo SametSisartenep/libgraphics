@@ -253,16 +253,13 @@ shaderunit(void *arg)
 			t[0].n = t[1].n = t[2].n = mulpt3(n, -1);
 		}
 
-		vsp.p = &t[0].p;
-		vsp.n = &t[0].n;
+		vsp.v = &t[0];
 		vsp.idx = 0;
 		t[0].p = params->vshader(&vsp);
-		vsp.p = &t[1].p;
-		vsp.n = &t[1].n;
+		vsp.v = &t[1];
 		vsp.idx = 1;
 		t[1].p = params->vshader(&vsp);
-		vsp.p = &t[2].p;
-		vsp.n = &t[2].n;
+		vsp.v = &t[2];
 		vsp.idx = 2;
 		t[2].p = params->vshader(&vsp);
 

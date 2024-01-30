@@ -92,6 +92,7 @@ shootcamera(Camera *c, OBJ *m, Memimage *tex, Shader *s)
 
 	c->vp->fbctl->reset(c->vp->fbctl);
 	t0 = nanosec();
+	/* TODO let the user choose the nproc value (left at 1 for now) */
 	shade(c->vp->fbctl->fb[c->vp->fbctl->idx^1], m, tex, s, 1);	/* address the back buffer */
 	t1 = nanosec();
 	c->vp->fbctl->swap(c->vp->fbctl);
