@@ -66,15 +66,10 @@ reloadcamera(Camera *c)
 	verifycfg(c);
 	switch(c->projtype){
 	case ORTHOGRAPHIC:
-		/*
 		r = Dx(c->vp->fbctl->fb[0]->r)/2;
 		t = Dy(c->vp->fbctl->fb[0]->r)/2;
 		l = -r;
 		b = -t;
-		*/
-		l = t = 0;
-		r = Dx(c->vp->fbctl->fb[0]->r);
-		b = Dy(c->vp->fbctl->fb[0]->r);
 		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
 		break;
 	case PERSPECTIVE:

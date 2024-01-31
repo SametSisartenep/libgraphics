@@ -129,9 +129,8 @@ void rmviewport(Viewport*);
 
 /* render */
 Point3 world2vcs(Camera*, Point3);
-Point3 vcs2ndc(Camera*, Point3);
-Point3 world2ndc(Camera*, Point3);
-Point3 ndc2viewport(Camera*, Point3);
+Point3 vcs2clip(Camera*, Point3);
+Point3 world2clip(Camera*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 
@@ -139,8 +138,6 @@ void orthographic(Matrix3, double, double, double, double, double, double);
 double fmin(double, double);
 double fmax(double, double);
 Memimage *rgb(ulong);
-Memimage *readtga(char*);
-Memimage *readpng(char*);
 
 /* shadeop */
 double step(double, double);

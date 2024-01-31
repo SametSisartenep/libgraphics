@@ -1,11 +1,3 @@
-typedef struct Deco Deco;
-struct Deco
-{
-	int pfd[2];
-	int infd;
-	char *prog;
-};
-
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);
@@ -18,7 +10,7 @@ Framebufctl *mkfbctl(Rectangle);
 void rmfbctl(Framebufctl*);
 
 /* render */
-void shade(Framebuf *fb, OBJ *model, Memimage *modeltex, Shader *s, ulong nprocs);
+void shade(Framebuf*, OBJ*, Memimage*, Shader*, ulong);
 
 /* util */
 int min(int, int);

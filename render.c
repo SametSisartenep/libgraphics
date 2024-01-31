@@ -80,6 +80,16 @@ triangulate(OBJElem **newe, OBJElem *e)
 	return 2;
 }
 
+static int
+isclipping(Point3 p)
+{
+	if(p.x < -p.w || p.x > p.w ||
+	   p.y < -p.w || p.y > p.w ||
+	   p.z < -p.w || p.z > p.w)
+		return 1;
+	return 0;
+}
+
 Point3
 world2vcs(Camera *c, Point3 p)
 {
@@ -87,29 +97,32 @@ world2vcs(Camera *c, Point3 p)
 }
 
 Point3
-vcs2ndc(Camera *c, Point3 p)
+vcs2clip(Camera *c, Point3 p)
 {
 	return xform3(p, c->proj);
 }
 
 Point3
-world2ndc(Camera *c, Point3 p)
+world2clip(Camera *c, Point3 p)
 {
-	return vcs2ndc(c, world2vcs(c, p));
+	return vcs2clip(c, world2vcs(c, p));
 }
 
-Point3
-ndc2viewport(Camera *c, Point3 p)
+static Point3
+clip2ndc(Point3 p)
 {
-	Matrix3 view;
+	return divpt3(p, p.w);
+}
 
-	identity3(view);
-	view[0][3] = c->vp->fbctl->fb[0]->r.max.x/2.0;
-	view[1][3] = c->vp->fbctl->fb[0]->r.max.y/2.0;
-	view[2][3] = 1.0/2.0;
-	view[0][0] = Dx(c->vp->fbctl->fb[0]->r)/2.0;
-	view[1][1] = -Dy(c->vp->fbctl->fb[0]->r)/2.0;
-	view[2][2] = 1.0/2.0;
+static Point3
+ndc2viewport(Framebuf *fb, Point3 p)
+{
+	Matrix3 view = {
+		Dx(fb->r)/2.0,             0,       0,       Dx(fb->r)/2.0,
+		0,            -Dy(fb->r)/2.0,       0,       Dy(fb->r)/2.0,
+		0,                         0, 1.0/2.0,             1.0/2.0,
+		0,                         0,       0,                   1,
+	};
 
 	return xform3(p, view);
 }
@@ -123,7 +136,7 @@ perspective(Matrix3 m, double fov, double a, double n, double f)
 	identity3(m);
 	m[0][0] =  cotan/a;
 	m[1][1] =  cotan;
-	m[2][2] = (f+n)/(f-n);
+	m[2][2] =  (f+n)/(f-n);
 	m[2][3] = -2*f*n/(f-n);
 	m[3][2] = -1;
 }
@@ -148,12 +161,12 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	Rectangle bbox;
 	Point p, tp;
 	Point3 bc;
-	double z, w, depth;
+	double z, depth;
 	uchar cbuf[4];
 
-	t₂.p0 = Pt2(t[0].p.x/t[0].p.w, t[0].p.y/t[0].p.w, 1);
-	t₂.p1 = Pt2(t[1].p.x/t[1].p.w, t[1].p.y/t[1].p.w, 1);
-	t₂.p2 = Pt2(t[2].p.x/t[2].p.w, t[2].p.y/t[2].p.w, 1);
+	t₂.p0 = Pt2(t[0].p.x, t[0].p.y, 1);
+	t₂.p1 = Pt2(t[1].p.x, t[1].p.y, 1);
+	t₂.p2 = Pt2(t[2].p.x, t[2].p.y, 1);
 	/* find the triangle's bbox and clip it against the fb */
 	bbox = Rect(
 		min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x), min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y),
@@ -175,8 +188,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 				continue;
 
 			z = t[0].p.z*bc.x + t[1].p.z*bc.y + t[2].p.z*bc.z;
-			w = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
-			depth = fclamp(z/w, 0, 1);
+			depth = fclamp(z, 0, 1);
 			lock(&params->fb->zbuflk);
 			if(depth <= params->fb->zbuf[p.x + p.y*Dx(params->fb->r)]){
 				unlock(&params->fb->zbuflk);
@@ -262,6 +274,13 @@ shaderunit(void *arg)
 		vsp.v = &t[2];
 		vsp.idx = 2;
 		t[2].p = params->vshader(&vsp);
+
+//		if(isclipping(t[0].p) || isclipping(t[1].p) || isclipping(t[2].p))
+//			continue;	/* TODO clip the primitive */
+
+		t[0].p = ndc2viewport(params->fb, clip2ndc(t[0].p));
+		t[1].p = ndc2viewport(params->fb, clip2ndc(t[1].p));
+		t[2].p = ndc2viewport(params->fb, clip2ndc(t[2].p));
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
 		if(params->modeltex != nil && idxtab->nindex == 3){
