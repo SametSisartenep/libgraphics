@@ -39,19 +39,23 @@ triangulate(OBJElem **newe, OBJElem *e)
 	newidxtab->indices[1] = idxtab->indices[1];
 	newidxtab->indices[2] = idxtab->indices[2];
 	idxtab = &e->indextab[OBJVTexture];
-	newidxtab = &newe[0]->indextab[OBJVTexture];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[1];
-	newidxtab->indices[2] = idxtab->indices[2];
+	if(idxtab->nindex > 0){
+		newidxtab = &newe[0]->indextab[OBJVTexture];
+		newidxtab->nindex = 3;
+		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+		newidxtab->indices[0] = idxtab->indices[0];
+		newidxtab->indices[1] = idxtab->indices[1];
+		newidxtab->indices[2] = idxtab->indices[2];
+	}
 	idxtab = &e->indextab[OBJVNormal];
-	newidxtab = &newe[0]->indextab[OBJVNormal];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[1];
-	newidxtab->indices[2] = idxtab->indices[2];
+	if(idxtab->nindex > 0){
+		newidxtab = &newe[0]->indextab[OBJVNormal];
+		newidxtab->nindex = 3;
+		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+		newidxtab->indices[0] = idxtab->indices[0];
+		newidxtab->indices[1] = idxtab->indices[1];
+		newidxtab->indices[2] = idxtab->indices[2];
+	}
 
 	idxtab = &e->indextab[OBJVGeometric];
 	newe[1] = emalloc(sizeof *newe[1]);
@@ -63,19 +67,23 @@ triangulate(OBJElem **newe, OBJElem *e)
 	newidxtab->indices[1] = idxtab->indices[2];
 	newidxtab->indices[2] = idxtab->indices[3];
 	idxtab = &e->indextab[OBJVTexture];
-	newidxtab = &newe[1]->indextab[OBJVTexture];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[2];
-	newidxtab->indices[2] = idxtab->indices[3];
+	if(idxtab->nindex > 0){
+		newidxtab = &newe[1]->indextab[OBJVTexture];
+		newidxtab->nindex = 3;
+		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+		newidxtab->indices[0] = idxtab->indices[0];
+		newidxtab->indices[1] = idxtab->indices[2];
+		newidxtab->indices[2] = idxtab->indices[3];
+	}
 	idxtab = &e->indextab[OBJVNormal];
-	newidxtab = &newe[1]->indextab[OBJVNormal];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[2];
-	newidxtab->indices[2] = idxtab->indices[3];
+	if(idxtab->nindex > 0){
+		newidxtab = &newe[1]->indextab[OBJVNormal];
+		newidxtab->nindex = 3;
+		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+		newidxtab->indices[0] = idxtab->indices[0];
+		newidxtab->indices[1] = idxtab->indices[2];
+		newidxtab->indices[2] = idxtab->indices[3];
+	}
 
 	return 2;
 }
