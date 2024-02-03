@@ -43,10 +43,7 @@ void
 placecamera(Camera *c, Point3 p, Point3 focus, Point3 up)
 {
 	c->p = p;
-	if(focus.w == 0)
-		c->bz = focus;
-	else
-		c->bz = normvec3(subpt3(c->p, focus));
+	c->bz = focus.w == 0? focus: normvec3(subpt3(c->p, focus));
 	c->bx = normvec3(crossvec3(up, c->bz));
 	c->by = crossvec3(c->bz, c->bx);
 }

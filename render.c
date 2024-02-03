@@ -98,12 +98,45 @@ isclipping(Point3 p)
 	return 0;
 }
 
+static int
+cliptriangle(Triangle *)
+{
+	/* TODO implement homogeneous clipping procedure */
+
+	/*
+	 * requirements:
+	 *
+	 * - normal and color attributes are carried over to the new
+	 *   intersecting points without modification.
+	 * - uv coordinates must be adjusted in proportion to the new
+	 *   points.
+	 */
+	return 1;
+}
+
+/*
+ * transforms p from the world reference frame
+ * to c's one (aka Viewing Coordinate System).
+ */
 Point3
 world2vcs(Camera *c, Point3 p)
 {
 	return rframexform3(p, *c);
 }
 
+/*
+ * projects p from the VCS to clip space, placing
+ * p.[xyz] ∈ (-∞,-w)∪[-w,w]∪(w,∞) where [-w,w]
+ * represents the visibility volume.
+ *
+ * the clipping planes are:
+ *
+ * 	|   -w   |   w   |
+ *	+----------------+
+ * 	| left   | right |
+ * 	| bottom | top   |
+ * 	| far    | near  |
+ */
 Point3
 vcs2clip(Camera *c, Point3 p)
 {
@@ -116,12 +149,22 @@ world2clip(Camera *c, Point3 p)
 	return vcs2clip(c, world2vcs(c, p));
 }
 
+/*
+ * performs the perspective division, placing
+ * p.[xyz] ∈ [-1,1] and p.w = 1
+ * (aka Normalized Device Coordinates).
+ */
 static Point3
 clip2ndc(Point3 p)
 {
 	return divpt3(p, p.w);
 }
 
+/*
+ * scales p to fit the destination viewport,
+ * placing p.x ∈ [0,width], p.y ∈ [0,height],
+ * p.z ∈ [0,1] and leaving p.w intact.
+ */
 static Point3
 ndc2viewport(Framebuf *fb, Point3 p)
 {
@@ -240,8 +283,9 @@ shaderunit(void *arg)
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
 	OBJIndexArray *idxtab;
 	OBJElem **ep;
-	Triangle t;
 	Point3 n;				/* surface normal */
+	Triangle t[2*3];			/* triangles to raster */
+	int nt;
 
 	params = arg;
 	vsp.su = params;
@@ -254,52 +298,56 @@ shaderunit(void *arg)
 	nverts = params->model->vertdata[OBJVNormal].verts;
 
 	for(ep = params->b; ep != params->e; ep++){
-		idxtab = &(*ep)->indextab[OBJVGeometric];
+		nt = 1;	/* start with one. after clipping it might change */
 
-		t[0].p = Pt3(verts[idxtab->indices[0]].x,verts[idxtab->indices[0]].y,verts[idxtab->indices[0]].z,verts[idxtab->indices[0]].w);
-		t[1].p = Pt3(verts[idxtab->indices[1]].x,verts[idxtab->indices[1]].y,verts[idxtab->indices[1]].z,verts[idxtab->indices[1]].w);
-		t[2].p = Pt3(verts[idxtab->indices[2]].x,verts[idxtab->indices[2]].y,verts[idxtab->indices[2]].z,verts[idxtab->indices[2]].w);
+		idxtab = &(*ep)->indextab[OBJVGeometric];
+		t[0][0].p = Pt3(verts[idxtab->indices[0]].x,verts[idxtab->indices[0]].y,verts[idxtab->indices[0]].z,verts[idxtab->indices[0]].w);
+		t[0][1].p = Pt3(verts[idxtab->indices[1]].x,verts[idxtab->indices[1]].y,verts[idxtab->indices[1]].z,verts[idxtab->indices[1]].w);
+		t[0][2].p = Pt3(verts[idxtab->indices[2]].x,verts[idxtab->indices[2]].y,verts[idxtab->indices[2]].z,verts[idxtab->indices[2]].w);
 
 		idxtab = &(*ep)->indextab[OBJVNormal];
 		if(idxtab->nindex == 3){
-			t[0].n = Vec3(nverts[idxtab->indices[0]].i, nverts[idxtab->indices[0]].j, nverts[idxtab->indices[0]].k);
-			t[0].n = normvec3(t[0].n);
-			t[1].n = Vec3(nverts[idxtab->indices[1]].i, nverts[idxtab->indices[1]].j, nverts[idxtab->indices[1]].k);
-			t[1].n = normvec3(t[1].n);
-			t[2].n = Vec3(nverts[idxtab->indices[2]].i, nverts[idxtab->indices[2]].j, nverts[idxtab->indices[2]].k);
-			t[2].n = normvec3(t[2].n);
+			t[0][0].n = Vec3(nverts[idxtab->indices[0]].i, nverts[idxtab->indices[0]].j, nverts[idxtab->indices[0]].k);
+			t[0][0].n = normvec3(t[0][0].n);
+			t[0][1].n = Vec3(nverts[idxtab->indices[1]].i, nverts[idxtab->indices[1]].j, nverts[idxtab->indices[1]].k);
+			t[0][1].n = normvec3(t[0][1].n);
+			t[0][2].n = Vec3(nverts[idxtab->indices[2]].i, nverts[idxtab->indices[2]].j, nverts[idxtab->indices[2]].k);
+			t[0][2].n = normvec3(t[0][2].n);
 		}else{
-			n = normvec3(crossvec3(subpt3(t[2].p, t[0].p), subpt3(t[1].p, t[0].p)));
-			t[0].n = t[1].n = t[2].n = mulpt3(n, -1);
+			/* TODO build a list of per-vertex normals earlier */
+			n = normvec3(crossvec3(subpt3(t[0][2].p, t[0][0].p), subpt3(t[0][1].p, t[0][0].p)));
+			t[0][0].n = t[0][1].n = t[0][2].n = mulpt3(n, -1);
 		}
-
-		vsp.v = &t[0];
-		vsp.idx = 0;
-		t[0].p = params->vshader(&vsp);
-		vsp.v = &t[1];
-		vsp.idx = 1;
-		t[1].p = params->vshader(&vsp);
-		vsp.v = &t[2];
-		vsp.idx = 2;
-		t[2].p = params->vshader(&vsp);
-
-//		if(isclipping(t[0].p) || isclipping(t[1].p) || isclipping(t[2].p))
-//			continue;	/* TODO clip the primitive */
-
-		t[0].p = ndc2viewport(params->fb, clip2ndc(t[0].p));
-		t[1].p = ndc2viewport(params->fb, clip2ndc(t[1].p));
-		t[2].p = ndc2viewport(params->fb, clip2ndc(t[2].p));
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
 		if(params->modeltex != nil && idxtab->nindex == 3){
-			t[0].uv = Pt2(tverts[idxtab->indices[0]].u, tverts[idxtab->indices[0]].v, 1);
-			t[1].uv = Pt2(tverts[idxtab->indices[1]].u, tverts[idxtab->indices[1]].v, 1);
-			t[2].uv = Pt2(tverts[idxtab->indices[2]].u, tverts[idxtab->indices[2]].v, 1);
+			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u, tverts[idxtab->indices[0]].v, 1);
+			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u, tverts[idxtab->indices[1]].v, 1);
+			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u, tverts[idxtab->indices[2]].v, 1);
 		}else{
-			t[0].uv = t[1].uv = t[2].uv = Vec2(0,0);
+			t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
 		}
 
-		rasterize(params, t, frag);
+		vsp.v = &t[0][0];
+		vsp.idx = 0;
+		t[0][0].p = params->vshader(&vsp);
+		vsp.v = &t[0][1];
+		vsp.idx = 1;
+		t[0][1].p = params->vshader(&vsp);
+		vsp.v = &t[0][2];
+		vsp.idx = 2;
+		t[0][2].p = params->vshader(&vsp);
+
+		if(isclipping(t[0][0].p) || isclipping(t[0][1].p) || isclipping(t[0][2].p))
+			nt = cliptriangle(t);
+
+		while(nt--){
+			t[nt][0].p = ndc2viewport(params->fb, clip2ndc(t[nt][0].p));
+			t[nt][1].p = ndc2viewport(params->fb, clip2ndc(t[nt][1].p));
+			t[nt][2].p = ndc2viewport(params->fb, clip2ndc(t[nt][2].p));
+
+			rasterize(params, t[nt], frag);
+		}
 	}
 
 	freememimage(frag);
