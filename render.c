@@ -89,20 +89,81 @@ triangulate(OBJElem **newe, OBJElem *e)
 }
 
 static int
-isclipping(Point3 p)
+isvisible(Point3 p)
 {
 	if(p.x < -p.w || p.x > p.w ||
 	   p.y < -p.w || p.y > p.w ||
 	   p.z < -p.w || p.z > p.w)
-		return 1;
-	return 0;
+		return 0;
+	return 1;
+}
+
+static void
+mulsdm(double r[6], double m[6][4], Point3 p)
+{
+	int i;
+
+	for(i = 0; i < 6; i++)
+		r[i] += m[i][0]*p.x + m[i][1]*p.y + m[i][2]*p.z + m[i][3]*p.w;
+}
+
+typedef struct
+{
+	Vertex *v;
+	ulong n;
+	ulong cap;
+} Polygon;
+
+typedef struct
+{
+	ulong *idx;
+	ulong nidx;
+	ulong cap;
+} Cliplist;
+
+static int
+addvert(Polygon *p, Vertex v)
+{
+	if(++p->n > p->cap)
+		p->v = erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
+	p->v[p->n-1] = v;
+	return p->n;
+}
+
+static void
+delvert(Polygon *p, ulong idx)
+{
+	if(--p->n > 1 && idx < p->cap-1)
+		memmove(&p->v[idx], &p->v[idx+1], p->n);
 }
 
 static int
-cliptriangle(Triangle *)
+addidx(Cliplist *l, ulong idx)
+{
+	if(++l->nidx > l->cap)
+		l->idx = erealloc(l->idx, (l->cap = l->nidx)*sizeof(*l->idx));
+	l->idx[l->nidx-1] = idx;
+	return l->nidx;
+}
+
+static int
+idxcmp(ulong *a, ulong *b)
+{
+	return *a - *b;
+}
+
+static void
+reapverts(Polygon *p, Cliplist *l)
+{
+	qsort(l->idx, l->nidx, sizeof(l->idx[0]), (int(*)(void*,void*))idxcmp);
+	while(l->nidx--)
+		delvert(p, l->idx[l->nidx]);
+}
+
+static int
+cliptriangle(Triangle *t)
 {
 	/* TODO implement homogeneous clipping procedure */
-
 	/*
 	 * requirements:
 	 *
@@ -111,6 +172,49 @@ cliptriangle(Triangle *)
 	 * - uv coordinates must be adjusted in proportion to the new
 	 *   points.
 	 */
+	enum { L, R, B, T, F, N };
+	/* signed distance from each clipping plane */
+	static double sdm[6][4] = {
+		 1,  0,  0, 1,
+		-1,  0,  0, 1,
+		 0,  1,  0, 1,
+		 0, -1,  0, 1,
+		 0,  0,  1, 1,
+		 0,  0, -1, 1,
+	}, sd0[6], sd1[6];
+	Polygon V;		/* new polygon verts */
+	Cliplist D;		/* verts to delete */
+	Vertex v;		/* new vertex (line-plane intersection) */
+	int i, j;
+
+	if(!isvisible(t[0][0].p) && !isvisible(t[0][1].p) && !isvisible(t[0][2].p))
+		return 0;
+
+	memset(&V, 0, sizeof V);
+	memset(&D, 0, sizeof D);
+	/* initialize with the original triangle */
+//	for(i = 0; i < 3; i++)
+//		addvert(&V, t[0][i]);
+//
+//	for(i = 0; i < V.n-1; i++){
+//		memset(sd0, 0, sizeof sd0);
+//		memset(sd1, 0, sizeof sd1);
+//		mulsdm(sd0, sdm, V.v[i].p);
+//		mulsdm(sd1, sdm, V.v[i+1].p);
+//
+//		for(j = 0; j < 6; j++){
+//			if(sd0[i] < 0 && sd1[i] < 0){
+//				addidx(&D, i);
+//				addidx(&D, i+1);
+//			}else if(sd0[i] < 0){
+//				addidx(&D, i);
+//			}else if(sd1[i] < 0){
+//				addidx(&D, i+1);
+//			}
+//			reapverts(&V, &D);
+//		}
+//	}
+
 	return 1;
 }
 
@@ -151,13 +255,20 @@ world2clip(Camera *c, Point3 p)
 
 /*
  * performs the perspective division, placing
- * p.[xyz] ∈ [-1,1] and p.w = 1
+ * p.[xyz] ∈ [-1,1] and p.w = 1/z
  * (aka Normalized Device Coordinates).
+ *
+ * p.w is kept as z⁻¹ so we can later do
+ * perspective-correct attribute interpolation.
  */
 static Point3
 clip2ndc(Point3 p)
 {
-	return divpt3(p, p.w);
+	p.w = 1.0/p.w;
+	p.x *= p.w;
+	p.y *= p.w;
+	p.z *= p.w;
+	return p;
 }
 
 /*
@@ -174,8 +285,13 @@ ndc2viewport(Framebuf *fb, Point3 p)
 		0,                         0, 1.0/2.0,             1.0/2.0,
 		0,                         0,       0,                   1,
 	};
+	double w;
 
-	return xform3(p, view);
+	w = p.w;
+	p.w = 1;
+	p = xform3(p, view);
+	p.w = w;
+	return p;
 }
 
 void
@@ -232,6 +348,14 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	fsp.frag = frag;
 	fsp.cbuf = cbuf;
 
+	/* perspective-divide the attributes */
+//	t[0].c = mulpt3(t[0].c, t[0].p.w);
+//	t[1].c = mulpt3(t[1].c, t[1].p.w);
+//	t[2].c = mulpt3(t[2].c, t[2].p.w);
+	t[0].uv = mulpt2(t[0].uv, t[0].p.w);
+	t[1].uv = mulpt2(t[1].uv, t[1].p.w);
+	t[2].uv = mulpt2(t[2].uv, t[2].p.w);
+
 	for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
 			bc = barycoords(t₂, Pt2(p.x,p.y,1));
@@ -248,11 +372,20 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			params->fb->zbuf[p.x + p.y*Dx(params->fb->r)] = depth;
 			unlock(&params->fb->zbuflk);
 
+			/* lerp z⁻¹ and get actual z */
+			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
+			z = 1.0/(z < 1e-6? 1e-6: z);
+
+			/* lerp attribute and dissolve perspective */
+//			t[0].c = mulpt3(t[0].c, bc.x*z);
+//			t[1].c = mulpt3(t[1].c, bc.y*z);
+//			t[2].c = mulpt3(t[2].c, bc.z*z);
+
 			cbuf[0] = 0xFF;
 			if((t[0].uv.w + t[1].uv.w + t[2].uv.w) != 0){
-				tt₂.p0 = mulpt2(t[0].uv, bc.x);
-				tt₂.p1 = mulpt2(t[1].uv, bc.y);
-				tt₂.p2 = mulpt2(t[2].uv, bc.z);
+				tt₂.p0 = mulpt2(t[0].uv, bc.x*z);
+				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
+				tt₂.p2 = mulpt2(t[2].uv, bc.z*z);
 
 				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->modeltex->r);
 				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->modeltex->r);
@@ -284,7 +417,7 @@ shaderunit(void *arg)
 	OBJIndexArray *idxtab;
 	OBJElem **ep;
 	Point3 n;				/* surface normal */
-	Triangle t[2*3];			/* triangles to raster */
+	Triangle t[7-2];			/* triangles to raster */
 	int nt;
 
 	params = arg;
@@ -338,7 +471,7 @@ shaderunit(void *arg)
 		vsp.idx = 2;
 		t[0][2].p = params->vshader(&vsp);
 
-		if(isclipping(t[0][0].p) || isclipping(t[0][1].p) || isclipping(t[0][2].p))
+		if(!isvisible(t[0][0].p) || !isvisible(t[0][1].p) || !isvisible(t[0][2].p))
 			nt = cliptriangle(t);
 
 		while(nt--){
