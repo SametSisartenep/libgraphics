@@ -190,9 +190,9 @@ cliptriangle(Triangle *t)
 	if(!isvisible(t[0][0].p) && !isvisible(t[0][1].p) && !isvisible(t[0][2].p))
 		return 0;
 
-	memset(&V, 0, sizeof V);
-	memset(&D, 0, sizeof D);
-	/* initialize with the original triangle */
+//	memset(&V, 0, sizeof V);
+//	memset(&D, 0, sizeof D);
+//	/* initialize with the original triangle */
 //	for(i = 0; i < 3; i++)
 //		addvert(&V, t[0][i]);
 //
@@ -374,14 +374,13 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 
 			/* lerp z⁻¹ and get actual z */
 			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
-			z = 1.0/(z < 1e-6? 1e-6: z);
+			z = 1.0/(z < 1e-5? 1e-5: z);
 
 			/* lerp attribute and dissolve perspective */
 //			t[0].c = mulpt3(t[0].c, bc.x*z);
 //			t[1].c = mulpt3(t[1].c, bc.y*z);
 //			t[2].c = mulpt3(t[2].c, bc.z*z);
 
-			cbuf[0] = 0xFF;
 			if((t[0].uv.w + t[1].uv.w + t[2].uv.w) != 0){
 				tt₂.p0 = mulpt2(t[0].uv, bc.x*z);
 				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
@@ -393,13 +392,19 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 				switch(params->modeltex->chan){
 				case RGB24:
 					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
+					cbuf[0] = 0xFF;
 					break;
 				case RGBA32:
 					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
 					break;
+				case XRGB32:
+					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
+					memmove(cbuf+1, cbuf, 3);
+					cbuf[0] = 0xFF;
+					break;
 				}
 			}else
-				memset(cbuf+1, 0xFF, sizeof cbuf - 1);
+				memset(cbuf, 0xFF, sizeof cbuf);
 
 			fsp.p = p;
 			fsp.bc = bc;
