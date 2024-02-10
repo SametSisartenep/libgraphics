@@ -114,13 +114,6 @@ typedef struct
 	ulong cap;
 } Polygon;
 
-typedef struct
-{
-	ulong *idx;
-	ulong nidx;
-	ulong cap;
-} Cliplist;
-
 static int
 addvert(Polygon *p, Vertex v)
 {
@@ -128,36 +121,6 @@ addvert(Polygon *p, Vertex v)
 		p->v = erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
 	p->v[p->n-1] = v;
 	return p->n;
-}
-
-static void
-delvert(Polygon *p, ulong idx)
-{
-	if(--p->n > 1 && idx < p->cap-1)
-		memmove(&p->v[idx], &p->v[idx+1], p->n);
-}
-
-static int
-addidx(Cliplist *l, ulong idx)
-{
-	if(++l->nidx > l->cap)
-		l->idx = erealloc(l->idx, (l->cap = l->nidx)*sizeof(*l->idx));
-	l->idx[l->nidx-1] = idx;
-	return l->nidx;
-}
-
-static int
-idxcmp(ulong *a, ulong *b)
-{
-	return *a - *b;
-}
-
-static void
-reapverts(Polygon *p, Cliplist *l)
-{
-	qsort(l->idx, l->nidx, sizeof(l->idx[0]), (int(*)(void*,void*))idxcmp);
-	while(l->nidx--)
-		delvert(p, l->idx[l->nidx]);
 }
 
 static int
@@ -182,40 +145,61 @@ cliptriangle(Triangle *t)
 		 0,  0,  1, 1,
 		 0,  0, -1, 1,
 	}, sd0[6], sd1[6];
-	Polygon V;		/* new polygon verts */
-	Cliplist D;		/* verts to delete */
-	Vertex v;		/* new vertex (line-plane intersection) */
-	int i, j;
+	double d0, d1;
+	Polygon Vout;
+	Vertex *v0, *v1, v;	/* new vertex (line-plane intersection) */
+	int i, j, nt;
 
 	if(!isvisible(t[0][0].p) && !isvisible(t[0][1].p) && !isvisible(t[0][2].p))
 		return 0;
 
-//	memset(&V, 0, sizeof V);
-//	memset(&D, 0, sizeof D);
-//	/* initialize with the original triangle */
-//	for(i = 0; i < 3; i++)
-//		addvert(&V, t[0][i]);
-//
-//	for(i = 0; i < V.n-1; i++){
-//		memset(sd0, 0, sizeof sd0);
-//		memset(sd1, 0, sizeof sd1);
-//		mulsdm(sd0, sdm, V.v[i].p);
-//		mulsdm(sd1, sdm, V.v[i+1].p);
-//
-//		for(j = 0; j < 6; j++){
-//			if(sd0[i] < 0 && sd1[i] < 0){
-//				addidx(&D, i);
-//				addidx(&D, i+1);
-//			}else if(sd0[i] < 0){
-//				addidx(&D, i);
-//			}else if(sd1[i] < 0){
-//				addidx(&D, i+1);
-//			}
-//			reapverts(&V, &D);
-//		}
-//	}
+	nt = 0;
+	memset(&Vout, 0, sizeof Vout);
 
-	return 1;
+	for(i = 0; i < 3; i++){
+		v0 = &t[0][i];
+		v1 = &t[0][(i+1) % 3];
+		memset(sd0, 0, sizeof sd0);
+		memset(sd1, 0, sizeof sd1);
+		mulsdm(sd0, sdm, v0->p);
+		mulsdm(sd1, sdm, v1->p);
+
+		for(j = 0; j < 6; j++){
+			/*
+			 * if both verts are outside any of the planes, they
+			 * are not in the frustum, so no need to keep testing.
+			 */
+			if(sd0[j] < 0 && sd1[j] < 0)
+				break;
+
+			if(sd0[j] >= 0 && sd1[j] >= 0)
+				goto allin;
+
+			/* keep the discarded vertex attributes */
+			v = sd0[j] < 0? *v0: *v1;
+
+			d0 = (j&1) == 0? sd0[j]: -sd0[j];
+			d1 = (j&1) == 0? sd1[j]: -sd1[j];
+			v.p = divpt3(subpt3(mulpt3(v0->p, d1), mulpt3(v1->p, d0)), d1-d0);
+			v.uv = divpt2(subpt2(mulpt2(v0->uv, d1), mulpt2(v1->uv, d0)), d1-d0);
+			addvert(&Vout, v);
+
+			if(sd1[j] >= 0){
+allin:
+				addvert(&Vout, *v1);
+			}
+		}
+	}
+
+	/* triangulate */
+	for(i = 0; i < Vout.n-2; i++, nt++){
+		t[nt][0] = Vout.v[0];
+		t[nt][1] = Vout.v[i+1];
+		t[nt][2] = Vout.v[i+2];
+	}
+	free(Vout.v);
+
+	return nt;
 }
 
 /*
@@ -422,7 +406,7 @@ shaderunit(void *arg)
 	OBJIndexArray *idxtab;
 	OBJElem **ep;
 	Point3 n;				/* surface normal */
-	Triangle t[7-2];			/* triangles to raster */
+	Triangle *t;				/* triangles to raster */
 	int nt;
 
 	params = arg;
@@ -431,6 +415,7 @@ shaderunit(void *arg)
 
 	threadsetname("shader unit #%d", params->id);
 
+	t = emalloc(sizeof(*t)*32);
 	verts = params->model->vertdata[OBJVGeometric].verts;
 	tverts = params->model->vertdata[OBJVTexture].verts;
 	nverts = params->model->vertdata[OBJVNormal].verts;
@@ -488,6 +473,7 @@ shaderunit(void *arg)
 		}
 	}
 
+	free(t);
 	freememimage(frag);
 	sendp(params->donec, nil);
 	free(params);
