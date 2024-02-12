@@ -5,8 +5,18 @@ typedef enum {
 	PERSPECTIVE
 } Projection;
 
+enum {
+	LIGHT_POINT,
+	LIGHT_DIRECTIONAL,
+};
+
 typedef struct Color Color;
 typedef struct Vertex Vertex;
+typedef struct LightSource LightSource;
+typedef struct Material Material;
+typedef struct Model Model;
+typedef struct Entity Entity;
+typedef struct Environment Environment;
 typedef struct VSparams VSparams;
 typedef struct FSparams FSparams;
 typedef struct SUparams SUparams;
@@ -27,9 +37,40 @@ struct Vertex
 	Point3 n;	/* surface normal */
 	Color c;	/* shading color */
 	Point2 uv;	/* texture coordinate */
+
+	double intensity;
 };
 
 typedef Vertex Triangle[3];
+
+struct LightSource
+{
+	Point3 p;
+	int type;
+};
+
+struct Material
+{
+	int stub;
+};
+
+struct Model
+{
+	Material *materials;
+	ulong nmaterials;
+};
+
+struct Entity
+{
+	Model *mdl;
+};
+
+struct Scene
+{
+	Entity **ents;
+	ulong nents;
+	
+};
 
 /* shader params */
 struct VSparams

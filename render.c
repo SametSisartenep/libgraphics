@@ -30,7 +30,7 @@ triangulate(OBJElem **newe, OBJElem *e)
 	OBJIndexArray *idxtab;
 
 	idxtab = &e->indextab[OBJVGeometric];
-	newe[0] = emalloc(sizeof *newe[0]);
+	newe[0] = emalloc(sizeof **newe);
 	newe[0]->type = OBJEFace;
 	newidxtab = &newe[0]->indextab[OBJVGeometric];
 	newidxtab->nindex = 3;
@@ -58,7 +58,7 @@ triangulate(OBJElem **newe, OBJElem *e)
 	}
 
 	idxtab = &e->indextab[OBJVGeometric];
-	newe[1] = emalloc(sizeof *newe[1]);
+	newe[1] = emalloc(sizeof **newe);
 	newe[1]->type = OBJEFace;
 	newidxtab = &newe[1]->indextab[OBJVGeometric];
 	newidxtab->nindex = 3;
@@ -104,7 +104,7 @@ mulsdm(double r[6], double m[6][4], Point3 p)
 	int i;
 
 	for(i = 0; i < 6; i++)
-		r[i] += m[i][0]*p.x + m[i][1]*p.y + m[i][2]*p.z + m[i][3]*p.w;
+		r[i] = m[i][0]*p.x + m[i][1]*p.y + m[i][2]*p.z + m[i][3]*p.w;
 }
 
 typedef struct
@@ -123,54 +123,59 @@ addvert(Polygon *p, Vertex v)
 	return p->n;
 }
 
+static void
+swappoly(Polygon *a, Polygon *b)
+{
+	Polygon tmp;
+
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+/*
+ * references:
+ * 	- James F. Blinn, Martin E. Newell, “Clipping Using Homogeneous Coordinates”,
+ * 	  SIGGRAPH '78, pp. 245-251
+ * 	- https://cs418.cs.illinois.edu/website/text/clipping.html
+ * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
+ */
 static int
 cliptriangle(Triangle *t)
 {
-	/* TODO implement homogeneous clipping procedure */
-	/*
-	 * requirements:
-	 *
-	 * - normal and color attributes are carried over to the new
-	 *   intersecting points without modification.
-	 * - uv coordinates must be adjusted in proportion to the new
-	 *   points.
-	 */
-	enum { L, R, B, T, F, N };
 	/* signed distance from each clipping plane */
 	static double sdm[6][4] = {
-		 1,  0,  0, 1,
-		-1,  0,  0, 1,
-		 0,  1,  0, 1,
-		 0, -1,  0, 1,
-		 0,  0,  1, 1,
-		 0,  0, -1, 1,
+		 1,  0,  0, 1,	/* l */
+		-1,  0,  0, 1,	/* r */
+		 0,  1,  0, 1,	/* b */
+		 0, -1,  0, 1,	/* t */
+		 0,  0,  1, 1,	/* f */
+		 0,  0, -1, 1,	/* n */
 	}, sd0[6], sd1[6];
-	double d0, d1;
-	Polygon Vout;
-	Vertex *v0, *v1, v;	/* new vertex (line-plane intersection) */
+	double d0, d1, perc;
+	Polygon Vin, Vout;
+	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
 	int i, j, nt;
 
 	if(!isvisible(t[0][0].p) && !isvisible(t[0][1].p) && !isvisible(t[0][2].p))
 		return 0;
 
 	nt = 0;
+	memset(&Vin, 0, sizeof Vin);
 	memset(&Vout, 0, sizeof Vout);
+	for(i = 0; i < 3; i++)
+		addvert(&Vin, t[0][i]);
 
-	for(i = 0; i < 3; i++){
-		v0 = &t[0][i];
-		v1 = &t[0][(i+1) % 3];
-		memset(sd0, 0, sizeof sd0);
-		memset(sd1, 0, sizeof sd1);
-		mulsdm(sd0, sdm, v0->p);
-		mulsdm(sd1, sdm, v1->p);
+	for(j = 0; j < 6; j++){
+		for(i = 0; i < Vin.n; i++){
+			v0 = &Vin.v[i];
+			v1 = &Vin.v[(i+1) % Vin.n];
 
-		for(j = 0; j < 6; j++){
-			/*
-			 * if both verts are outside any of the planes, they
-			 * are not in the frustum, so no need to keep testing.
-			 */
+			mulsdm(sd0, sdm, v0->p);
+			mulsdm(sd1, sdm, v1->p);
+
 			if(sd0[j] < 0 && sd1[j] < 0)
-				break;
+				continue;
 
 			if(sd0[j] >= 0 && sd1[j] >= 0)
 				goto allin;
@@ -180,8 +185,10 @@ cliptriangle(Triangle *t)
 
 			d0 = (j&1) == 0? sd0[j]: -sd0[j];
 			d1 = (j&1) == 0? sd1[j]: -sd1[j];
-			v.p = divpt3(subpt3(mulpt3(v0->p, d1), mulpt3(v1->p, d0)), d1-d0);
-			v.uv = divpt2(subpt2(mulpt2(v0->uv, d1), mulpt2(v1->uv, d0)), d1-d0);
+			perc = d0/(d0 - d1);
+			v.p = lerp3(v0->p, v1->p, perc);
+			v.uv = lerp2(v0->uv, v1->uv, perc);
+			v.intensity = flerp(v0->intensity, v1->intensity, perc);
 			addvert(&Vout, v);
 
 			if(sd1[j] >= 0){
@@ -189,6 +196,16 @@ allin:
 				addvert(&Vout, *v1);
 			}
 		}
+		if(j < 6-1){
+			swappoly(&Vin, &Vout);
+			Vout.n = 0;
+		}
+	}
+
+	if(Vout.n < 3){
+		free(Vout.v);
+		free(Vin.v);
+		return 0;
 	}
 
 	/* triangulate */
@@ -198,6 +215,7 @@ allin:
 		t[nt][2] = Vout.v[i+2];
 	}
 	free(Vout.v);
+	free(Vin.v);
 
 	return nt;
 }
@@ -390,6 +408,9 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			}else
 				memset(cbuf, 0xFF, sizeof cbuf);
 
+			params->var_intensity[0] = t[0].intensity;
+			params->var_intensity[1] = t[1].intensity;
+			params->var_intensity[2] = t[2].intensity;
 			fsp.p = p;
 			fsp.bc = bc;
 			pixel(params->fb->cb, p, params->fshader(&fsp));
@@ -415,7 +436,7 @@ shaderunit(void *arg)
 
 	threadsetname("shader unit #%d", params->id);
 
-	t = emalloc(sizeof(*t)*32);
+	t = emalloc(sizeof(*t)*16);
 	verts = params->model->vertdata[OBJVGeometric].verts;
 	tverts = params->model->vertdata[OBJVTexture].verts;
 	nverts = params->model->vertdata[OBJVNormal].verts;
