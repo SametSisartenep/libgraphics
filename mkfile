@@ -5,6 +5,7 @@ OFILES=\
 	camera.$O\
 	viewport.$O\
 	render.$O\
+	scene.$O\
 	alloc.$O\
 	fb.$O\
 	shadeop.$O\

@@ -10,7 +10,7 @@ Framebufctl *mkfbctl(Rectangle);
 void rmfbctl(Framebufctl*);
 
 /* render */
-void shade(Framebuf*, OBJ*, Memimage*, Shader*, ulong);
+void shade(Framebuf*, Scene*, Shader*);
 
 /* util */
 int min(int, int);

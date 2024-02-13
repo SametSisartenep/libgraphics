@@ -20,74 +20,6 @@ pixel(Memimage *dst, Point p, Memimage *src)
 	memimagedraw(dst, rectaddpt(UR, p), src, ZP, nil, ZP, SoverD);
 }
 
-/*
- * it only processes quads for now.
- */
-static int
-triangulate(OBJElem **newe, OBJElem *e)
-{
-	OBJIndexArray *newidxtab;
-	OBJIndexArray *idxtab;
-
-	idxtab = &e->indextab[OBJVGeometric];
-	newe[0] = emalloc(sizeof **newe);
-	newe[0]->type = OBJEFace;
-	newidxtab = &newe[0]->indextab[OBJVGeometric];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[1];
-	newidxtab->indices[2] = idxtab->indices[2];
-	idxtab = &e->indextab[OBJVTexture];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[0]->indextab[OBJVTexture];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[1];
-		newidxtab->indices[2] = idxtab->indices[2];
-	}
-	idxtab = &e->indextab[OBJVNormal];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[0]->indextab[OBJVNormal];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[1];
-		newidxtab->indices[2] = idxtab->indices[2];
-	}
-
-	idxtab = &e->indextab[OBJVGeometric];
-	newe[1] = emalloc(sizeof **newe);
-	newe[1]->type = OBJEFace;
-	newidxtab = &newe[1]->indextab[OBJVGeometric];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[2];
-	newidxtab->indices[2] = idxtab->indices[3];
-	idxtab = &e->indextab[OBJVTexture];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[1]->indextab[OBJVTexture];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[2];
-		newidxtab->indices[2] = idxtab->indices[3];
-	}
-	idxtab = &e->indextab[OBJVNormal];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[1]->indextab[OBJVNormal];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[2];
-		newidxtab->indices[2] = idxtab->indices[3];
-	}
-
-	return 2;
-}
-
 static int
 isvisible(Point3 p)
 {
@@ -156,9 +88,6 @@ cliptriangle(Triangle *t)
 	Polygon Vin, Vout;
 	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
 	int i, j, nt;
-
-	if(!isvisible(t[0][0].p) && !isvisible(t[0][1].p) && !isvisible(t[0][2].p))
-		return 0;
 
 	nt = 0;
 	memset(&Vin, 0, sizeof Vin);
@@ -388,19 +317,19 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
 				tt₂.p2 = mulpt2(t[2].uv, bc.z*z);
 
-				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->modeltex->r);
-				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->modeltex->r);
+				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->model->tex->r);
+				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->model->tex->r);
 
-				switch(params->modeltex->chan){
+				switch(params->model->tex->chan){
 				case RGB24:
-					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
+					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
 					cbuf[0] = 0xFF;
 					break;
 				case RGBA32:
-					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
+					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
 					break;
 				case XRGB32:
-					unloadmemimage(params->modeltex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
+					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
 					memmove(cbuf+1, cbuf, 3);
 					cbuf[0] = 0xFF;
 					break;
@@ -425,7 +354,7 @@ shaderunit(void *arg)
 	Memimage *frag;
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
 	OBJIndexArray *idxtab;
-	OBJElem **ep;
+	OBJElem **ep, **eb, **ee;
 	Point3 n;				/* surface normal */
 	Triangle *t;				/* triangles to raster */
 	int nt;
@@ -437,11 +366,13 @@ shaderunit(void *arg)
 	threadsetname("shader unit #%d", params->id);
 
 	t = emalloc(sizeof(*t)*16);
-	verts = params->model->vertdata[OBJVGeometric].verts;
-	tverts = params->model->vertdata[OBJVTexture].verts;
-	nverts = params->model->vertdata[OBJVNormal].verts;
+	verts = params->model->obj->vertdata[OBJVGeometric].verts;
+	tverts = params->model->obj->vertdata[OBJVTexture].verts;
+	nverts = params->model->obj->vertdata[OBJVNormal].verts;
+	eb = params->model->elems;
+	ee = eb + params->model->nelems;
 
-	for(ep = params->b; ep != params->e; ep++){
+	for(ep = eb; ep != ee; ep++){
 		nt = 1;	/* start with one. after clipping it might change */
 
 		idxtab = &(*ep)->indextab[OBJVGeometric];
@@ -464,7 +395,7 @@ shaderunit(void *arg)
 		}
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
-		if(params->modeltex != nil && idxtab->nindex == 3){
+		if(params->model->tex != nil && idxtab->nindex == 3){
 			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u, tverts[idxtab->indices[0]].v, 1);
 			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u, tverts[idxtab->indices[1]].v, 1);
 			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u, tverts[idxtab->indices[2]].v, 1);
@@ -502,65 +433,28 @@ shaderunit(void *arg)
 }
 
 void
-shade(Framebuf *fb, OBJ *model, Memimage *modeltex, Shader *s, ulong nprocs)
+shade(Framebuf *fb, Scene *sc, Shader *s)
 {
-	static int nparts, nworkers;
-	static OBJElem **elems = nil;
-	OBJElem *trielems[2];
-	int i, nelems;
+	int i;
 	uvlong time;
-	OBJObject *o;
-	OBJElem *e;
-	OBJIndexArray *idxtab;
+	Entity *ent;
 	SUparams *params;
 	Channel *donec;
 
-	if(elems == nil){
-		nelems = 0;
-		for(i = 0; i < nelem(model->objtab); i++)
-			for(o = model->objtab[i]; o != nil; o = o->next)
-				for(e = o->child; e != nil; e = e->next){
-					idxtab = &e->indextab[OBJVGeometric];
-					/* discard non-triangles */
-					if(e->type != OBJEFace || (idxtab->nindex != 3 && idxtab->nindex != 4))
-						continue;
-					if(idxtab->nindex == 4){
-						triangulate(trielems, e);
-						nelems += 2;
-						elems = erealloc(elems, nelems*sizeof(*elems));
-						elems[nelems-2] = trielems[0];
-						elems[nelems-1] = trielems[1];
-					}else{
-						elems = erealloc(elems, ++nelems*sizeof(*elems));
-						elems[nelems-1] = e;
-					}
-				}
-		if(nelems < nprocs){
-			nworkers = nelems;
-			nparts = 1;
-		}else{
-			nworkers = nprocs;
-			nparts = nelems/nprocs;
-		}
-	}
 	time = nanosec();
-
 	donec = chancreate(sizeof(void*), 0);
 
-	for(i = 0; i < nworkers; i++){
+	/* TODO come up with an actual concurrent architecture */
+	for(i = 0, ent = sc->ents.next; i < sc->nents; i++, ent = ent->next){
 		params = emalloc(sizeof *params);
 		params->fb = fb;
-		params->b = &elems[i*nparts];
-		params->e = params->b + nparts;
 		params->id = i;
 		params->donec = donec;
-		params->model = model;
-		params->modeltex = modeltex;
+		params->model = ent->mdl;
 		params->uni_time = time;
 		params->vshader = s->vshader;
 		params->fshader = s->fshader;
 		proccreate(shaderunit, params, mainstacksize);
-//		fprint(2, "spawned su %d for elems [%d, %d)\n", params->id, i*nparts, i*nparts+nparts);
 	}
 
 	while(i--)

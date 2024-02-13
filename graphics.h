@@ -16,7 +16,7 @@ typedef struct LightSource LightSource;
 typedef struct Material Material;
 typedef struct Model Model;
 typedef struct Entity Entity;
-typedef struct Environment Environment;
+typedef struct Scene Scene;
 typedef struct VSparams VSparams;
 typedef struct FSparams FSparams;
 typedef struct SUparams SUparams;
@@ -56,20 +56,30 @@ struct Material
 
 struct Model
 {
+	OBJ *obj;
+	Memimage *tex;
 	Material *materials;
 	ulong nmaterials;
+
+	/* cache of renderable elems */
+	OBJElem **elems;
+	ulong nelems;
 };
 
 struct Entity
 {
+	RFrame3;
 	Model *mdl;
+	Entity *prev, *next;
 };
 
 struct Scene
 {
-	Entity **ents;
+	char *name;
+	Entity ents;
 	ulong nents;
-	
+
+	void (*addent)(Scene*, Entity*);
 };
 
 /* shader params */
@@ -93,13 +103,11 @@ struct FSparams
 struct SUparams
 {
 	Framebuf *fb;
-	OBJElem **b, **e;
 	int id;
 	Channel *donec;
 
 	/* TODO replace with a Scene */
-	OBJ *model;
-	Memimage *modeltex;
+	Model *model;
 
 	double var_intensity[3];
 
@@ -145,6 +153,7 @@ struct Camera
 {
 	RFrame3;		/* VCS */
 	Viewport *vp;
+	Scene *s;
 	double fov;		/* vertical FOV */
 	struct {
 		double n, f;	/* near and far clipping planes */
@@ -162,7 +171,7 @@ void configcamera(Camera*, Viewport*, double, double, double, Projection);
 void placecamera(Camera*, Point3, Point3, Point3);
 void aimcamera(Camera*, Point3);
 void reloadcamera(Camera*);
-void shootcamera(Camera*, OBJ*, Memimage*, Shader*);
+void shootcamera(Camera*, Shader*);
 
 /* viewport */
 Viewport *mkviewport(Rectangle);
@@ -174,6 +183,15 @@ Point3 vcs2clip(Camera*, Point3);
 Point3 world2clip(Camera*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
+
+/* scene */
+int refreshmodel(Model*);
+Model *newmodel(void);
+void delmodel(Model*);
+Entity *newentity(Model*);
+void delentity(Entity*);
+Scene *newscene(char*);
+void delscene(Scene*);
 
 /* util */
 double fmin(double, double);
