@@ -83,7 +83,8 @@ cliptriangle(Triangle *t)
 		 0, -1,  0, 1,	/* t */
 		 0,  0,  1, 1,	/* f */
 		 0,  0, -1, 1,	/* n */
-	}, sd0[6], sd1[6];
+	};
+	double sd0[6], sd1[6];
 	double d0, d1, perc;
 	Polygon Vin, Vout;
 	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
@@ -131,18 +132,13 @@ allin:
 		}
 	}
 
-	if(Vout.n < 3){
-		free(Vout.v);
-		free(Vin.v);
-		return 0;
-	}
-
 	/* triangulate */
-	for(i = 0; i < Vout.n-2; i++, nt++){
-		t[nt][0] = Vout.v[0];
-		t[nt][1] = Vout.v[i+1];
-		t[nt][2] = Vout.v[i+2];
-	}
+	if(Vout.n >= 3)
+		for(i = 0; i < Vout.n-2; i++, nt++){
+			t[nt][0] = Vout.v[0];
+			t[nt][1] = Vout.v[i+1];
+			t[nt][2] = Vout.v[i+2];
+		}
 	free(Vout.v);
 	free(Vin.v);
 
@@ -317,19 +313,19 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
 				tt₂.p2 = mulpt2(t[2].uv, bc.z*z);
 
-				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->model->tex->r);
-				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->model->tex->r);
+				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->entity->mdl->tex->r);
+				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->entity->mdl->tex->r);
 
-				switch(params->model->tex->chan){
+				switch(params->entity->mdl->tex->chan){
 				case RGB24:
-					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
+					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
 					cbuf[0] = 0xFF;
 					break;
 				case RGBA32:
-					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
+					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
 					break;
 				case XRGB32:
-					unloadmemimage(params->model->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
+					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
 					memmove(cbuf+1, cbuf, 3);
 					cbuf[0] = 0xFF;
 					break;
@@ -366,11 +362,11 @@ shaderunit(void *arg)
 	threadsetname("shader unit #%d", params->id);
 
 	t = emalloc(sizeof(*t)*16);
-	verts = params->model->obj->vertdata[OBJVGeometric].verts;
-	tverts = params->model->obj->vertdata[OBJVTexture].verts;
-	nverts = params->model->obj->vertdata[OBJVNormal].verts;
-	eb = params->model->elems;
-	ee = eb + params->model->nelems;
+	verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
+	tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
+	nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
+	eb = params->entity->mdl->elems;
+	ee = eb + params->entity->mdl->nelems;
 
 	for(ep = eb; ep != ee; ep++){
 		nt = 1;	/* start with one. after clipping it might change */
@@ -395,7 +391,7 @@ shaderunit(void *arg)
 		}
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
-		if(params->model->tex != nil && idxtab->nindex == 3){
+		if(params->entity->mdl->tex != nil && idxtab->nindex == 3){
 			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u, tverts[idxtab->indices[0]].v, 1);
 			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u, tverts[idxtab->indices[1]].v, 1);
 			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u, tverts[idxtab->indices[2]].v, 1);
@@ -450,7 +446,7 @@ shade(Framebuf *fb, Scene *sc, Shader *s)
 		params->fb = fb;
 		params->id = i;
 		params->donec = donec;
-		params->model = ent->mdl;
+		params->entity = ent;
 		params->uni_time = time;
 		params->vshader = s->vshader;
 		params->fshader = s->fshader;

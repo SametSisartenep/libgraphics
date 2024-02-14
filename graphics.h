@@ -107,7 +107,7 @@ struct SUparams
 	Channel *donec;
 
 	/* TODO replace with a Scene */
-	Model *model;
+	Entity *entity;
 
 	double var_intensity[3];
 
