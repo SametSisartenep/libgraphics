@@ -9,71 +9,52 @@
 #include "internal.h"
 
 /*
- * it only processes quads for now.
+ * fan triangulation.
+ *
+ * TODO check that the polygon is in fact convex
+ * try to adapt if not (by finding a convex
+ * vertex), or discard it.
  */
 static int
 triangulate(OBJElem **newe, OBJElem *e)
 {
 	OBJIndexArray *newidxtab;
 	OBJIndexArray *idxtab;
+	int i, nt;
 
+	nt = 0;
 	idxtab = &e->indextab[OBJVGeometric];
-	newe[0] = emalloc(sizeof **newe);
-	newe[0]->type = OBJEFace;
-	newidxtab = &newe[0]->indextab[OBJVGeometric];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[1];
-	newidxtab->indices[2] = idxtab->indices[2];
-	idxtab = &e->indextab[OBJVTexture];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[0]->indextab[OBJVTexture];
+	for(i = 0; i < idxtab->nindex-2; i++){
+		idxtab = &e->indextab[OBJVGeometric];
+		newe[nt++] = emalloc(sizeof **newe);
+		newe[nt-1]->type = OBJEFace;
+		newidxtab = &newe[nt-1]->indextab[OBJVGeometric];
 		newidxtab->nindex = 3;
 		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
 		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[1];
-		newidxtab->indices[2] = idxtab->indices[2];
-	}
-	idxtab = &e->indextab[OBJVNormal];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[0]->indextab[OBJVNormal];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[1];
-		newidxtab->indices[2] = idxtab->indices[2];
-	}
-
-	idxtab = &e->indextab[OBJVGeometric];
-	newe[1] = emalloc(sizeof **newe);
-	newe[1]->type = OBJEFace;
-	newidxtab = &newe[1]->indextab[OBJVGeometric];
-	newidxtab->nindex = 3;
-	newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-	newidxtab->indices[0] = idxtab->indices[0];
-	newidxtab->indices[1] = idxtab->indices[2];
-	newidxtab->indices[2] = idxtab->indices[3];
-	idxtab = &e->indextab[OBJVTexture];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[1]->indextab[OBJVTexture];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[2];
-		newidxtab->indices[2] = idxtab->indices[3];
-	}
-	idxtab = &e->indextab[OBJVNormal];
-	if(idxtab->nindex > 0){
-		newidxtab = &newe[1]->indextab[OBJVNormal];
-		newidxtab->nindex = 3;
-		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
-		newidxtab->indices[0] = idxtab->indices[0];
-		newidxtab->indices[1] = idxtab->indices[2];
-		newidxtab->indices[2] = idxtab->indices[3];
+		newidxtab->indices[1] = idxtab->indices[i+1];
+		newidxtab->indices[2] = idxtab->indices[i+2];
+		idxtab = &e->indextab[OBJVTexture];
+		if(idxtab->nindex > 0){
+			newidxtab = &newe[nt-1]->indextab[OBJVTexture];
+			newidxtab->nindex = 3;
+			newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+			newidxtab->indices[0] = idxtab->indices[0];
+			newidxtab->indices[1] = idxtab->indices[i+1];
+			newidxtab->indices[2] = idxtab->indices[i+2];
+		}
+		idxtab = &e->indextab[OBJVNormal];
+		if(idxtab->nindex > 0){
+			newidxtab = &newe[nt-1]->indextab[OBJVNormal];
+			newidxtab->nindex = 3;
+			newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));
+			newidxtab->indices[0] = idxtab->indices[0];
+			newidxtab->indices[1] = idxtab->indices[i+1];
+			newidxtab->indices[2] = idxtab->indices[i+2];
+		}
 	}
 
-	return 2;
+	return nt;
 }
 
 /*
@@ -84,11 +65,14 @@ triangulate(OBJElem **newe, OBJElem *e)
 int
 refreshmodel(Model *m)
 {
-	OBJElem *trielems[2];
+	OBJElem **trielems;
 	OBJObject *o;
 	OBJElem *e;
 	OBJIndexArray *idxtab;
-	int i;
+	int i, nt;
+
+	if(m->obj == nil)
+		return 0;
 
 	if(m->elems != nil){
 		free(m->elems);
@@ -99,15 +83,18 @@ refreshmodel(Model *m)
 		for(o = m->obj->objtab[i]; o != nil; o = o->next)
 			for(e = o->child; e != nil; e = e->next){
 				idxtab = &e->indextab[OBJVGeometric];
-				/* discard non-triangles */
-				if(e->type != OBJEFace || (idxtab->nindex != 3 && idxtab->nindex != 4))
+				/* discard non-surfaces */
+				if(e->type != OBJEFace || idxtab->nindex < 3)
 					continue;
-				if(idxtab->nindex == 4){
-					triangulate(trielems, e);
-					m->nelems += 2;
+				if(idxtab->nindex > 3){
+					/* it takes n-2 triangles to fill any given n-gon */
+					trielems = emalloc((idxtab->nindex-2)*sizeof(*trielems));
+					nt = triangulate(trielems, e);
+					m->nelems += nt;
 					m->elems = erealloc(m->elems, m->nelems*sizeof(*m->elems));
-					m->elems[m->nelems-2] = trielems[0];
-					m->elems[m->nelems-1] = trielems[1];
+					while(nt-- > 0)
+						m->elems[m->nelems-nt-1] = trielems[nt];
+					free(trielems);
 				}else{
 					m->elems = erealloc(m->elems, ++m->nelems*sizeof(*m->elems));
 					m->elems[m->nelems-1] = e;
