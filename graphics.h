@@ -8,6 +8,7 @@ typedef enum {
 enum {
 	LIGHT_POINT,
 	LIGHT_DIRECTIONAL,
+	LIGHT_SPOT,
 };
 
 typedef struct Color Color;
@@ -51,7 +52,9 @@ struct LightSource
 
 struct Material
 {
-	int stub;
+	Color ambient;
+	Color diffuse;
+	Color specular;
 };
 
 struct Model
@@ -178,6 +181,7 @@ Viewport *mkviewport(Rectangle);
 void rmviewport(Viewport*);
 
 /* render */
+Point3 model2world(Entity*, Point3);
 Point3 world2vcs(Camera*, Point3);
 Point3 vcs2clip(Camera*, Point3);
 Point3 world2clip(Camera*, Point3);

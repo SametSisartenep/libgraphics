@@ -28,6 +28,7 @@ triangulate(OBJElem **newe, OBJElem *e)
 		idxtab = &e->indextab[OBJVGeometric];
 		newe[nt++] = emalloc(sizeof **newe);
 		newe[nt-1]->type = OBJEFace;
+		newe[nt-1]->mtl = e->mtl;
 		newidxtab = &newe[nt-1]->indextab[OBJVGeometric];
 		newidxtab->nindex = 3;
 		newidxtab->indices = emalloc(newidxtab->nindex*sizeof(*newidxtab->indices));

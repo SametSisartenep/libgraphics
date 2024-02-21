@@ -118,6 +118,7 @@ cliptriangle(Triangle *t)
 			perc = d0/(d0 - d1);
 			v.p = lerp3(v0->p, v1->p, perc);
 			v.uv = lerp2(v0->uv, v1->uv, perc);
+			v.c = lerp3((Point3)v0->c, (Point3)v1->c, perc);
 			v.intensity = flerp(v0->intensity, v1->intensity, perc);
 			addvert(&Vout, v);
 
@@ -143,6 +144,16 @@ allin:
 	free(Vin.v);
 
 	return nt;
+}
+
+/*
+ * transforms p from e's reference frame into
+ * the world.
+ */
+Point3
+model2world(Entity *e, Point3 p)
+{
+	return invrframexform3(p, *e);
 }
 
 /*
@@ -252,6 +263,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 {
 	FSparams fsp;
 	Triangle2 t₂, tt₂;
+	Triangle3 ct;
 	Rectangle bbox;
 	Point p, tp;
 	Point3 bc;
@@ -276,9 +288,9 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	fsp.cbuf = cbuf;
 
 	/* perspective-divide the attributes */
-//	t[0].c = mulpt3(t[0].c, t[0].p.w);
-//	t[1].c = mulpt3(t[1].c, t[1].p.w);
-//	t[2].c = mulpt3(t[2].c, t[2].p.w);
+	t[0].c = mulpt3(t[0].c, t[0].p.w);
+	t[1].c = mulpt3(t[1].c, t[1].p.w);
+	t[2].c = mulpt3(t[2].c, t[2].p.w);
 	t[0].uv = mulpt2(t[0].uv, t[0].p.w);
 	t[1].uv = mulpt2(t[1].uv, t[1].p.w);
 	t[2].uv = mulpt2(t[2].uv, t[2].p.w);
@@ -304,9 +316,9 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
 			/* lerp attribute and dissolve perspective */
-//			t[0].c = mulpt3(t[0].c, bc.x*z);
-//			t[1].c = mulpt3(t[1].c, bc.y*z);
-//			t[2].c = mulpt3(t[2].c, bc.z*z);
+			ct.p0 = mulpt3(t[0].c, bc.x*z);
+			ct.p1 = mulpt3(t[1].c, bc.y*z);
+			ct.p2 = mulpt3(t[2].c, bc.z*z);
 
 			if((t[0].uv.w + t[1].uv.w + t[2].uv.w) != 0){
 				tt₂.p0 = mulpt2(t[0].uv, bc.x*z);
@@ -330,8 +342,12 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 					cbuf[0] = 0xFF;
 					break;
 				}
-			}else
-				memset(cbuf, 0xFF, sizeof cbuf);
+			}else{
+				cbuf[0] = (ct.p0.w + ct.p1.w + ct.p2.w)*0xFF;
+				cbuf[1] = (ct.p0.z + ct.p1.z + ct.p2.z)*0xFF;
+				cbuf[2] = (ct.p0.y + ct.p1.y + ct.p2.y)*0xFF;
+				cbuf[3] = (ct.p0.x + ct.p1.x + ct.p2.x)*0xFF;
+			}
 
 			params->var_intensity[0] = t[0].intensity;
 			params->var_intensity[1] = t[1].intensity;
@@ -353,7 +369,7 @@ shaderunit(void *arg)
 	OBJElem **ep, **eb, **ee;
 	Point3 n;				/* surface normal */
 	Triangle *t;				/* triangles to raster */
-	int nt;
+	int i, nt;
 
 	params = arg;
 	vsp.su = params;
@@ -398,6 +414,14 @@ shaderunit(void *arg)
 		}else{
 			t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
 		}
+
+		if((*ep)->mtl != nil)
+			for(i = 0; i < 3; i++){
+				t[0][i].c.r = (*ep)->mtl->Kd.r;
+				t[0][i].c.g = (*ep)->mtl->Kd.g;
+				t[0][i].c.b = (*ep)->mtl->Kd.b;
+				t[0][i].c.a = (*ep)->mtl->d;
+			}
 
 		vsp.v = &t[0][0];
 		vsp.idx = 0;
