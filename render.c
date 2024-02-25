@@ -110,16 +110,16 @@ cliptriangle(Triangle *t)
 			if(sd0[j] >= 0 && sd1[j] >= 0)
 				goto allin;
 
-			/* keep the discarded vertex attributes */
-			v = sd0[j] < 0? *v0: *v1;
-
 			d0 = (j&1) == 0? sd0[j]: -sd0[j];
 			d1 = (j&1) == 0? sd1[j]: -sd1[j];
 			perc = d0/(d0 - d1);
+
 			v.p = lerp3(v0->p, v1->p, perc);
-			v.uv = lerp2(v0->uv, v1->uv, perc);
+			v.n = lerp3(v0->n, v1->n, perc);
 			v.c = lerp3((Point3)v0->c, (Point3)v1->c, perc);
+			v.uv = lerp2(v0->uv, v1->uv, perc);
 			v.intensity = flerp(v0->intensity, v1->intensity, perc);
+			v.pos = lerp3(v0->pos, v1->pos, perc);
 			addvert(&Vout, v);
 
 			if(sd1[j] >= 0){
@@ -288,12 +288,21 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	fsp.cbuf = cbuf;
 
 	/* perspective-divide the attributes */
+	t[0].n = mulpt3(t[0].n, t[0].p.w);
+	t[1].n = mulpt3(t[1].n, t[1].p.w);
+	t[2].n = mulpt3(t[2].n, t[2].p.w);
 	t[0].c = mulpt3(t[0].c, t[0].p.w);
 	t[1].c = mulpt3(t[1].c, t[1].p.w);
 	t[2].c = mulpt3(t[2].c, t[2].p.w);
 	t[0].uv = mulpt2(t[0].uv, t[0].p.w);
 	t[1].uv = mulpt2(t[1].uv, t[1].p.w);
 	t[2].uv = mulpt2(t[2].uv, t[2].p.w);
+	t[0].intensity = t[0].intensity*t[0].p.w;
+	t[1].intensity = t[1].intensity*t[1].p.w;
+	t[2].intensity = t[2].intensity*t[2].p.w;
+	t[0].pos = mulpt3(t[0].pos, t[0].p.w);
+	t[1].pos = mulpt3(t[1].pos, t[1].p.w);
+	t[2].pos = mulpt3(t[2].pos, t[2].p.w);
 
 	for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
@@ -315,12 +324,8 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
-			/* lerp attribute and dissolve perspective */
-			ct.p0 = mulpt3(t[0].c, bc.x*z);
-			ct.p1 = mulpt3(t[1].c, bc.y*z);
-			ct.p2 = mulpt3(t[2].c, bc.z*z);
-
 			if((t[0].uv.w + t[1].uv.w + t[2].uv.w) != 0){
+				/* lerp attribute and dissolve perspective */
 				tt₂.p0 = mulpt2(t[0].uv, bc.x*z);
 				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
 				tt₂.p2 = mulpt2(t[2].uv, bc.z*z);
@@ -343,15 +348,25 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 					break;
 				}
 			}else{
+				/* lerp attribute and dissolve perspective */
+				ct.p0 = mulpt3(t[0].c, bc.x*z);
+				ct.p1 = mulpt3(t[1].c, bc.y*z);
+				ct.p2 = mulpt3(t[2].c, bc.z*z);
 				cbuf[0] = (ct.p0.w + ct.p1.w + ct.p2.w)*0xFF;
 				cbuf[1] = (ct.p0.z + ct.p1.z + ct.p2.z)*0xFF;
 				cbuf[2] = (ct.p0.y + ct.p1.y + ct.p2.y)*0xFF;
 				cbuf[3] = (ct.p0.x + ct.p1.x + ct.p2.x)*0xFF;
 			}
 
-			params->var_intensity[0] = t[0].intensity;
-			params->var_intensity[1] = t[1].intensity;
-			params->var_intensity[2] = t[2].intensity;
+			params->var_intensity = dotvec3(Vec3(t[0].intensity, t[1].intensity, t[2].intensity), bc)*z;
+			params->var_normal = normvec3(addpt3(addpt3(
+				mulpt3(t[0].n, bc.x*z),
+				mulpt3(t[1].n, bc.y*z)),
+				mulpt3(t[2].n, bc.z*z)));
+			params->var_pos = addpt3(addpt3(
+				mulpt3(t[0].pos, bc.x*z),
+				mulpt3(t[1].pos, bc.y*z)),
+				mulpt3(t[2].pos, bc.z*z));
 			fsp.p = p;
 			fsp.bc = bc;
 			pixel(params->fb->cb, p, params->fshader(&fsp));
@@ -402,8 +417,8 @@ shaderunit(void *arg)
 			t[0][2].n = normvec3(t[0][2].n);
 		}else{
 			/* TODO build a list of per-vertex normals earlier */
-			n = normvec3(crossvec3(subpt3(t[0][2].p, t[0][0].p), subpt3(t[0][1].p, t[0][0].p)));
-			t[0][0].n = t[0][1].n = t[0][2].n = mulpt3(n, -1);
+			n = normvec3(crossvec3(subpt3(t[0][1].p, t[0][0].p), subpt3(t[0][2].p, t[0][0].p)));
+			t[0][0].n = t[0][1].n = t[0][2].n = n;
 		}
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
@@ -415,13 +430,12 @@ shaderunit(void *arg)
 			t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
 		}
 
-		if((*ep)->mtl != nil)
-			for(i = 0; i < 3; i++){
-				t[0][i].c.r = (*ep)->mtl->Kd.r;
-				t[0][i].c.g = (*ep)->mtl->Kd.g;
-				t[0][i].c.b = (*ep)->mtl->Kd.b;
-				t[0][i].c.a = (*ep)->mtl->d;
-			}
+		for(i = 0; i < 3; i++){
+			t[0][i].c.r = (*ep)->mtl != nil? (*ep)->mtl->Kd.r: 1;
+			t[0][i].c.g = (*ep)->mtl != nil? (*ep)->mtl->Kd.g: 1;
+			t[0][i].c.b = (*ep)->mtl != nil? (*ep)->mtl->Kd.b: 1;
+			t[0][i].c.a = /*(*ep)->mtl != nil? (*ep)->mtl->d:*/ 1;
+		}
 
 		vsp.v = &t[0][0];
 		vsp.idx = 0;

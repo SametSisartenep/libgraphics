@@ -40,6 +40,7 @@ struct Vertex
 	Point2 uv;	/* texture coordinate */
 
 	double intensity;
+	Point3 pos;
 };
 
 typedef Vertex Triangle[3];
@@ -47,6 +48,7 @@ typedef Vertex Triangle[3];
 struct LightSource
 {
 	Point3 p;
+	Color c;
 	int type;
 };
 
@@ -55,12 +57,14 @@ struct Material
 	Color ambient;
 	Color diffuse;
 	Color specular;
+	double shininess;
 };
 
 struct Model
 {
 	OBJ *obj;
-	Memimage *tex;
+	Memimage *tex;		/* texture map */
+	Memimage *nor;		/* normals map */
 	Material *materials;
 	ulong nmaterials;
 
@@ -112,7 +116,9 @@ struct SUparams
 	/* TODO replace with a Scene */
 	Entity *entity;
 
-	double var_intensity[3];
+	double var_intensity;
+	Point3 var_normal;
+	Point3 var_pos;
 
 	uvlong uni_time;
 
