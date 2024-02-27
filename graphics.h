@@ -39,6 +39,7 @@ struct Vertex
 	Color c;	/* shading color */
 	Point2 uv;	/* texture coordinate */
 
+	/* TODO these attributes should be replaced by a hash table */
 	double intensity;
 	Point3 pos;
 };
@@ -147,7 +148,8 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 	Lock swplk;
 
-	void (*draw)(Framebufctl*, Memimage*);
+	void (*draw)(Framebufctl*, Image*);
+	void (*memdraw)(Framebufctl*, Memimage*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
 };
@@ -156,6 +158,9 @@ struct Viewport
 {
 	RFrame;
 	Framebufctl *fbctl;
+
+	void (*draw)(Viewport*, Image*);
+	void (*memdraw)(Viewport*, Memimage*);
 };
 
 struct Camera

@@ -434,7 +434,7 @@ shaderunit(void *arg)
 			t[0][i].c.r = (*ep)->mtl != nil? (*ep)->mtl->Kd.r: 1;
 			t[0][i].c.g = (*ep)->mtl != nil? (*ep)->mtl->Kd.g: 1;
 			t[0][i].c.b = (*ep)->mtl != nil? (*ep)->mtl->Kd.b: 1;
-			t[0][i].c.a = /*(*ep)->mtl != nil? (*ep)->mtl->d:*/ 1;
+			t[0][i].c.a = 1;
 		}
 
 		vsp.v = &t[0][0];

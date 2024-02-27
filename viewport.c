@@ -8,6 +8,18 @@
 #include "graphics.h"
 #include "internal.h"
 
+static void
+viewport_draw(Viewport *v, Image *dst)
+{
+	v->fbctl->draw(v->fbctl, dst);
+}
+
+static void
+viewport_memdraw(Viewport *v, Memimage *dst)
+{
+	v->fbctl->memdraw(v->fbctl, dst);
+}
+
 Viewport *
 mkviewport(Rectangle r)
 {
@@ -18,6 +30,8 @@ mkviewport(Rectangle r)
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);
 	v->fbctl = mkfbctl(r);
+	v->draw = viewport_draw;
+	v->memdraw = viewport_memdraw;
 	return v;
 }
 
