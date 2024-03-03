@@ -12,6 +12,13 @@ void rmfbctl(Framebufctl*);
 /* render */
 void shade(Framebuf*, Scene*, Shader*);
 
+/* vertex */
+Vertex dupvertex(Vertex*);
+void lerpvertex(Vertex*, Vertex*, Vertex*, double);
+void berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
+void delvattrs(Vertex*);
+void fprintvattrs(int, Vertex*);
+
 /* util */
 int min(int, int);
 int max(int, int);

@@ -6,6 +6,7 @@ OFILES=\
 	viewport.$O\
 	render.$O\
 	scene.$O\
+	vertex.$O\
 	alloc.$O\
 	fb.$O\
 	shadeop.$O\

@@ -65,6 +65,16 @@ swappoly(Polygon *a, Polygon *b)
 	*b = tmp;
 }
 
+static void
+cleanpoly(Polygon *p)
+{
+	int i;
+
+	for(i = 0; i < p->n; i++)
+		delvattrs(&p->v[i]);
+	p->n = 0;
+}
+
 /*
  * references:
  * 	- James F. Blinn, Martin E. Newell, “Clipping Using Homogeneous Coordinates”,
@@ -96,7 +106,7 @@ cliptriangle(Triangle *t)
 	for(i = 0; i < 3; i++)
 		addvert(&Vin, t[0][i]);
 
-	for(j = 0; j < 6; j++){
+	for(j = 0; j < 6 && Vin.n > 0; j++){
 		for(i = 0; i < Vin.n; i++){
 			v0 = &Vin.v[i];
 			v1 = &Vin.v[(i+1) % Vin.n];
@@ -114,31 +124,32 @@ cliptriangle(Triangle *t)
 			d1 = (j&1) == 0? sd1[j]: -sd1[j];
 			perc = d0/(d0 - d1);
 
-			v.p = lerp3(v0->p, v1->p, perc);
-			v.n = lerp3(v0->n, v1->n, perc);
-			v.c = lerp3((Point3)v0->c, (Point3)v1->c, perc);
-			v.uv = lerp2(v0->uv, v1->uv, perc);
-			v.intensity = flerp(v0->intensity, v1->intensity, perc);
-			v.pos = lerp3(v0->pos, v1->pos, perc);
+			lerpvertex(&v, v0, v1, perc);
 			addvert(&Vout, v);
 
 			if(sd1[j] >= 0){
 allin:
-				addvert(&Vout, *v1);
+				addvert(&Vout, dupvertex(v1));
 			}
 		}
-		if(j < 6-1){
+		cleanpoly(&Vin);
+		if(j < 6-1)
 			swappoly(&Vin, &Vout);
-			Vout.n = 0;
-		}
 	}
 
 	/* triangulate */
-	if(Vout.n >= 3)
+	if(Vout.n < 3)
+		cleanpoly(&Vout);
+	else
 		for(i = 0; i < Vout.n-2; i++, nt++){
-			t[nt][0] = Vout.v[0];
+			/*
+			 * when performing fan triangulation, indices 0 and 2
+			 * are referenced on every triangle, so duplicate them
+			 * to avoid complications during rasterization.
+			 */
+			t[nt][0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
 			t[nt][1] = Vout.v[i+1];
-			t[nt][2] = Vout.v[i+2];
+			t[nt][2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
 		}
 	free(Vout.v);
 	free(Vin.v);
@@ -262,8 +273,7 @@ static void
 rasterize(SUparams *params, Triangle t, Memimage *frag)
 {
 	FSparams fsp;
-	Triangle2 t₂, tt₂;
-	Triangle3 ct;
+	Triangle2 t₂;
 	Rectangle bbox;
 	Point p, tp;
 	Point3 bc;
@@ -286,23 +296,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	fsp.su = params;
 	fsp.frag = frag;
 	fsp.cbuf = cbuf;
-
-	/* perspective-divide the attributes */
-	t[0].n = mulpt3(t[0].n, t[0].p.w);
-	t[1].n = mulpt3(t[1].n, t[1].p.w);
-	t[2].n = mulpt3(t[2].n, t[2].p.w);
-	t[0].c = mulpt3(t[0].c, t[0].p.w);
-	t[1].c = mulpt3(t[1].c, t[1].p.w);
-	t[2].c = mulpt3(t[2].c, t[2].p.w);
-	t[0].uv = mulpt2(t[0].uv, t[0].p.w);
-	t[1].uv = mulpt2(t[1].uv, t[1].p.w);
-	t[2].uv = mulpt2(t[2].uv, t[2].p.w);
-	t[0].intensity = t[0].intensity*t[0].p.w;
-	t[1].intensity = t[1].intensity*t[1].p.w;
-	t[2].intensity = t[2].intensity*t[2].p.w;
-	t[0].pos = mulpt3(t[0].pos, t[0].p.w);
-	t[1].pos = mulpt3(t[1].pos, t[1].p.w);
-	t[2].pos = mulpt3(t[2].pos, t[2].p.w);
+	memset(&fsp.v, 0, sizeof fsp.v);
 
 	for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
@@ -324,14 +318,16 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
-			if((t[0].uv.w + t[1].uv.w + t[2].uv.w) != 0){
-				/* lerp attribute and dissolve perspective */
-				tt₂.p0 = mulpt2(t[0].uv, bc.x*z);
-				tt₂.p1 = mulpt2(t[1].uv, bc.y*z);
-				tt₂.p2 = mulpt2(t[2].uv, bc.z*z);
+			/* perspective-correct attribute interpolation  */
+			bc.x *= t[0].p.w;
+			bc.y *= t[1].p.w;
+			bc.z *= t[2].p.w;
+			bc = mulpt3(bc, z);
+			berpvertex(&fsp.v, &t[0], &t[1], &t[2], bc);
 
-				tp.x = (tt₂.p0.x + tt₂.p1.x + tt₂.p2.x)*Dx(params->entity->mdl->tex->r);
-				tp.y = (1 - (tt₂.p0.y + tt₂.p1.y + tt₂.p2.y))*Dy(params->entity->mdl->tex->r);
+			if(fsp.v.uv.w != 0){
+				tp.x = fsp.v.uv.x*Dx(params->entity->mdl->tex->r);
+				tp.y = (1 - fsp.v.uv.y)*Dy(params->entity->mdl->tex->r);
 
 				switch(params->entity->mdl->tex->chan){
 				case RGB24:
@@ -348,28 +344,15 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 					break;
 				}
 			}else{
-				/* lerp attribute and dissolve perspective */
-				ct.p0 = mulpt3(t[0].c, bc.x*z);
-				ct.p1 = mulpt3(t[1].c, bc.y*z);
-				ct.p2 = mulpt3(t[2].c, bc.z*z);
-				cbuf[0] = (ct.p0.w + ct.p1.w + ct.p2.w)*0xFF;
-				cbuf[1] = (ct.p0.z + ct.p1.z + ct.p2.z)*0xFF;
-				cbuf[2] = (ct.p0.y + ct.p1.y + ct.p2.y)*0xFF;
-				cbuf[3] = (ct.p0.x + ct.p1.x + ct.p2.x)*0xFF;
+				cbuf[0] = fsp.v.c.a*0xFF;
+				cbuf[1] = fsp.v.c.b*0xFF;
+				cbuf[2] = fsp.v.c.g*0xFF;
+				cbuf[3] = fsp.v.c.r*0xFF;
 			}
 
-			params->var_intensity = dotvec3(Vec3(t[0].intensity, t[1].intensity, t[2].intensity), bc)*z;
-			params->var_normal = normvec3(addpt3(addpt3(
-				mulpt3(t[0].n, bc.x*z),
-				mulpt3(t[1].n, bc.y*z)),
-				mulpt3(t[2].n, bc.z*z)));
-			params->var_pos = addpt3(addpt3(
-				mulpt3(t[0].pos, bc.x*z),
-				mulpt3(t[1].pos, bc.y*z)),
-				mulpt3(t[2].pos, bc.z*z));
 			fsp.p = p;
-			fsp.bc = bc;
 			pixel(params->fb->cb, p, params->fshader(&fsp));
+			delvattrs(&fsp.v);
 		}
 }
 
@@ -435,6 +418,8 @@ shaderunit(void *arg)
 			t[0][i].c.g = (*ep)->mtl != nil? (*ep)->mtl->Kd.g: 1;
 			t[0][i].c.b = (*ep)->mtl != nil? (*ep)->mtl->Kd.b: 1;
 			t[0][i].c.a = 1;
+			t[0][i].attrs = nil;
+			t[0][i].nattrs = 0;
 		}
 
 		vsp.v = &t[0][0];
@@ -456,6 +441,10 @@ shaderunit(void *arg)
 			t[nt][2].p = ndc2viewport(params->fb, clip2ndc(t[nt][2].p));
 
 			rasterize(params, t[nt], frag);
+
+			delvattrs(&t[nt][0]);
+			delvattrs(&t[nt][1]);
+			delvattrs(&t[nt][2]);
 		}
 	}
 

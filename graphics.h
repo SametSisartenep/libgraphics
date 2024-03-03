@@ -11,7 +11,13 @@ enum {
 	LIGHT_SPOT,
 };
 
+enum {
+	VAPoint,
+	VANumber,
+};
+
 typedef struct Color Color;
+typedef struct Vertexattr Vertexattr;
 typedef struct Vertex Vertex;
 typedef struct LightSource LightSource;
 typedef struct Material Material;
@@ -32,16 +38,25 @@ struct Color
 	double r, g, b, a;
 };
 
+struct Vertexattr
+{
+	char *id;
+	int type;
+	union {
+		Point3 p;
+		double n;
+	};
+};
+
 struct Vertex
 {
-	Point3 p;	/* position */
-	Point3 n;	/* surface normal */
-	Color c;	/* shading color */
-	Point2 uv;	/* texture coordinate */
-
-	/* TODO these attributes should be replaced by a hash table */
-	double intensity;
-	Point3 pos;
+	Point3 p;		/* position */
+	Point3 n;		/* surface normal */
+	Color c;		/* shading color */
+	Point2 uv;		/* texture coordinate */
+	/* TODO it'd be neat to use a dynamic hash table instead */
+	Vertexattr *attrs;	/* attributes (aka varyings) */
+	ulong nattrs;
 };
 
 typedef Vertex Triangle[3];
@@ -102,9 +117,9 @@ struct FSparams
 {
 	SUparams *su;
 	Memimage *frag;
-	Point p;
-	Point3 bc;
 	uchar *cbuf;
+	Point p;
+	Vertex v;		/* only for the attributes (varyings) */
 };
 
 /* shader unit params */
@@ -116,10 +131,6 @@ struct SUparams
 
 	/* TODO replace with a Scene */
 	Entity *entity;
-
-	double var_intensity;
-	Point3 var_normal;
-	Point3 var_pos;
 
 	uvlong uni_time;
 
@@ -207,6 +218,10 @@ Entity *newentity(Model*);
 void delentity(Entity*);
 Scene *newscene(char*);
 void delscene(Scene*);
+
+/* vertex */
+void addvattr(Vertex*, char*, int, void*);
+Vertexattr *getvattr(Vertex*, char*);
 
 /* util */
 double fmin(double, double);
