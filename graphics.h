@@ -38,6 +38,28 @@ struct Color
 	double r, g, b, a;
 };
 
+/*
+ * a more general approach worth investigating.
+ * it could be made to handle types other than double.
+ *
+ * examples:
+ * 	double intens;
+ * 	addvattr(v, "intensity", 1, &intens);
+ *
+ * 	Point3 p;
+ * 	addvattr(v, "normal", 3, &p);
+ *
+ * 	Matrix3 m;
+ * 	addvattr(v, "proj", 4*4, m);
+ */
+//struct Vertexattr
+//{
+//	char *id;
+//	int type;
+//	ulong len;
+//	double val[];
+//};
+
 struct Vertexattr
 {
 	char *id;
@@ -54,6 +76,7 @@ struct Vertex
 	Point3 n;		/* surface normal */
 	Color c;		/* shading color */
 	Point2 uv;		/* texture coordinate */
+	OBJMaterial *mtl;
 	/* TODO it'd be neat to use a dynamic hash table instead */
 	Vertexattr *attrs;	/* attributes (aka varyings) */
 	ulong nattrs;
@@ -222,6 +245,11 @@ void delscene(Scene*);
 /* vertex */
 void addvattr(Vertex*, char*, int, void*);
 Vertexattr *getvattr(Vertex*, char*);
+
+/* texture */
+Color neartexsampler(Memimage*, Point2);
+Color bilitexsampler(Memimage*, Point2);
+Color texture(Memimage*, Point2, Color(*)(Memimage*, Point2));
 
 /* util */
 double fmin(double, double);

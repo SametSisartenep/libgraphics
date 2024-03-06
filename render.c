@@ -30,6 +30,17 @@ isvisible(Point3 p)
 	return 1;
 }
 
+static int
+isfacingback(Triangle t)
+{
+	double sa;	/* signed area */
+
+	sa = t[0].p.x * t[1].p.y - t[0].p.y * t[1].p.x +
+	     t[1].p.x * t[2].p.y - t[1].p.y * t[2].p.x +
+	     t[2].p.x * t[0].p.y - t[2].p.y * t[0].p.x;
+	return sa <= 0;
+}
+
 static void
 mulsdm(double r[6], double m[6][4], Point3 p)
 {
@@ -213,7 +224,7 @@ world2clip(Camera *c, Point3 p)
 static Point3
 clip2ndc(Point3 p)
 {
-	p.w = 1.0/p.w;
+	p.w = p.w == 0? 1: 1.0/p.w;
 	p.x *= p.w;
 	p.y *= p.w;
 	p.z *= p.w;
@@ -275,7 +286,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	FSparams fsp;
 	Triangle2 t₂;
 	Rectangle bbox;
-	Point p, tp;
+	Point p;
 	Point3 bc;
 	double z, depth;
 	uchar cbuf[4];
@@ -325,30 +336,10 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			bc = mulpt3(bc, z);
 			berpvertex(&fsp.v, &t[0], &t[1], &t[2], bc);
 
-			if(fsp.v.uv.w != 0){
-				tp.x = fsp.v.uv.x*Dx(params->entity->mdl->tex->r);
-				tp.y = (1 - fsp.v.uv.y)*Dy(params->entity->mdl->tex->r);
-
-				switch(params->entity->mdl->tex->chan){
-				case RGB24:
-					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf+1, sizeof cbuf - 1);
-					cbuf[0] = 0xFF;
-					break;
-				case RGBA32:
-					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
-					break;
-				case XRGB32:
-					unloadmemimage(params->entity->mdl->tex, rectaddpt(UR, tp), cbuf, sizeof cbuf);
-					memmove(cbuf+1, cbuf, 3);
-					cbuf[0] = 0xFF;
-					break;
-				}
-			}else{
-				cbuf[0] = fsp.v.c.a*0xFF;
-				cbuf[1] = fsp.v.c.b*0xFF;
-				cbuf[2] = fsp.v.c.g*0xFF;
-				cbuf[3] = fsp.v.c.r*0xFF;
-			}
+			cbuf[0] = fsp.v.c.a*0xFF;
+			cbuf[1] = fsp.v.c.b*0xFF;
+			cbuf[2] = fsp.v.c.g*0xFF;
+			cbuf[3] = fsp.v.c.r*0xFF;
 
 			fsp.p = p;
 			pixel(params->fb->cb, p, params->fshader(&fsp));
@@ -386,17 +377,32 @@ shaderunit(void *arg)
 		nt = 1;	/* start with one. after clipping it might change */
 
 		idxtab = &(*ep)->indextab[OBJVGeometric];
-		t[0][0].p = Pt3(verts[idxtab->indices[0]].x,verts[idxtab->indices[0]].y,verts[idxtab->indices[0]].z,verts[idxtab->indices[0]].w);
-		t[0][1].p = Pt3(verts[idxtab->indices[1]].x,verts[idxtab->indices[1]].y,verts[idxtab->indices[1]].z,verts[idxtab->indices[1]].w);
-		t[0][2].p = Pt3(verts[idxtab->indices[2]].x,verts[idxtab->indices[2]].y,verts[idxtab->indices[2]].z,verts[idxtab->indices[2]].w);
+		t[0][0].p = Pt3(verts[idxtab->indices[0]].x,
+				verts[idxtab->indices[0]].y,
+				verts[idxtab->indices[0]].z,
+				verts[idxtab->indices[0]].w);
+		t[0][1].p = Pt3(verts[idxtab->indices[1]].x,
+				verts[idxtab->indices[1]].y,
+				verts[idxtab->indices[1]].z,
+				verts[idxtab->indices[1]].w);
+		t[0][2].p = Pt3(verts[idxtab->indices[2]].x,
+				verts[idxtab->indices[2]].y,
+				verts[idxtab->indices[2]].z,
+				verts[idxtab->indices[2]].w);
 
 		idxtab = &(*ep)->indextab[OBJVNormal];
 		if(idxtab->nindex == 3){
-			t[0][0].n = Vec3(nverts[idxtab->indices[0]].i, nverts[idxtab->indices[0]].j, nverts[idxtab->indices[0]].k);
+			t[0][0].n = Vec3(nverts[idxtab->indices[0]].i,
+					 nverts[idxtab->indices[0]].j,
+					 nverts[idxtab->indices[0]].k);
 			t[0][0].n = normvec3(t[0][0].n);
-			t[0][1].n = Vec3(nverts[idxtab->indices[1]].i, nverts[idxtab->indices[1]].j, nverts[idxtab->indices[1]].k);
+			t[0][1].n = Vec3(nverts[idxtab->indices[1]].i,
+					 nverts[idxtab->indices[1]].j,
+					 nverts[idxtab->indices[1]].k);
 			t[0][1].n = normvec3(t[0][1].n);
-			t[0][2].n = Vec3(nverts[idxtab->indices[2]].i, nverts[idxtab->indices[2]].j, nverts[idxtab->indices[2]].k);
+			t[0][2].n = Vec3(nverts[idxtab->indices[2]].i,
+					 nverts[idxtab->indices[2]].j,
+					 nverts[idxtab->indices[2]].k);
 			t[0][2].n = normvec3(t[0][2].n);
 		}else{
 			/* TODO build a list of per-vertex normals earlier */
@@ -406,18 +412,19 @@ shaderunit(void *arg)
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
 		if(params->entity->mdl->tex != nil && idxtab->nindex == 3){
-			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u, tverts[idxtab->indices[0]].v, 1);
-			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u, tverts[idxtab->indices[1]].v, 1);
-			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u, tverts[idxtab->indices[2]].v, 1);
+			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u,
+					 tverts[idxtab->indices[0]].v, 1);
+			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u,
+					 tverts[idxtab->indices[1]].v, 1);
+			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u,
+					 tverts[idxtab->indices[2]].v, 1);
 		}else{
 			t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
 		}
 
 		for(i = 0; i < 3; i++){
-			t[0][i].c.r = (*ep)->mtl != nil? (*ep)->mtl->Kd.r: 1;
-			t[0][i].c.g = (*ep)->mtl != nil? (*ep)->mtl->Kd.g: 1;
-			t[0][i].c.b = (*ep)->mtl != nil? (*ep)->mtl->Kd.b: 1;
-			t[0][i].c.a = 1;
+			t[0][i].c = Pt3(1,1,1,1);
+			t[0][i].mtl = (*ep)->mtl;
 			t[0][i].attrs = nil;
 			t[0][i].nattrs = 0;
 		}
@@ -436,12 +443,21 @@ shaderunit(void *arg)
 			nt = cliptriangle(t);
 
 		while(nt--){
-			t[nt][0].p = ndc2viewport(params->fb, clip2ndc(t[nt][0].p));
-			t[nt][1].p = ndc2viewport(params->fb, clip2ndc(t[nt][1].p));
-			t[nt][2].p = ndc2viewport(params->fb, clip2ndc(t[nt][2].p));
+			t[nt][0].p = clip2ndc(t[nt][0].p);
+			t[nt][1].p = clip2ndc(t[nt][1].p);
+			t[nt][2].p = clip2ndc(t[nt][2].p);
+
+			/* culling */
+//			if(isfacingback(t[nt]))
+//				goto skiptri;
+
+			t[nt][0].p = ndc2viewport(params->fb, t[nt][0].p);
+			t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
+			t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
 
 			rasterize(params, t[nt], frag);
 
+//skiptri:
 			delvattrs(&t[nt][0]);
 			delvattrs(&t[nt][1]);
 			delvattrs(&t[nt][2]);

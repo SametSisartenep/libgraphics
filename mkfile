@@ -7,6 +7,7 @@ OFILES=\
 	render.$O\
 	scene.$O\
 	vertex.$O\
+	texture.$O\
 	alloc.$O\
 	fb.$O\
 	shadeop.$O\
