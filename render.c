@@ -10,6 +10,17 @@
 
 Rectangle UR = {0,0,1,1};
 
+static ulong
+col2ul(Color c)
+{
+	uchar cbuf[4];
+
+	cbuf[0] = c.a*0xFF;
+	cbuf[1] = c.b*0xFF;
+	cbuf[2] = c.g*0xFF;
+	cbuf[3] = c.r*0xFF;
+	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
+}
 
 static void
 pixel(Memimage *dst, Point p, Memimage *src)
@@ -281,15 +292,15 @@ orthographic(Matrix3 m, double l, double r, double b, double t, double n, double
 }
 
 static void
-rasterize(SUparams *params, Triangle t, Memimage *frag)
+rasterize(SUparams *params, Triangle t)
 {
 	FSparams fsp;
 	Triangle2 t₂;
 	Rectangle bbox;
 	Point p;
 	Point3 bc;
+	Color c;
 	double z, depth;
-	uchar cbuf[4];
 
 	t₂.p0 = Pt2(t[0].p.x, t[0].p.y, 1);
 	t₂.p1 = Pt2(t[1].p.x, t[1].p.y, 1);
@@ -303,10 +314,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 	bbox.min.y = max(bbox.min.y, params->fb->r.min.y);
 	bbox.max.x = min(bbox.max.x, params->fb->r.max.x);
 	bbox.max.y = min(bbox.max.y, params->fb->r.max.y);
-	cbuf[0] = 0xFF;
 	fsp.su = params;
-	fsp.frag = frag;
-	fsp.cbuf = cbuf;
 	memset(&fsp.v, 0, sizeof fsp.v);
 
 	for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
@@ -325,7 +333,7 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			params->fb->zbuf[p.x + p.y*Dx(params->fb->r)] = depth;
 			unlock(&params->fb->zbuflk);
 
-			/* lerp z⁻¹ and get actual z */
+			/* interpolate z⁻¹ and get actual z */
 			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
@@ -336,13 +344,11 @@ rasterize(SUparams *params, Triangle t, Memimage *frag)
 			bc = mulpt3(bc, z);
 			berpvertex(&fsp.v, &t[0], &t[1], &t[2], bc);
 
-			cbuf[0] = fsp.v.c.a*0xFF;
-			cbuf[1] = fsp.v.c.b*0xFF;
-			cbuf[2] = fsp.v.c.g*0xFF;
-			cbuf[3] = fsp.v.c.r*0xFF;
-
 			fsp.p = p;
-			pixel(params->fb->cb, p, params->fshader(&fsp));
+			c = params->fshader(&fsp);
+			memfillcolor(params->frag, col2ul(c));
+
+			pixel(params->fb->cb, p, params->frag);
 			delvattrs(&fsp.v);
 		}
 }
@@ -352,7 +358,6 @@ shaderunit(void *arg)
 {
 	SUparams *params;
 	VSparams vsp;
-	Memimage *frag;
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
 	OBJIndexArray *idxtab;
 	OBJElem **ep, **eb, **ee;
@@ -362,7 +367,6 @@ shaderunit(void *arg)
 
 	params = arg;
 	vsp.su = params;
-	frag = rgb(DBlack);
 
 	threadsetname("shader unit #%d", params->id);
 
@@ -455,7 +459,7 @@ shaderunit(void *arg)
 			t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
 			t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
 
-			rasterize(params, t[nt], frag);
+			rasterize(params, t[nt]);
 
 //skiptri:
 			delvattrs(&t[nt][0]);
@@ -465,9 +469,7 @@ shaderunit(void *arg)
 	}
 
 	free(t);
-	freememimage(frag);
-	sendp(params->donec, nil);
-	free(params);
+	sendp(params->donec, params);
 	threadexits(nil);
 }
 
@@ -488,6 +490,7 @@ shade(Framebuf *fb, Scene *sc, Shader *s)
 		params = emalloc(sizeof *params);
 		params->fb = fb;
 		params->id = i;
+		params->frag = rgb(DBlack);
 		params->donec = donec;
 		params->entity = ent;
 		params->uni_time = time;
@@ -496,7 +499,10 @@ shade(Framebuf *fb, Scene *sc, Shader *s)
 		proccreate(shaderunit, params, mainstacksize);
 	}
 
-	while(i--)
-		recvp(donec);
+	while(i--){
+		params = recvp(donec);
+		freememimage(params->frag);
+		free(params);
+	}
 	chanfree(donec);
 }

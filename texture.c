@@ -9,7 +9,7 @@
 #include "internal.h"
 
 /*
- * uv-coords belong to the 4th quadrant (v grows bottom-up),
+ * uv-coords belong to the 1st quadrant (v grows bottom-up),
  * hence the need to reverse the v coord.
  */
 static Point
@@ -44,7 +44,7 @@ cbuf2col(uchar b[4])
 }
 
 static Color
-_memreadpixel(Memimage *i, Point sp)
+_memreadcolor(Memimage *i, Point sp)
 {
 	uchar cbuf[4];
 
@@ -66,12 +66,18 @@ _memreadpixel(Memimage *i, Point sp)
 	return cbuf2col(cbuf);
 }
 
+/*
+ * nearest-neighbour sampler
+ */
 Color
 neartexsampler(Memimage *i, Point2 uv)
 {
-	return _memreadpixel(i, uv2tp(uv, i));
+	return _memreadcolor(i, uv2tp(uv, i));
 }
 
+/*
+ * bilinear sampler
+ */
 Color
 bilitexsampler(Memimage *i, Point2 uv)
 {
@@ -92,8 +98,8 @@ bilitexsampler(Memimage *i, Point2 uv)
 		r.min.y--;
 		r.max.y--;
 	}
-	c1 = lerp3(_memreadpixel(i, r.min), _memreadpixel(i, Pt(r.max.x, r.min.y)), 0.5);
-	c2 = lerp3(_memreadpixel(i, Pt(r.min.x, r.max.y)), _memreadpixel(i, r.max), 0.5);
+	c1 = lerp3(_memreadcolor(i, r.min), _memreadcolor(i, Pt(r.max.x, r.min.y)), 0.5);
+	c2 = lerp3(_memreadcolor(i, Pt(r.min.x, r.max.y)), _memreadcolor(i, r.max), 0.5);
 	return lerp3(c1, c2, 0.5);
 }
 

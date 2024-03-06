@@ -139,8 +139,6 @@ struct VSparams
 struct FSparams
 {
 	SUparams *su;
-	Memimage *frag;
-	uchar *cbuf;
 	Point p;
 	Vertex v;		/* only for the attributes (varyings) */
 };
@@ -150,6 +148,7 @@ struct SUparams
 {
 	Framebuf *fb;
 	int id;
+	Memimage *frag;
 	Channel *donec;
 
 	/* TODO replace with a Scene */
@@ -158,14 +157,14 @@ struct SUparams
 	uvlong uni_time;
 
 	Point3 (*vshader)(VSparams*);
-	Memimage *(*fshader)(FSparams*);
+	Color (*fshader)(FSparams*);
 };
 
 struct Shader
 {
 	char *name;
-	Point3 (*vshader)(VSparams*);		/* vertex shader */
-	Memimage *(*fshader)(FSparams*);	/* fragment shader */
+	Point3 (*vshader)(VSparams*);	/* vertex shader */
+	Color (*fshader)(FSparams*);	/* fragment shader */
 };
 
 struct Framebuf
