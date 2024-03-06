@@ -415,7 +415,7 @@ shaderunit(void *arg)
 		}
 
 		idxtab = &(*ep)->indextab[OBJVTexture];
-		if(params->entity->mdl->tex != nil && idxtab->nindex == 3){
+		if(idxtab->nindex == 3){
 			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u,
 					 tverts[idxtab->indices[0]].v, 1);
 			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u,

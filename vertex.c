@@ -53,6 +53,7 @@ lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 	v->n = lerp3(v0->n, v1->n, t);
 	v->c = lerp3(v0->c, v1->c, t);
 	v->uv = lerp2(v0->uv, v1->uv, t);
+	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl;
 	v->attrs = nil;
 	v->nattrs = 0;
 	for(i = 0; i < v0->nattrs; i++){
@@ -87,6 +88,7 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 		mulpt2(v0->uv, bc.x),
 		mulpt2(v1->uv, bc.y)),
 		mulpt2(v2->uv, bc.z));
+	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl != nil? v1->mtl: v2->mtl;
 	v->attrs = nil;
 	v->nattrs = 0;
 	for(i = 0; i < v0->nattrs; i++){
