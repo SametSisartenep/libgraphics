@@ -9,6 +9,12 @@
 #include "internal.h"
 
 double
+sign(double n)
+{
+	return n == 0? 0: n < 0? -1: 1;
+}
+
+double
 step(double edge, double n)
 {
 	if(n < edge)

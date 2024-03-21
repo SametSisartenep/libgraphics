@@ -210,6 +210,7 @@ struct Camera
 
 	struct {
 		uvlong min, avg, max, acc, n, v;
+		uvlong nframes;
 	} stats;
 };
 
@@ -256,6 +257,7 @@ double fmax(double, double);
 Memimage *rgb(ulong);
 
 /* shadeop */
+double sign(double);
 double step(double, double);
 double smoothstep(double, double, double);
 

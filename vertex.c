@@ -76,18 +76,9 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 	Vertexattr va;
 	int i;
 
-	v->n = addpt3(addpt3(
-		mulpt3(v0->n, bc.x),
-		mulpt3(v1->n, bc.y)),
-		mulpt3(v2->n, bc.z));
-	v->c = addpt3(addpt3(
-		mulpt3(v0->c, bc.x),
-		mulpt3(v1->c, bc.y)),
-		mulpt3(v2->c, bc.z));
-	v->uv = addpt2(addpt2(
-		mulpt2(v0->uv, bc.x),
-		mulpt2(v1->uv, bc.y)),
-		mulpt2(v2->uv, bc.z));
+	v->n = berp3(v0->n, v1->n, v2->n, bc);
+	v->c = berp3(v0->c, v1->c, v2->c, bc);
+	v->uv = berp2(v0->uv, v1->uv, v2->uv, bc);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl != nil? v1->mtl: v2->mtl;
 	v->attrs = nil;
 	v->nattrs = 0;
@@ -95,12 +86,9 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 		va.id = v0->attrs[i].id;
 		va.type = v0->attrs[i].type;
 		if(va.type == VAPoint)
-			va.p = addpt3(addpt3(
-				mulpt3(v0->attrs[i].p, bc.x),
-				mulpt3(v1->attrs[i].p, bc.y)),
-				mulpt3(v2->attrs[i].p, bc.z));
+			va.p = berp3(v0->attrs[i].p, v1->attrs[i].p, v2->attrs[i].p, bc);
 		else
-			va.n = dotvec3(Vec3(v0->attrs[i].n, v1->attrs[i].n, v2->attrs[i].n), bc);
+			va.n = fberp(v0->attrs[i].n, v1->attrs[i].n, v2->attrs[i].n, bc);
 		_addvattr(v, &va);
 	}
 }

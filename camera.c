@@ -17,6 +17,7 @@ updatestats(Camera *c, uvlong v)
 	c->stats.avg = c->stats.acc/c->stats.n;
 	c->stats.min = v < c->stats.min || c->stats.n == 1? v: c->stats.min;
 	c->stats.max = v > c->stats.max || c->stats.n == 1? v: c->stats.max;
+	c->stats.nframes++;
 }
 
 static void

@@ -323,7 +323,7 @@ rasterize(SUparams *params, Triangle t)
 			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 				continue;
 
-			z = t[0].p.z*bc.x + t[1].p.z*bc.y + t[2].p.z*bc.z;
+			z = fberp(t[0].p.z, t[1].p.z, t[2].p.z, bc);
 			depth = fclamp(z, 0, 1);
 			lock(&params->fb->zbuflk);
 			if(depth <= params->fb->zbuf[p.x + p.y*Dx(params->fb->r)]){
@@ -334,7 +334,7 @@ rasterize(SUparams *params, Triangle t)
 			unlock(&params->fb->zbuflk);
 
 			/* interpolate z⁻¹ and get actual z */
-			z = t[0].p.w*bc.x + t[1].p.w*bc.y + t[2].p.w*bc.z;
+			z = fberp(t[0].p.w, t[1].p.w, t[2].p.w, bc);
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
 			/* perspective-correct attribute interpolation  */
