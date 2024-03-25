@@ -27,7 +27,9 @@ typedef struct Scene Scene;
 typedef struct VSparams VSparams;
 typedef struct FSparams FSparams;
 typedef struct SUparams SUparams;
-typedef struct Shader Shader;
+typedef struct Shadertab Shadertab;
+typedef struct Renderer Renderer;
+typedef struct Renderjob Renderjob;
 typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
 typedef struct Viewport Viewport;
@@ -150,8 +152,8 @@ struct SUparams
 	int id;
 	Memimage *frag;
 	Channel *donec;
+	Renderjob *job;
 
-	/* TODO replace with a Scene */
 	Entity *entity;
 
 	uvlong uni_time;
@@ -160,11 +162,30 @@ struct SUparams
 	Color (*fshader)(FSparams*);
 };
 
-struct Shader
+struct Shadertab
 {
 	char *name;
 	Point3 (*vshader)(VSparams*);	/* vertex shader */
 	Color (*fshader)(FSparams*);	/* fragment shader */
+};
+
+struct Renderer
+{
+	Channel *c;
+};
+
+struct Renderjob
+{
+	Framebuf *fb;
+	Scene *scene;
+	Shadertab *shaders;
+	Channel *donec;
+
+	ulong nrem;		/* remaining entities to process */
+	ulong lastid;
+	uvlong time0;
+
+	Renderjob *next;
 };
 
 struct Framebuf
@@ -201,6 +222,7 @@ struct Camera
 	RFrame3;		/* VCS */
 	Viewport *vp;
 	Scene *s;
+	Renderer *rctl;
 	double fov;		/* vertical FOV */
 	struct {
 		double n, f;	/* near and far clipping planes */
@@ -219,13 +241,14 @@ void configcamera(Camera*, Viewport*, double, double, double, Projection);
 void placecamera(Camera*, Point3, Point3, Point3);
 void aimcamera(Camera*, Point3);
 void reloadcamera(Camera*);
-void shootcamera(Camera*, Shader*);
+void shootcamera(Camera*, Shadertab*);
 
 /* viewport */
 Viewport *mkviewport(Rectangle);
 void rmviewport(Viewport*);
 
 /* render */
+Renderer *initgraphics(void);
 Point3 model2world(Entity*, Point3);
 Point3 world2vcs(Camera*, Point3);
 Point3 vcs2clip(Camera*, Point3);

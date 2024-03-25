@@ -1,3 +1,10 @@
+typedef struct Jobqueue Jobqueue;
+
+struct Jobqueue
+{
+	Renderjob *hd, *tl;
+};
+
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);
@@ -8,9 +15,6 @@ Framebuf *mkfb(Rectangle);
 void rmfb(Framebuf*);
 Framebufctl *mkfbctl(Rectangle);
 void rmfbctl(Framebufctl*);
-
-/* render */
-void shade(Framebuf*, Scene*, Shader*);
 
 /* vertex */
 Vertex dupvertex(Vertex*);

@@ -354,8 +354,9 @@ rasterize(SUparams *params, Triangle t)
 }
 
 static void
-shaderunit(void *arg)
+entityproc(void *arg)
 {
+	Channel *paramsc;
 	SUparams *params;
 	VSparams vsp;
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
@@ -365,144 +366,204 @@ shaderunit(void *arg)
 	Triangle *t;				/* triangles to raster */
 	int i, nt;
 
-	params = arg;
-	vsp.su = params;
+	threadsetname("entityproc");
 
-	threadsetname("shader unit #%d", params->id);
-
+	paramsc = arg;
 	t = emalloc(sizeof(*t)*16);
-	verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
-	tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
-	nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
-	eb = params->entity->mdl->elems;
-	ee = eb + params->entity->mdl->nelems;
 
-	for(ep = eb; ep != ee; ep++){
-		nt = 1;	/* start with one. after clipping it might change */
+	while((params = recvp(paramsc)) != nil){
+		vsp.su = params;
 
-		idxtab = &(*ep)->indextab[OBJVGeometric];
-		t[0][0].p = Pt3(verts[idxtab->indices[0]].x,
-				verts[idxtab->indices[0]].y,
-				verts[idxtab->indices[0]].z,
-				verts[idxtab->indices[0]].w);
-		t[0][1].p = Pt3(verts[idxtab->indices[1]].x,
-				verts[idxtab->indices[1]].y,
-				verts[idxtab->indices[1]].z,
-				verts[idxtab->indices[1]].w);
-		t[0][2].p = Pt3(verts[idxtab->indices[2]].x,
-				verts[idxtab->indices[2]].y,
-				verts[idxtab->indices[2]].z,
-				verts[idxtab->indices[2]].w);
+		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
+		tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
+		nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
 
-		idxtab = &(*ep)->indextab[OBJVNormal];
-		if(idxtab->nindex == 3){
-			t[0][0].n = Vec3(nverts[idxtab->indices[0]].i,
-					 nverts[idxtab->indices[0]].j,
-					 nverts[idxtab->indices[0]].k);
-			t[0][0].n = normvec3(t[0][0].n);
-			t[0][1].n = Vec3(nverts[idxtab->indices[1]].i,
-					 nverts[idxtab->indices[1]].j,
-					 nverts[idxtab->indices[1]].k);
-			t[0][1].n = normvec3(t[0][1].n);
-			t[0][2].n = Vec3(nverts[idxtab->indices[2]].i,
-					 nverts[idxtab->indices[2]].j,
-					 nverts[idxtab->indices[2]].k);
-			t[0][2].n = normvec3(t[0][2].n);
-		}else{
-			/* TODO build a list of per-vertex normals earlier */
-			n = normvec3(crossvec3(subpt3(t[0][1].p, t[0][0].p), subpt3(t[0][2].p, t[0][0].p)));
-			t[0][0].n = t[0][1].n = t[0][2].n = n;
-		}
+		eb = params->entity->mdl->elems;
+		ee = eb + params->entity->mdl->nelems;
 
-		idxtab = &(*ep)->indextab[OBJVTexture];
-		if(idxtab->nindex == 3){
-			t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u,
-					 tverts[idxtab->indices[0]].v, 1);
-			t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u,
-					 tverts[idxtab->indices[1]].v, 1);
-			t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u,
-					 tverts[idxtab->indices[2]].v, 1);
-		}else{
-			t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
-		}
+		for(ep = eb; ep != ee; ep++){
+			nt = 1;	/* start with one. after clipping it might change */
 
-		for(i = 0; i < 3; i++){
-			t[0][i].c = Pt3(1,1,1,1);
-			t[0][i].mtl = (*ep)->mtl;
-			t[0][i].attrs = nil;
-			t[0][i].nattrs = 0;
-		}
+			idxtab = &(*ep)->indextab[OBJVGeometric];
+			t[0][0].p = Pt3(verts[idxtab->indices[0]].x,
+					verts[idxtab->indices[0]].y,
+					verts[idxtab->indices[0]].z,
+					verts[idxtab->indices[0]].w);
+			t[0][1].p = Pt3(verts[idxtab->indices[1]].x,
+					verts[idxtab->indices[1]].y,
+					verts[idxtab->indices[1]].z,
+					verts[idxtab->indices[1]].w);
+			t[0][2].p = Pt3(verts[idxtab->indices[2]].x,
+					verts[idxtab->indices[2]].y,
+					verts[idxtab->indices[2]].z,
+					verts[idxtab->indices[2]].w);
 
-		vsp.v = &t[0][0];
-		vsp.idx = 0;
-		t[0][0].p = params->vshader(&vsp);
-		vsp.v = &t[0][1];
-		vsp.idx = 1;
-		t[0][1].p = params->vshader(&vsp);
-		vsp.v = &t[0][2];
-		vsp.idx = 2;
-		t[0][2].p = params->vshader(&vsp);
+			idxtab = &(*ep)->indextab[OBJVNormal];
+			if(idxtab->nindex == 3){
+				t[0][0].n = Vec3(nverts[idxtab->indices[0]].i,
+						 nverts[idxtab->indices[0]].j,
+						 nverts[idxtab->indices[0]].k);
+				t[0][0].n = normvec3(t[0][0].n);
+				t[0][1].n = Vec3(nverts[idxtab->indices[1]].i,
+						 nverts[idxtab->indices[1]].j,
+						 nverts[idxtab->indices[1]].k);
+				t[0][1].n = normvec3(t[0][1].n);
+				t[0][2].n = Vec3(nverts[idxtab->indices[2]].i,
+						 nverts[idxtab->indices[2]].j,
+						 nverts[idxtab->indices[2]].k);
+				t[0][2].n = normvec3(t[0][2].n);
+			}else{
+				/* TODO build a list of per-vertex normals earlier */
+				n = normvec3(crossvec3(subpt3(t[0][1].p, t[0][0].p), subpt3(t[0][2].p, t[0][0].p)));
+				t[0][0].n = t[0][1].n = t[0][2].n = n;
+			}
 
-		if(!isvisible(t[0][0].p) || !isvisible(t[0][1].p) || !isvisible(t[0][2].p))
-			nt = cliptriangle(t);
+			idxtab = &(*ep)->indextab[OBJVTexture];
+			if(idxtab->nindex == 3){
+				t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u,
+						 tverts[idxtab->indices[0]].v, 1);
+				t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u,
+						 tverts[idxtab->indices[1]].v, 1);
+				t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u,
+						 tverts[idxtab->indices[2]].v, 1);
+			}else{
+				t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
+			}
 
-		while(nt--){
-			t[nt][0].p = clip2ndc(t[nt][0].p);
-			t[nt][1].p = clip2ndc(t[nt][1].p);
-			t[nt][2].p = clip2ndc(t[nt][2].p);
+			for(i = 0; i < 3; i++){
+				t[0][i].c = Pt3(1,1,1,1);
+				t[0][i].mtl = (*ep)->mtl;
+				t[0][i].attrs = nil;
+				t[0][i].nattrs = 0;
+			}
 
-			/* culling */
-//			if(isfacingback(t[nt]))
-//				goto skiptri;
+			vsp.v = &t[0][0];
+			vsp.idx = 0;
+			t[0][0].p = params->vshader(&vsp);
+			vsp.v = &t[0][1];
+			vsp.idx = 1;
+			t[0][1].p = params->vshader(&vsp);
+			vsp.v = &t[0][2];
+			vsp.idx = 2;
+			t[0][2].p = params->vshader(&vsp);
 
-			t[nt][0].p = ndc2viewport(params->fb, t[nt][0].p);
-			t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
-			t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
+			if(!isvisible(t[0][0].p) || !isvisible(t[0][1].p) || !isvisible(t[0][2].p))
+				nt = cliptriangle(t);
 
-			rasterize(params, t[nt]);
+			while(nt--){
+				t[nt][0].p = clip2ndc(t[nt][0].p);
+				t[nt][1].p = clip2ndc(t[nt][1].p);
+				t[nt][2].p = clip2ndc(t[nt][2].p);
 
+				/* culling */
+//				if(isfacingback(t[nt]))
+//					goto skiptri;
+
+				t[nt][0].p = ndc2viewport(params->fb, t[nt][0].p);
+				t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
+				t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
+
+				rasterize(params, t[nt]);
 //skiptri:
-			delvattrs(&t[nt][0]);
-			delvattrs(&t[nt][1]);
-			delvattrs(&t[nt][2]);
+				delvattrs(&t[nt][0]);
+				delvattrs(&t[nt][1]);
+				delvattrs(&t[nt][2]);
+			}
 		}
+		sendp(params->donec, params);
 	}
-
-	free(t);
-	sendp(params->donec, params);
-	threadexits(nil);
 }
 
-void
-shade(Framebuf *fb, Scene *sc, Shader *s)
+static void
+renderer(void *arg)
 {
-	int i;
-	uvlong time;
+	Channel *jobc;
+	Jobqueue jobq;
+	Renderjob *job;
+	Scene *sc;
 	Entity *ent;
-	SUparams *params;
-	Channel *donec;
+	SUparams *params, *params2;
+	Channel *paramsc, *donec;
 
-	time = nanosec();
-	donec = chancreate(sizeof(void*), 0);
+	threadsetname("renderer");
 
-	/* TODO come up with an actual concurrent architecture */
-	for(i = 0, ent = sc->ents.next; i < sc->nents; i++, ent = ent->next){
-		params = emalloc(sizeof *params);
-		params->fb = fb;
-		params->id = i;
-		params->frag = rgb(DBlack);
-		params->donec = donec;
-		params->entity = ent;
-		params->uni_time = time;
-		params->vshader = s->vshader;
-		params->fshader = s->fshader;
-		proccreate(shaderunit, params, mainstacksize);
-	}
+	jobc = arg;
+	jobq.tl = jobq.hd = nil;
+	ent = nil;
+	paramsc = chancreate(sizeof(SUparams*), 8);
+	donec = chancreate(sizeof(SUparams*), 0);
 
-	while(i--){
-		params = recvp(donec);
-		freememimage(params->frag);
-		free(params);
-	}
-	chanfree(donec);
+	proccreate(entityproc, paramsc, mainstacksize);
+
+	enum { JOB, PARM, DONE };
+	Alt a[] = {
+	 [JOB]	{jobc, &job, CHANRCV},
+	 [PARM]	{paramsc, &params, CHANNOP},
+	 [DONE]	{donec, &params2, CHANRCV},
+		{nil, nil, CHANEND}
+	};
+	for(;;)
+		switch(alt(a)){
+		case JOB:
+			sc = job->scene;
+			job->nrem = sc->nents;
+			job->lastid = 0;
+			job->time0 = nanosec();
+
+			if(jobq.tl == nil){
+				jobq.tl = jobq.hd = job;
+				ent = sc->ents.next;
+				a[PARM].op = CHANSND;
+				goto sendparams;
+			}else
+				jobq.tl = jobq.tl->next = job;
+			break;
+		case PARM:
+sendparams:
+			job = jobq.hd;
+			sc = job->scene;
+
+			if(ent != nil && ent != &sc->ents){
+				params = emalloc(sizeof *params);
+				memset(params, 0, sizeof *params);
+				params->fb = job->fb;
+				params->id = job->lastid++;
+				params->frag = rgb(DBlack);
+				params->donec = donec;
+				params->job = job;
+				params->entity = ent;
+				params->uni_time = job->time0;
+				params->vshader = job->shaders->vshader;
+				params->fshader = job->shaders->fshader;
+				ent = ent->next;
+			}else{
+				jobq.hd = job->next;
+				if((job = jobq.hd) != nil){
+					ent = job->scene->ents.next;
+					goto sendparams;
+				}
+
+				jobq.tl = jobq.hd;
+				a[PARM].op = CHANNOP;
+			}
+			break;
+		case DONE:
+			if(--params2->job->nrem < 1)
+				send(params2->job->donec, nil);
+
+			freememimage(params2->frag);
+			free(params2);
+			break;
+		}
+}
+
+Renderer *
+initgraphics(void)
+{
+	Renderer *r;
+
+	r = emalloc(sizeof *r);
+	r->c = chancreate(sizeof(Renderjob*), 8);
+	proccreate(renderer, r->c, mainstacksize);
+	return r;
 }
