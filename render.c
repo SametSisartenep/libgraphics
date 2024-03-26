@@ -509,6 +509,7 @@ renderer(void *arg)
 			job->nrem = sc->nents;
 			job->lastid = 0;
 			job->time0 = nanosec();
+			job->v->fbctl->reset(job->v->fbctl);
 
 			if(jobq.tl == nil){
 				jobq.tl = jobq.hd = job;
@@ -526,7 +527,7 @@ sendparams:
 			if(ent != nil && ent != &sc->ents){
 				params = emalloc(sizeof *params);
 				memset(params, 0, sizeof *params);
-				params->fb = job->fb;
+				params->fb = job->v->getfb(job->v);
 				params->id = job->lastid++;
 				params->frag = rgb(DBlack);
 				params->donec = donec;
@@ -548,8 +549,10 @@ sendparams:
 			}
 			break;
 		case DONE:
-			if(--params2->job->nrem < 1)
+			if(--params2->job->nrem < 1){
+				params2->job->v->fbctl->swap(params2->job->v->fbctl);
 				send(params2->job->donec, nil);
+			}
 
 			freememimage(params2->frag);
 			free(params2);

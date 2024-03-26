@@ -20,6 +20,12 @@ viewport_memdraw(Viewport *v, Memimage *dst)
 	v->fbctl->memdraw(v->fbctl, dst);
 }
 
+static Framebuf *
+viewport_getfb(Viewport *v)
+{
+	return v->fbctl->fb[v->fbctl->idx^1];	/* address the back buffer */
+}
+
 Viewport *
 mkviewport(Rectangle r)
 {
@@ -32,6 +38,7 @@ mkviewport(Rectangle r)
 	v->fbctl = mkfbctl(r);
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
+	v->getfb = viewport_getfb;
 	return v;
 }
 

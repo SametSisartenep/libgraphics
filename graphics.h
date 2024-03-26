@@ -176,7 +176,7 @@ struct Renderer
 
 struct Renderjob
 {
-	Framebuf *fb;
+	Viewport *v;
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
@@ -215,6 +215,7 @@ struct Viewport
 
 	void (*draw)(Viewport*, Image*);
 	void (*memdraw)(Viewport*, Memimage*);
+	Framebuf *(*getfb)(Viewport*);
 };
 
 struct Camera
