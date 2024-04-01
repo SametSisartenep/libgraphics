@@ -46,7 +46,7 @@ rgb(ulong c)
 {
 	Memimage *i;
 
-	i = eallocmemimage(UR, screen->chan);
+	i = eallocmemimage(UR, RGBA32);
 	i->flags |= Frepl;
 	i->clipr = Rect(-1e6, -1e6, 1e6, 1e6);
 	memfillcolor(i, c);
