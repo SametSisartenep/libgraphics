@@ -527,7 +527,7 @@ sendparams:
 			if(ent != nil && ent != &sc->ents){
 				params = emalloc(sizeof *params);
 				memset(params, 0, sizeof *params);
-				params->fb = job->v->getfb(job->v);
+				params->fb = job->v->getbb(job->v);
 				params->id = job->lastid++;
 				params->frag = rgb(DBlack);
 				params->donec = donec;

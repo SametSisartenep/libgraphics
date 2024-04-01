@@ -216,6 +216,7 @@ struct Viewport
 	void (*draw)(Viewport*, Image*);
 	void (*memdraw)(Viewport*, Memimage*);
 	Framebuf *(*getfb)(Viewport*);
+	Framebuf *(*getbb)(Viewport*);
 };
 
 struct Camera
