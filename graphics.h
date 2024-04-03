@@ -266,6 +266,7 @@ Entity *newentity(Model*);
 void delentity(Entity*);
 Scene *newscene(char*);
 void delscene(Scene*);
+void clearscene(Scene*);
 
 /* vertex */
 void addvattr(Vertex*, char*, int, void*);

@@ -117,6 +117,14 @@ newmodel(void)
 void
 delmodel(Model *m)
 {
+	if(m->obj != nil)
+		objfree(m->obj);
+	if(m->tex != nil)
+		freememimage(m->tex);
+	if(m->nor != nil)
+		freememimage(m->nor);
+	if(m->nelems > 0)
+		free(m->elems);
 	free(m);
 }
 
@@ -138,7 +146,7 @@ newentity(Model *m)
 void
 delentity(Entity *e)
 {
-	/* TODO free model */
+	delmodel(e->mdl);
 	free(e);
 }
 
@@ -168,7 +176,18 @@ newscene(char *name)
 void
 delscene(Scene *s)
 {
-	/* TODO free ents */
+	clearscene(s);
 	free(s->name);
 	free(s);
+}
+
+void
+clearscene(Scene *s)
+{
+	Entity *e;
+
+	for(e = s->ents.next; e != &s->ents; e = e->next){
+		delentity(e);
+		s->nents--;
+	}
 }
