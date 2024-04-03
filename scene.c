@@ -201,9 +201,10 @@ delscene(Scene *s)
 void
 clearscene(Scene *s)
 {
-	Entity *e;
+	Entity *e, *ne;
 
-	for(e = s->ents.next; e != &s->ents; e = e->next){
+	for(e = s->ents.next; e != &s->ents; e = ne){
+		ne = e->next;
 		s->delent(s, e);
 		delentity(e);
 	}
