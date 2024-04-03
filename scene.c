@@ -160,6 +160,7 @@ newscene(char *name)
 	s = emalloc(sizeof *s);
 	s->name = name == nil? nil: strdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
+	s->nents = 0;
 	s->addent = scene_addent;
 	return s;
 }
