@@ -165,6 +165,15 @@ scene_addent(Scene *s, Entity *e)
 	s->nents++;
 }
 
+static void
+scene_delent(Scene *s, Entity *e)
+{
+	e->prev->next = e->next;
+	e->next->prev = e->prev;
+	e->prev = e->next = nil;
+	s->nents--;
+}
+
 Scene *
 newscene(char *name)
 {
@@ -175,6 +184,7 @@ newscene(char *name)
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;
 	s->addent = scene_addent;
+	s->delent = scene_delent;
 	return s;
 }
 
@@ -194,7 +204,7 @@ clearscene(Scene *s)
 	Entity *e;
 
 	for(e = s->ents.next; e != &s->ents; e = e->next){
+		s->delent(s, e);
 		delentity(e);
-		s->nents--;
 	}
 }

@@ -128,6 +128,7 @@ struct Scene
 	ulong nents;
 
 	void (*addent)(Scene*, Entity*);
+	void (*delent)(Scene*, Entity*);
 };
 
 /* shader params */
