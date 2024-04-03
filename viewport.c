@@ -52,6 +52,8 @@ mkviewport(Rectangle r)
 void
 rmviewport(Viewport *v)
 {
+	if(v == nil)
+		return;
 	rmfbctl(v->fbctl);
 	free(v);
 }

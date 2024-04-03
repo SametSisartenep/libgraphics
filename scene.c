@@ -117,6 +117,8 @@ newmodel(void)
 void
 delmodel(Model *m)
 {
+	if(m == nil)
+		return;
 	if(m->obj != nil)
 		objfree(m->obj);
 	if(m->tex != nil)
@@ -146,7 +148,10 @@ newentity(Model *m)
 void
 delentity(Entity *e)
 {
-	delmodel(e->mdl);
+	if(e == nil)
+		return;
+	if(e->mdl != nil)
+		delmodel(e->mdl);
 	free(e);
 }
 
@@ -176,6 +181,8 @@ newscene(char *name)
 void
 delscene(Scene *s)
 {
+	if(s == nil)
+		return;
 	clearscene(s);
 	free(s->name);
 	free(s);
