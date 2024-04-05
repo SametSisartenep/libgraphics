@@ -358,6 +358,7 @@ entityproc(void *arg)
 {
 	Channel *paramsc;
 	SUparams *params;
+	Memimage *frag;
 	VSparams vsp;
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
 	OBJIndexArray *idxtab;
@@ -369,9 +370,11 @@ entityproc(void *arg)
 	threadsetname("entityproc");
 
 	paramsc = arg;
+	frag = rgb(DBlack);
 	t = emalloc(sizeof(*t)*16);
 
 	while((params = recvp(paramsc)) != nil){
+		params->frag = frag;
 		vsp.su = params;
 
 		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
@@ -470,7 +473,10 @@ entityproc(void *arg)
 				delvattrs(&t[nt][2]);
 			}
 		}
-		sendp(params->donec, params);
+
+		if(--params->job->nrem < 1)
+			nbsend(params->job->donec, nil);
+		free(params);
 	}
 }
 
@@ -478,86 +484,37 @@ static void
 renderer(void *arg)
 {
 	Channel *jobc;
-	Jobqueue jobq;
 	Renderjob *job;
 	Scene *sc;
 	Entity *ent;
-	SUparams *params, *params2;
-	Channel *paramsc, *donec;
+	SUparams *params;
+	Channel *paramsc;
+	uvlong time;
 
 	threadsetname("renderer");
 
 	jobc = arg;
-	jobq.tl = jobq.hd = nil;
-	ent = nil;
 	paramsc = chancreate(sizeof(SUparams*), 8);
-	donec = chancreate(sizeof(SUparams*), 0);
 
 	proccreate(entityproc, paramsc, mainstacksize);
 
-	enum { JOB, PARM, DONE };
-	Alt a[] = {
-	 [JOB]	{jobc, &job, CHANRCV},
-	 [PARM]	{paramsc, &params, CHANNOP},
-	 [DONE]	{donec, &params2, CHANRCV},
-		{nil, nil, CHANEND}
-	};
-	for(;;)
-		switch(alt(a)){
-		case JOB:
-			sc = job->scene;
-			job->nrem = sc->nents;
-			job->lastid = 0;
-			job->time0 = nanosec();
-			job->v->fbctl->reset(job->v->fbctl);
+	while((job = recvp(jobc)) != nil){
+		sc = job->scene;
+		job->nrem = sc->nents;
+		time = nanosec();
 
-			if(jobq.tl == nil){
-				jobq.tl = jobq.hd = job;
-				ent = sc->ents.next;
-				a[PARM].op = CHANSND;
-				goto sendparams;
-			}else
-				jobq.tl = jobq.tl->next = job;
-			break;
-		case PARM:
-sendparams:
-			job = jobq.hd;
-			sc = job->scene;
-
-			if(ent != nil && ent != &sc->ents){
-				params = emalloc(sizeof *params);
-				memset(params, 0, sizeof *params);
-				params->fb = job->v->getbb(job->v);
-				params->id = job->lastid++;
-				params->frag = rgb(DBlack);
-				params->donec = donec;
-				params->job = job;
-				params->entity = ent;
-				params->uni_time = job->time0;
-				params->vshader = job->shaders->vshader;
-				params->fshader = job->shaders->fshader;
-				ent = ent->next;
-			}else{
-				jobq.hd = job->next;
-				if((job = jobq.hd) != nil){
-					ent = job->scene->ents.next;
-					goto sendparams;
-				}
-
-				jobq.tl = jobq.hd;
-				a[PARM].op = CHANNOP;
-			}
-			break;
-		case DONE:
-			if(--params2->job->nrem < 1){
-				params2->job->v->fbctl->swap(params2->job->v->fbctl);
-				send(params2->job->donec, nil);
-			}
-
-			freememimage(params2->frag);
-			free(params2);
-			break;
+		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
+			params = emalloc(sizeof *params);
+			memset(params, 0, sizeof *params);
+			params->fb = job->fb;
+			params->job = job;
+			params->entity = ent;
+			params->uni_time = time;
+			params->vshader = job->shaders->vshader;
+			params->fshader = job->shaders->fshader;
+			sendp(paramsc, params);
 		}
+	}
 }
 
 Renderer *

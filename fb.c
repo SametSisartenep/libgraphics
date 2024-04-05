@@ -46,6 +46,18 @@ framebufctl_reset(Framebufctl *ctl)
 	memfillcolor(fb->cb, DTransparent);
 }
 
+static Framebuf *
+framebufctl_getfb(Framebufctl *ctl)
+{
+	return ctl->fb[ctl->idx];	/* front buffer */
+}
+
+static Framebuf *
+framebufctl_getbb(Framebufctl *ctl)
+{
+	return ctl->fb[ctl->idx^1];	/* back buffer */
+}
+
 Framebuf *
 mkfb(Rectangle r)
 {
@@ -81,6 +93,8 @@ mkfbctl(Rectangle r)
 	fc->memdraw = framebufctl_memdraw;
 	fc->swap = framebufctl_swap;
 	fc->reset = framebufctl_reset;
+	fc->getfb = framebufctl_getfb;
+	fc->getbb = framebufctl_getbb;
 	return fc;
 }
 

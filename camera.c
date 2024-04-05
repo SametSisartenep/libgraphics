@@ -86,15 +86,17 @@ shootcamera(Camera *c, Shadertab *s)
 
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
-	job->v = c->vp;
+	job->fb = c->vp->fbctl->getbb(c->vp->fbctl);
 	job->scene = c->s;
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
+	c->vp->fbctl->reset(c->vp->fbctl);
 	t0 = nanosec();
 	sendp(c->rctl->c, job);
 	recvp(job->donec);
 	t1 = nanosec();
+	c->vp->fbctl->swap(c->vp->fbctl);
 
 	chanfree(job->donec);
 	free(job);

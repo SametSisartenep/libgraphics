@@ -1,10 +1,3 @@
-typedef struct Jobqueue Jobqueue;
-
-struct Jobqueue
-{
-	Renderjob *hd, *tl;
-};
-
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);

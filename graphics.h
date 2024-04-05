@@ -79,6 +79,7 @@ struct Vertex
 	Color c;		/* shading color */
 	Point2 uv;		/* texture coordinate */
 	OBJMaterial *mtl;
+
 	/* TODO it'd be neat to use a dynamic hash table instead */
 	Vertexattr *attrs;	/* attributes (aka varyings) */
 	ulong nattrs;
@@ -118,6 +119,7 @@ struct Entity
 {
 	RFrame3;
 	Model *mdl;
+
 	Entity *prev, *next;
 };
 
@@ -150,9 +152,7 @@ struct FSparams
 struct SUparams
 {
 	Framebuf *fb;
-	int id;
 	Memimage *frag;
-	Channel *donec;
 	Renderjob *job;
 
 	Entity *entity;
@@ -177,14 +177,11 @@ struct Renderer
 
 struct Renderjob
 {
-	Viewport *v;
+	Framebuf *fb;
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
-
 	ulong nrem;		/* remaining entities to process */
-	ulong lastid;
-	uvlong time0;
 
 	Renderjob *next;
 };
@@ -207,6 +204,8 @@ struct Framebufctl
 	void (*memdraw)(Framebufctl*, Memimage*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
+	Framebuf *(*getfb)(Framebufctl*);
+	Framebuf *(*getbb)(Framebufctl*);
 };
 
 struct Viewport
@@ -217,7 +216,6 @@ struct Viewport
 	void (*draw)(Viewport*, Image*);
 	void (*memdraw)(Viewport*, Memimage*);
 	Framebuf *(*getfb)(Viewport*);
-	Framebuf *(*getbb)(Viewport*);
 };
 
 struct Camera
