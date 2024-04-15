@@ -411,7 +411,7 @@ tilerdurden(void *arg)
 	Triangle *t;				/* triangles to raster */
 	Rectangle *wr;
 	Channel **taskc;
-	ulong Δx, nproc;
+	ulong Δy, nproc;
 	int i, nt;
 	uvlong t0;
 
@@ -444,10 +444,10 @@ tilerdurden(void *arg)
 		vsp.su = params;
 
 		wr[0] = params->fb->r;
-		Δx = Dx(wr[0])/nproc;
-		wr[0].max.x = wr[0].min.x + Δx;
+		Δy = Dy(wr[0])/nproc;
+		wr[0].max.y = wr[0].min.y + Δy;
 		for(i = 1; i < nproc; i++)
-			wr[i] = rectaddpt(wr[i-1], Pt(Δx,0));
+			wr[i] = rectaddpt(wr[i-1], Pt(0,Δy));
 
 		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
 		tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
