@@ -154,8 +154,8 @@ struct SUparams
 	Framebuf *fb;
 	Memimage *frag;
 	Renderjob *job;
-
 	Entity *entity;
+	OBJElem **eb, **ee;
 
 	uvlong uni_time;
 
@@ -177,11 +177,11 @@ struct Renderer
 
 struct Renderjob
 {
+	Ref;
 	Framebuf *fb;
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
-	ulong nrem;		/* remaining entities to process */
 
 	Renderjob *next;
 };
@@ -190,15 +190,14 @@ struct Framebuf
 {
 	Memimage *cb;	/* color buffer */
 	double *zbuf;	/* z/depth buffer */
-	Lock zbuflk;
 	Rectangle r;
 };
 
 struct Framebufctl
 {
+	Lock;
 	Framebuf *fb[2];	/* double buffering */
 	uint idx;		/* front buffer index */
-	Lock swplk;
 
 	void (*draw)(Framebufctl*, Image*);
 	void (*memdraw)(Framebufctl*, Memimage*);

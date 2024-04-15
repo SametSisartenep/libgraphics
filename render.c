@@ -292,8 +292,10 @@ orthographic(Matrix3 m, double l, double r, double b, double t, double n, double
 }
 
 static void
-rasterize(SUparams *params, Triangle t)
+rasterize(Rastertask *task)
 {
+	SUparams *params;
+	Triangle t;
 	FSparams fsp;
 	Triangle2 t₂;
 	Rectangle bbox;
@@ -301,6 +303,9 @@ rasterize(SUparams *params, Triangle t)
 	Point3 bc;
 	Color c;
 	double z, depth;
+
+	params = task->params;
+	memmove(t, task->t, sizeof t);
 
 	t₂.p0 = Pt2(t[0].p.x, t[0].p.y, 1);
 	t₂.p1 = Pt2(t[1].p.x, t[1].p.y, 1);
@@ -310,10 +315,10 @@ rasterize(SUparams *params, Triangle t)
 		min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x), min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y),
 		max(max(t₂.p0.x, t₂.p1.x), t₂.p2.x)+1, max(max(t₂.p0.y, t₂.p1.y), t₂.p2.y)+1
 	);
-	bbox.min.x = max(bbox.min.x, params->fb->r.min.x);
-	bbox.min.y = max(bbox.min.y, params->fb->r.min.y);
-	bbox.max.x = min(bbox.max.x, params->fb->r.max.x);
-	bbox.max.y = min(bbox.max.y, params->fb->r.max.y);
+	bbox.min.x = max(bbox.min.x, task->wr.min.x);
+	bbox.min.y = max(bbox.min.y, task->wr.min.y);
+	bbox.max.x = min(bbox.max.x, task->wr.max.x);
+	bbox.max.y = min(bbox.max.y, task->wr.max.y);
 	fsp.su = params;
 	memset(&fsp.v, 0, sizeof fsp.v);
 
@@ -325,13 +330,9 @@ rasterize(SUparams *params, Triangle t)
 
 			z = fberp(t[0].p.z, t[1].p.z, t[2].p.z, bc);
 			depth = fclamp(z, 0, 1);
-			lock(&params->fb->zbuflk);
-			if(depth <= params->fb->zbuf[p.x + p.y*Dx(params->fb->r)]){
-				unlock(&params->fb->zbuflk);
+			if(depth <= params->fb->zbuf[p.x + p.y*Dx(params->fb->r)])
 				continue;
-			}
 			params->fb->zbuf[p.x + p.y*Dx(params->fb->r)] = depth;
-			unlock(&params->fb->zbuflk);
 
 			/* interpolate z⁻¹ and get actual z */
 			z = fberp(t[0].p.w, t[1].p.w, t[2].p.w, bc);
@@ -354,37 +355,93 @@ rasterize(SUparams *params, Triangle t)
 }
 
 static void
-entityproc(void *arg)
+rasterizer(void *arg)
 {
-	Channel *paramsc;
+	Channel *taskc;
+	Rastertask *task;
 	SUparams *params;
 	Memimage *frag;
+
+	threadsetname("rasterizer");
+
+	taskc = arg;
+	frag = rgb(DBlack);
+
+	while((task = recvp(taskc)) != nil){
+		params = task->params;
+		/* end of job */
+		if(params->entity == nil){
+			if(decref(params->job) < 1){
+				nbsend(params->job->donec, nil);
+				free(params);
+			}
+			free(task);
+			continue;
+		}
+
+		params->frag = frag;
+		rasterize(task);
+
+		delvattrs(&task->t[0]);
+		delvattrs(&task->t[1]);
+		delvattrs(&task->t[2]);
+		free(params);
+		free(task);
+	}
+}
+
+static void
+tilerdurden(void *arg)
+{
+	Tilerparam *tp;
+	SUparams *params, *newparams;
+	Rastertask *task;
 	VSparams vsp;
 	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
 	OBJIndexArray *idxtab;
-	OBJElem **ep, **eb, **ee;
+	OBJElem **ep;
 	Point3 n;				/* surface normal */
 	Triangle *t;				/* triangles to raster */
+	Rectangle *wr;
+	Channel **taskc;
+	ulong Δx, nproc;
 	int i, nt;
 
-	threadsetname("entityproc");
+	threadsetname("tilerdurden");
 
-	paramsc = arg;
-	frag = rgb(DBlack);
+	tp = arg;
 	t = emalloc(sizeof(*t)*16);
+	taskc = tp->tasksc;
+	nproc = tp->nproc;
+	wr = emalloc(nproc*sizeof(Rectangle));
 
-	while((params = recvp(paramsc)) != nil){
-		params->frag = frag;
+	while((params = recvp(tp->paramsc)) != nil){
+		/* end of job */
+		if(params->entity == nil){
+			if(decref(params->job) < 1){
+				params->job->ref = nproc;
+				for(i = 0; i < nproc; i++){
+					task = emalloc(sizeof *task);
+					memset(task, 0, sizeof *task);
+					task->params = params;
+					sendp(taskc[i], task);
+				}
+			}
+			continue;
+		}
 		vsp.su = params;
+
+		wr[0] = params->fb->r;
+		Δx = Dx(wr[0])/nproc;
+		wr[0].max.x = wr[0].min.x + Δx;
+		for(i = 1; i < nproc; i++)
+			wr[i] = rectaddpt(wr[i-1], Pt(Δx,0));
 
 		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
 		tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
 		nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
 
-		eb = params->entity->mdl->elems;
-		ee = eb + params->entity->mdl->nelems;
-
-		for(ep = eb; ep != ee; ep++){
+		for(ep = params->eb; ep != params->ee; ep++){
 			nt = 1;	/* start with one. after clipping it might change */
 
 			idxtab = &(*ep)->indextab[OBJVGeometric];
@@ -466,16 +523,94 @@ entityproc(void *arg)
 				t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
 				t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
 
-				rasterize(params, t[nt]);
+				for(i = 0; i < nproc; i++)
+					if(ptinrect(Pt(t[nt][0].p.x,t[nt][0].p.y),wr[i]) ||
+					   ptinrect(Pt(t[nt][1].p.x,t[nt][1].p.y),wr[i]) ||
+					   ptinrect(Pt(t[nt][2].p.x,t[nt][2].p.y),wr[i])){
+						newparams = emalloc(sizeof *newparams);
+						*newparams = *params;
+						task = emalloc(sizeof *task);
+						task->params = newparams;
+						task->wr = wr[i];
+						task->t[0] = dupvertex(&t[nt][0]);
+						task->t[1] = dupvertex(&t[nt][1]);
+						task->t[2] = dupvertex(&t[nt][2]);
+						sendp(taskc[i], task);
+					}
 //skiptri:
 				delvattrs(&t[nt][0]);
 				delvattrs(&t[nt][1]);
 				delvattrs(&t[nt][2]);
 			}
 		}
+		free(params);
+	}
+}
 
-		if(--params->job->nrem < 1)
-			nbsend(params->job->donec, nil);
+static void
+entityproc(void *arg)
+{
+	Channel *paramsin, **paramsout, **taskc;
+	Tilerparam *tp;
+	SUparams *params, *newparams;
+	OBJElem **eb, **ee;
+	char *nprocs;
+	ulong stride, nelems, nproc, nworkers;
+	int i;
+
+	threadsetname("entityproc");
+
+	paramsin = arg;
+	nprocs = getenv("NPROC");
+	if(nprocs == nil || (nproc = strtoul(nprocs, nil, 10)) < 2)
+		nproc = 1;
+	else
+		nproc /= 2;
+	free(nprocs);
+
+	paramsout = emalloc(nproc*sizeof(*paramsout));
+	taskc = emalloc(nproc*sizeof(*taskc));
+	for(i = 0; i < nproc; i++){
+		paramsout[i] = chancreate(sizeof(SUparams*), 8);
+		tp = emalloc(sizeof *tp);
+		tp->paramsc = paramsout[i];
+		tp->tasksc = taskc;
+		tp->nproc = nproc;
+		proccreate(tilerdurden, tp, mainstacksize);
+	}
+	for(i = 0; i < nproc; i++){
+		taskc[i] = chancreate(sizeof(Rastertask*), 32);
+		proccreate(rasterizer, taskc[i], mainstacksize);
+	}
+
+	while((params = recvp(paramsin)) != nil){
+		/* end of job */
+		if(params->entity == nil){
+			params->job->ref = nproc;
+			for(i = 0; i < nproc; i++)
+				sendp(paramsout[i], params);
+			continue;
+		}
+
+		eb = params->entity->mdl->elems;
+		nelems = params->entity->mdl->nelems;
+		ee = eb + nelems;
+
+		if(nelems <= nproc){
+			nworkers = nelems;
+			stride = 1;
+		}else{
+			nworkers = nproc;
+			stride = nelems/nproc;
+		}
+
+		for(i = 0; i < nworkers; i++){
+			newparams = emalloc(sizeof *newparams);
+			*newparams = *params;
+			newparams->eb = eb + i*stride;
+			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
+			sendp(paramsout[i], newparams);
+		}
 		free(params);
 	}
 }
@@ -500,8 +635,12 @@ renderer(void *arg)
 
 	while((job = recvp(jobc)) != nil){
 		sc = job->scene;
-		job->nrem = sc->nents;
 		time = nanosec();
+
+		if(sc->nents < 1){
+			nbsend(job->donec, nil);
+			continue;
+		}
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
 			params = emalloc(sizeof *params);
@@ -514,6 +653,11 @@ renderer(void *arg)
 			params->fshader = job->shaders->fshader;
 			sendp(paramsc, params);
 		}
+		/* mark end of job */
+		params = emalloc(sizeof *params);
+		memset(params, 0, sizeof *params);
+		params->job = job;
+		sendp(paramsc, params);
 	}
 }
 

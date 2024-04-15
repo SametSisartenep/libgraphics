@@ -1,3 +1,21 @@
+typedef struct Tilerparam Tilerparam;
+typedef struct Rastertask Rastertask;
+
+struct Rastertask
+{
+	SUparams *params;
+	Rectangle wr;		/* working rect */
+	Triangle t;
+};
+
+struct Tilerparam
+{
+	Channel *paramsc;
+	Channel **tasksc;	/* Channel*[nproc] */
+	Rectangle *wr;		/* Rectangle[nproc] */
+	ulong nproc;
+};
+
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);

@@ -13,26 +13,29 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 {
 	Framebuf *fb;
 
-	fb = ctl->fb[ctl->idx];
-	lock(&ctl->swplk);
+	lock(ctl);
+	fb = ctl->getfb(ctl);
 	loadimage(dst, rectaddpt(fb->r, dst->r.min), byteaddr(fb->cb, fb->r.min), bytesperline(fb->r, fb->cb->depth)*Dy(fb->r));
-	unlock(&ctl->swplk);
+	unlock(ctl);
 }
 
 static void
 framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 {
-	lock(&ctl->swplk);
-	memimagedraw(dst, dst->r, ctl->fb[ctl->idx]->cb, ZP, nil, ZP, SoverD);
-	unlock(&ctl->swplk);
+	Framebuf *fb;
+
+	lock(ctl);
+	fb = ctl->getfb(ctl);
+	memimagedraw(dst, dst->r, fb->cb, ZP, nil, ZP, SoverD);
+	unlock(ctl);
 }
 
 static void
 framebufctl_swap(Framebufctl *ctl)
 {
-	lock(&ctl->swplk);
+	lock(ctl);
 	ctl->idx ^= 1;
-	unlock(&ctl->swplk);
+	unlock(ctl);
 }
 
 static void
@@ -41,7 +44,7 @@ framebufctl_reset(Framebufctl *ctl)
 	Framebuf *fb;
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
-	fb = ctl->fb[ctl->idx^1];
+	fb = ctl->getbb(ctl);
 	memsetd(fb->zbuf, Inf(-1), Dx(fb->r)*Dy(fb->r));
 	memfillcolor(fb->cb, DTransparent);
 }
