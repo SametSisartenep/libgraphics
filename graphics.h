@@ -29,6 +29,7 @@ typedef struct FSparams FSparams;
 typedef struct SUparams SUparams;
 typedef struct Shadertab Shadertab;
 typedef struct Renderer Renderer;
+typedef struct Rendertime Rendertime;
 typedef struct Renderjob Renderjob;
 typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
@@ -175,6 +176,11 @@ struct Renderer
 	Channel *c;
 };
 
+struct Rendertime
+{
+	uvlong t0, t1;
+};
+
 struct Renderjob
 {
 	Ref;
@@ -182,6 +188,10 @@ struct Renderjob
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
+
+	struct {
+		Rendertime R, E, Tn, Rn;
+	} times;
 
 	Renderjob *next;
 };
@@ -234,6 +244,11 @@ struct Camera
 		uvlong min, avg, max, acc, n, v;
 		uvlong nframes;
 	} stats;
+
+	struct {
+		Rendertime R[100], E[100], Tn[100], Rn[100];
+		int cur;
+	} times;
 };
 
 /* camera */

@@ -361,6 +361,7 @@ rasterizer(void *arg)
 	Rastertask *task;
 	SUparams *params;
 	Memimage *frag;
+	uvlong t0;
 
 	threadsetname("rasterizer");
 
@@ -368,6 +369,8 @@ rasterizer(void *arg)
 	frag = rgb(DBlack);
 
 	while((task = recvp(taskc)) != nil){
+		t0 = nanosec();
+
 		params = task->params;
 		/* end of job */
 		if(params->entity == nil){
@@ -379,12 +382,16 @@ rasterizer(void *arg)
 			continue;
 		}
 
+		if(params->job->times.Rn.t0 == 0)
+			params->job->times.Rn.t0 = t0;
+
 		params->frag = frag;
 		rasterize(task);
 
 		delvattrs(&task->t[0]);
 		delvattrs(&task->t[1]);
 		delvattrs(&task->t[2]);
+		params->job->times.Rn.t1 = nanosec();
 		free(params);
 		free(task);
 	}
@@ -406,6 +413,7 @@ tilerdurden(void *arg)
 	Channel **taskc;
 	ulong Δx, nproc;
 	int i, nt;
+	uvlong t0;
 
 	threadsetname("tilerdurden");
 
@@ -416,6 +424,10 @@ tilerdurden(void *arg)
 	wr = emalloc(nproc*sizeof(Rectangle));
 
 	while((params = recvp(tp->paramsc)) != nil){
+		t0 = nanosec();
+		if(params->job->times.Tn.t0 == 0)
+			params->job->times.Tn.t0 = t0;
+
 		/* end of job */
 		if(params->entity == nil){
 			if(decref(params->job) < 1){
@@ -543,6 +555,7 @@ tilerdurden(void *arg)
 				delvattrs(&t[nt][2]);
 			}
 		}
+		params->job->times.Tn.t1 = nanosec();
 		free(params);
 	}
 }
@@ -557,6 +570,7 @@ entityproc(void *arg)
 	char *nprocs;
 	ulong stride, nelems, nproc, nworkers;
 	int i;
+	uvlong t0;
 
 	threadsetname("entityproc");
 
@@ -584,6 +598,10 @@ entityproc(void *arg)
 	}
 
 	while((params = recvp(paramsin)) != nil){
+		t0 = nanosec();
+		if(params->job->times.E.t0 == 0)
+			params->job->times.E.t0 = t0;
+
 		/* end of job */
 		if(params->entity == nil){
 			params->job->ref = nproc;
@@ -611,6 +629,7 @@ entityproc(void *arg)
 			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
 			sendp(paramsout[i], newparams);
 		}
+		params->job->times.E.t1 = nanosec();
 		free(params);
 	}
 }
@@ -634,9 +653,9 @@ renderer(void *arg)
 	proccreate(entityproc, paramsc, mainstacksize);
 
 	while((job = recvp(jobc)) != nil){
-		sc = job->scene;
 		time = nanosec();
-
+		job->times.R.t0 = time;
+		sc = job->scene;
 		if(sc->nents < 1){
 			nbsend(job->donec, nil);
 			continue;
@@ -658,6 +677,8 @@ renderer(void *arg)
 		memset(params, 0, sizeof *params);
 		params->job = job;
 		sendp(paramsc, params);
+
+		job->times.R.t1 = nanosec();
 	}
 }
 

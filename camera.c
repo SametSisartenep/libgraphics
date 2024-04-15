@@ -21,6 +21,16 @@ updatestats(Camera *c, uvlong v)
 }
 
 static void
+updatetimes(Camera *c, Renderjob *j)
+{
+	c->times.R[c->times.cur] = j->times.R;
+	c->times.E[c->times.cur] = j->times.E;
+	c->times.Tn[c->times.cur] = j->times.Tn;
+	c->times.Rn[c->times.cur] = j->times.Rn;
+	c->times.cur = ++c->times.cur % nelem(c->times.R);
+}
+
+static void
 verifycfg(Camera *c)
 {
 	assert(c->vp != nil);
@@ -98,6 +108,7 @@ shootcamera(Camera *c, Shadertab *s)
 	t1 = nanosec();
 	c->vp->fbctl->swap(c->vp->fbctl);
 
+	updatetimes(c, job);
 	chanfree(job->donec);
 	free(job);
 
