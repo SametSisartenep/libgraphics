@@ -5,7 +5,7 @@ struct Rastertask
 {
 	SUparams *params;
 	Rectangle wr;		/* working rect */
-	Triangle t;
+	Primitive p;
 };
 
 struct Tilerparam

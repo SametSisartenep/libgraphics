@@ -2,8 +2,14 @@
 
 typedef enum {
 	ORTHOGRAPHIC,
-	PERSPECTIVE
+	PERSPECTIVE,
 } Projection;
+
+enum {
+	PPoint,
+	PLine,
+	PTriangle,
+};
 
 enum {
 	LIGHT_POINT,
@@ -21,6 +27,7 @@ typedef struct Vertexattr Vertexattr;
 typedef struct Vertex Vertex;
 typedef struct LightSource LightSource;
 typedef struct Material Material;
+typedef struct Primitive Primitive;
 typedef struct Model Model;
 typedef struct Entity Entity;
 typedef struct Scene Scene;
@@ -86,8 +93,6 @@ struct Vertex
 	ulong nattrs;
 };
 
-typedef Vertex Triangle[3];
-
 struct LightSource
 {
 	Point3 p;
@@ -103,16 +108,22 @@ struct Material
 	double shininess;
 };
 
+struct Primitive
+{
+	int type;
+	Vertex v[3];
+};
+
 struct Model
 {
-	OBJ *obj;
+	Primitive *mesh;
 	Memimage *tex;		/* texture map */
 	Memimage *nor;		/* normals map */
 	Material *materials;
 	ulong nmaterials;
 
-	/* cache of renderable elems */
-	OBJElem **elems;
+	OBJ *obj;
+	OBJElem **elems;	/* cache of renderable elems */
 	ulong nelems;
 };
 
@@ -190,7 +201,7 @@ struct Renderjob
 	Channel *donec;
 
 	struct {
-		Rendertime R, E, Tn, Rn;
+		Rendertime R, E, Tn, Rn;	/* renderer, entityproc, tilers, rasterizers */
 	} times;
 
 	Renderjob *next;
@@ -199,7 +210,7 @@ struct Renderjob
 struct Framebuf
 {
 	Memimage *cb;	/* color buffer */
-	double *zbuf;	/* z/depth buffer */
+	double *zb;	/* z/depth buffer */
 	Rectangle r;
 };
 

@@ -42,13 +42,13 @@ isvisible(Point3 p)
 }
 
 static int
-isfacingback(Triangle t)
+isfacingback(Primitive p)
 {
 	double sa;	/* signed area */
 
-	sa = t[0].p.x * t[1].p.y - t[0].p.y * t[1].p.x +
-	     t[1].p.x * t[2].p.y - t[1].p.y * t[2].p.x +
-	     t[2].p.x * t[0].p.y - t[2].p.y * t[0].p.x;
+	sa = p.v[0].p.x * p.v[1].p.y - p.v[0].p.y * p.v[1].p.x +
+	     p.v[1].p.x * p.v[2].p.y - p.v[1].p.y * p.v[2].p.x +
+	     p.v[2].p.x * p.v[0].p.y - p.v[2].p.y * p.v[0].p.x;
 	return sa <= 0;
 }
 
@@ -105,7 +105,7 @@ cleanpoly(Polygon *p)
  * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
  */
 static int
-cliptriangle(Triangle *t)
+cliptriangle(Primitive *p)
 {
 	/* signed distance from each clipping plane */
 	static double sdm[6][4] = {
@@ -126,7 +126,7 @@ cliptriangle(Triangle *t)
 	memset(&Vin, 0, sizeof Vin);
 	memset(&Vout, 0, sizeof Vout);
 	for(i = 0; i < 3; i++)
-		addvert(&Vin, t[0][i]);
+		addvert(&Vin, p[0].v[i]);
 
 	for(j = 0; j < 6 && Vin.n > 0; j++){
 		for(i = 0; i < Vin.n; i++){
@@ -169,9 +169,9 @@ allin:
 			 * are referenced on every triangle, so duplicate them
 			 * to avoid complications during rasterization.
 			 */
-			t[nt][0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
-			t[nt][1] = Vout.v[i+1];
-			t[nt][2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
+			p[nt].v[0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
+			p[nt].v[1] = Vout.v[i+1];
+			p[nt].v[2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
 		}
 	free(Vout.v);
 	free(Vin.v);
@@ -295,7 +295,7 @@ static void
 rasterize(Rastertask *task)
 {
 	SUparams *params;
-	Triangle t;
+	Primitive prim;
 	FSparams fsp;
 	Triangle2 t₂;
 	Rectangle bbox;
@@ -305,11 +305,12 @@ rasterize(Rastertask *task)
 	double z, depth;
 
 	params = task->params;
-	memmove(t, task->t, sizeof t);
+	prim = task->p;
+	memmove(prim.v, task->p.v, sizeof prim.v);
 
-	t₂.p0 = Pt2(t[0].p.x, t[0].p.y, 1);
-	t₂.p1 = Pt2(t[1].p.x, t[1].p.y, 1);
-	t₂.p2 = Pt2(t[2].p.x, t[2].p.y, 1);
+	t₂.p0 = Pt2(prim.v[0].p.x, prim.v[0].p.y, 1);
+	t₂.p1 = Pt2(prim.v[1].p.x, prim.v[1].p.y, 1);
+	t₂.p2 = Pt2(prim.v[2].p.x, prim.v[2].p.y, 1);
 	/* find the triangle's bbox and clip it against the fb */
 	bbox = Rect(
 		min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x), min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y),
@@ -328,22 +329,22 @@ rasterize(Rastertask *task)
 			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 				continue;
 
-			z = fberp(t[0].p.z, t[1].p.z, t[2].p.z, bc);
+			z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
 			depth = fclamp(z, 0, 1);
-			if(depth <= params->fb->zbuf[p.x + p.y*Dx(params->fb->r)])
+			if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
 				continue;
-			params->fb->zbuf[p.x + p.y*Dx(params->fb->r)] = depth;
+			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
 
 			/* interpolate z⁻¹ and get actual z */
-			z = fberp(t[0].p.w, t[1].p.w, t[2].p.w, bc);
+			z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
 			/* perspective-correct attribute interpolation  */
-			bc.x *= t[0].p.w;
-			bc.y *= t[1].p.w;
-			bc.z *= t[2].p.w;
+			bc.x *= prim.v[0].p.w;
+			bc.y *= prim.v[1].p.w;
+			bc.z *= prim.v[2].p.w;
 			bc = mulpt3(bc, z);
-			berpvertex(&fsp.v, &t[0], &t[1], &t[2], bc);
+			berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -388,9 +389,9 @@ rasterizer(void *arg)
 		params->frag = frag;
 		rasterize(task);
 
-		delvattrs(&task->t[0]);
-		delvattrs(&task->t[1]);
-		delvattrs(&task->t[2]);
+		delvattrs(&task->p.v[0]);
+		delvattrs(&task->p.v[1]);
+		delvattrs(&task->p.v[2]);
 		params->job->times.Rn.t1 = nanosec();
 		free(params);
 		free(task);
@@ -408,17 +409,17 @@ tilerdurden(void *arg)
 	OBJIndexArray *idxtab;
 	OBJElem **ep;
 	Point3 n;				/* surface normal */
-	Triangle *t;				/* triangles to raster */
+	Primitive *p;				/* primitives to raster */
 	Rectangle *wr;
 	Channel **taskc;
 	ulong Δy, nproc;
-	int i, nt;
+	int i, np;
 	uvlong t0;
 
 	threadsetname("tilerdurden");
 
 	tp = arg;
-	t = emalloc(sizeof(*t)*16);
+	p = emalloc(sizeof(*p)*16);
 	taskc = tp->tasksc;
 	nproc = tp->nproc;
 	wr = emalloc(nproc*sizeof(Rectangle));
@@ -454,105 +455,107 @@ tilerdurden(void *arg)
 		nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
 
 		for(ep = params->eb; ep != params->ee; ep++){
-			nt = 1;	/* start with one. after clipping it might change */
+			np = 1;	/* start with one. after clipping it might change */
+
+			/* TODO handle all the primitive types */
 
 			idxtab = &(*ep)->indextab[OBJVGeometric];
-			t[0][0].p = Pt3(verts[idxtab->indices[0]].x,
-					verts[idxtab->indices[0]].y,
-					verts[idxtab->indices[0]].z,
-					verts[idxtab->indices[0]].w);
-			t[0][1].p = Pt3(verts[idxtab->indices[1]].x,
-					verts[idxtab->indices[1]].y,
-					verts[idxtab->indices[1]].z,
-					verts[idxtab->indices[1]].w);
-			t[0][2].p = Pt3(verts[idxtab->indices[2]].x,
-					verts[idxtab->indices[2]].y,
-					verts[idxtab->indices[2]].z,
-					verts[idxtab->indices[2]].w);
+			p[0].v[0].p = Pt3(verts[idxtab->indices[0]].x,
+					  verts[idxtab->indices[0]].y,
+					  verts[idxtab->indices[0]].z,
+					  verts[idxtab->indices[0]].w);
+			p[0].v[1].p = Pt3(verts[idxtab->indices[1]].x,
+					  verts[idxtab->indices[1]].y,
+					  verts[idxtab->indices[1]].z,
+					  verts[idxtab->indices[1]].w);
+			p[0].v[2].p = Pt3(verts[idxtab->indices[2]].x,
+					  verts[idxtab->indices[2]].y,
+					  verts[idxtab->indices[2]].z,
+					  verts[idxtab->indices[2]].w);
 
 			idxtab = &(*ep)->indextab[OBJVNormal];
 			if(idxtab->nindex == 3){
-				t[0][0].n = Vec3(nverts[idxtab->indices[0]].i,
-						 nverts[idxtab->indices[0]].j,
-						 nverts[idxtab->indices[0]].k);
-				t[0][0].n = normvec3(t[0][0].n);
-				t[0][1].n = Vec3(nverts[idxtab->indices[1]].i,
-						 nverts[idxtab->indices[1]].j,
-						 nverts[idxtab->indices[1]].k);
-				t[0][1].n = normvec3(t[0][1].n);
-				t[0][2].n = Vec3(nverts[idxtab->indices[2]].i,
-						 nverts[idxtab->indices[2]].j,
-						 nverts[idxtab->indices[2]].k);
-				t[0][2].n = normvec3(t[0][2].n);
+				p[0].v[0].n = Vec3(nverts[idxtab->indices[0]].i,
+						   nverts[idxtab->indices[0]].j,
+						   nverts[idxtab->indices[0]].k);
+				p[0].v[0].n = normvec3(p[0].v[0].n);
+				p[0].v[1].n = Vec3(nverts[idxtab->indices[1]].i,
+						   nverts[idxtab->indices[1]].j,
+						   nverts[idxtab->indices[1]].k);
+				p[0].v[1].n = normvec3(p[0].v[1].n);
+				p[0].v[2].n = Vec3(nverts[idxtab->indices[2]].i,
+						   nverts[idxtab->indices[2]].j,
+						   nverts[idxtab->indices[2]].k);
+				p[0].v[2].n = normvec3(p[0].v[2].n);
 			}else{
 				/* TODO build a list of per-vertex normals earlier */
-				n = normvec3(crossvec3(subpt3(t[0][1].p, t[0][0].p), subpt3(t[0][2].p, t[0][0].p)));
-				t[0][0].n = t[0][1].n = t[0][2].n = n;
+				n = normvec3(crossvec3(subpt3(p[0].v[1].p, p[0].v[0].p), subpt3(p[0].v[2].p, p[0].v[0].p)));
+				p[0].v[0].n = p[0].v[1].n = p[0].v[2].n = n;
 			}
 
 			idxtab = &(*ep)->indextab[OBJVTexture];
 			if(idxtab->nindex == 3){
-				t[0][0].uv = Pt2(tverts[idxtab->indices[0]].u,
-						 tverts[idxtab->indices[0]].v, 1);
-				t[0][1].uv = Pt2(tverts[idxtab->indices[1]].u,
-						 tverts[idxtab->indices[1]].v, 1);
-				t[0][2].uv = Pt2(tverts[idxtab->indices[2]].u,
-						 tverts[idxtab->indices[2]].v, 1);
+				p[0].v[0].uv = Pt2(tverts[idxtab->indices[0]].u,
+						   tverts[idxtab->indices[0]].v, 1);
+				p[0].v[1].uv = Pt2(tverts[idxtab->indices[1]].u,
+						   tverts[idxtab->indices[1]].v, 1);
+				p[0].v[2].uv = Pt2(tverts[idxtab->indices[2]].u,
+						   tverts[idxtab->indices[2]].v, 1);
 			}else{
-				t[0][0].uv = t[0][1].uv = t[0][2].uv = Vec2(0,0);
+				p[0].v[0].uv = p[0].v[1].uv = p[0].v[2].uv = Vec2(0,0);
 			}
 
 			for(i = 0; i < 3; i++){
-				t[0][i].c = Pt3(1,1,1,1);
-				t[0][i].mtl = (*ep)->mtl;
-				t[0][i].attrs = nil;
-				t[0][i].nattrs = 0;
+				p[0].v[i].c = Pt3(1,1,1,1);
+				p[0].v[i].mtl = (*ep)->mtl;
+				p[0].v[i].attrs = nil;
+				p[0].v[i].nattrs = 0;
 			}
 
-			vsp.v = &t[0][0];
+			vsp.v = &p[0].v[0];
 			vsp.idx = 0;
-			t[0][0].p = params->vshader(&vsp);
-			vsp.v = &t[0][1];
+			p[0].v[0].p = params->vshader(&vsp);
+			vsp.v = &p[0].v[1];
 			vsp.idx = 1;
-			t[0][1].p = params->vshader(&vsp);
-			vsp.v = &t[0][2];
+			p[0].v[1].p = params->vshader(&vsp);
+			vsp.v = &p[0].v[2];
 			vsp.idx = 2;
-			t[0][2].p = params->vshader(&vsp);
+			p[0].v[2].p = params->vshader(&vsp);
 
-			if(!isvisible(t[0][0].p) || !isvisible(t[0][1].p) || !isvisible(t[0][2].p))
-				nt = cliptriangle(t);
+			if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p) || !isvisible(p[0].v[2].p))
+				np = cliptriangle(p);
 
-			while(nt--){
-				t[nt][0].p = clip2ndc(t[nt][0].p);
-				t[nt][1].p = clip2ndc(t[nt][1].p);
-				t[nt][2].p = clip2ndc(t[nt][2].p);
+			while(np--){
+				p[np].v[0].p = clip2ndc(p[np].v[0].p);
+				p[np].v[1].p = clip2ndc(p[np].v[1].p);
+				p[np].v[2].p = clip2ndc(p[np].v[2].p);
 
 				/* culling */
-//				if(isfacingback(t[nt]))
+//				if(isfacingback(p[np]))
 //					goto skiptri;
 
-				t[nt][0].p = ndc2viewport(params->fb, t[nt][0].p);
-				t[nt][1].p = ndc2viewport(params->fb, t[nt][1].p);
-				t[nt][2].p = ndc2viewport(params->fb, t[nt][2].p);
+				p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
+				p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
+				p[np].v[2].p = ndc2viewport(params->fb, p[np].v[2].p);
 
 				for(i = 0; i < nproc; i++)
-					if(ptinrect(Pt(t[nt][0].p.x,t[nt][0].p.y),wr[i]) ||
-					   ptinrect(Pt(t[nt][1].p.x,t[nt][1].p.y),wr[i]) ||
-					   ptinrect(Pt(t[nt][2].p.x,t[nt][2].p.y),wr[i])){
+					if(ptinrect(Pt(p[np].v[0].p.x,p[np].v[0].p.y),wr[i]) ||
+					   ptinrect(Pt(p[np].v[1].p.x,p[np].v[1].p.y),wr[i]) ||
+					   ptinrect(Pt(p[np].v[2].p.x,p[np].v[2].p.y),wr[i])){
 						newparams = emalloc(sizeof *newparams);
 						*newparams = *params;
 						task = emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
-						task->t[0] = dupvertex(&t[nt][0]);
-						task->t[1] = dupvertex(&t[nt][1]);
-						task->t[2] = dupvertex(&t[nt][2]);
+						task->p.v[0] = dupvertex(&p[np].v[0]);
+						task->p.v[1] = dupvertex(&p[np].v[1]);
+						task->p.v[2] = dupvertex(&p[np].v[2]);
 						sendp(taskc[i], task);
 					}
 //skiptri:
-				delvattrs(&t[nt][0]);
-				delvattrs(&t[nt][1]);
-				delvattrs(&t[nt][2]);
+				delvattrs(&p[np].v[0]);
+				delvattrs(&p[np].v[1]);
+				delvattrs(&p[np].v[2]);
 			}
 		}
 		params->job->times.Tn.t1 = nanosec();

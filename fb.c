@@ -45,7 +45,7 @@ framebufctl_reset(Framebufctl *ctl)
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
-	memsetd(fb->zbuf, Inf(-1), Dx(fb->r)*Dy(fb->r));
+	memsetd(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
 	memfillcolor(fb->cb, DTransparent);
 }
 
@@ -69,8 +69,8 @@ mkfb(Rectangle r)
 	fb = emalloc(sizeof *fb);
 	memset(fb, 0, sizeof *fb);
 	fb->cb = eallocmemimage(r, RGBA32);
-	fb->zbuf = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zbuf));
-	memsetd(fb->zbuf, Inf(-1), Dx(r)*Dy(r));
+	fb->zb = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zb));
+	memsetd(fb->zb, Inf(-1), Dx(r)*Dy(r));
 	fb->r = r;
 	return fb;
 }
@@ -78,7 +78,7 @@ mkfb(Rectangle r)
 void
 rmfb(Framebuf *fb)
 {
-	free(fb->zbuf);
+	free(fb->zb);
 	freememimage(fb->cb);
 	free(fb);
 }
