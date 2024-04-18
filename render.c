@@ -311,11 +311,11 @@ rasterize(Rastertask *task)
 	t₂.p0 = Pt2(prim.v[0].p.x, prim.v[0].p.y, 1);
 	t₂.p1 = Pt2(prim.v[1].p.x, prim.v[1].p.y, 1);
 	t₂.p2 = Pt2(prim.v[2].p.x, prim.v[2].p.y, 1);
-	/* find the triangle's bbox and clip it against the fb */
-	bbox = Rect(
-		min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x), min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y),
-		max(max(t₂.p0.x, t₂.p1.x), t₂.p2.x)+1, max(max(t₂.p0.y, t₂.p1.y), t₂.p2.y)+1
-	);
+	/* find the triangle's bbox and clip it against our wr */
+	bbox.min.x = min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x);
+	bbox.min.y = min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y);
+	bbox.max.x = max(max(t₂.p0.x, t₂.p1.x), t₂.p2.x)+1;
+	bbox.max.y = max(max(t₂.p0.y, t₂.p1.y), t₂.p2.y)+1;
 	bbox.min.x = max(bbox.min.x, task->wr.min.x);
 	bbox.min.y = max(bbox.min.y, task->wr.min.y);
 	bbox.max.x = min(bbox.max.x, task->wr.max.x);
@@ -410,7 +410,7 @@ tilerdurden(void *arg)
 	OBJElem **ep;
 	Point3 n;				/* surface normal */
 	Primitive *p;				/* primitives to raster */
-	Rectangle *wr;
+	Rectangle *wr, bbox;
 	Channel **taskc;
 	ulong Δy, nproc;
 	int i, np;
@@ -540,10 +540,13 @@ tilerdurden(void *arg)
 				p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
 				p[np].v[2].p = ndc2viewport(params->fb, p[np].v[2].p);
 
+				bbox.min.x = min(min(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x);
+				bbox.min.y = min(min(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y);
+				bbox.max.x = max(max(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x)+1;
+				bbox.max.y = max(max(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y)+1;
+
 				for(i = 0; i < nproc; i++)
-					if(ptinrect(Pt(p[np].v[0].p.x,p[np].v[0].p.y),wr[i]) ||
-					   ptinrect(Pt(p[np].v[1].p.x,p[np].v[1].p.y),wr[i]) ||
-					   ptinrect(Pt(p[np].v[2].p.x,p[np].v[2].p.y),wr[i])){
+					if(rectXrect(bbox,wr[i])){
 						newparams = emalloc(sizeof *newparams);
 						*newparams = *params;
 						task = emalloc(sizeof *task);
