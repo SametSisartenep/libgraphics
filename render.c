@@ -449,6 +449,8 @@ tilerdurden(void *arg)
 		wr[0].max.y = wr[0].min.y + Δy;
 		for(i = 1; i < nproc; i++)
 			wr[i] = rectaddpt(wr[i-1], Pt(0,Δy));
+		if(wr[nproc-1].max.y < params->fb->r.max.y)
+			wr[nproc-1].max.y = params->fb->r.max.y;
 
 		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
 		tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
