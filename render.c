@@ -358,18 +358,18 @@ rasterize(Rastertask *task)
 static void
 rasterizer(void *arg)
 {
-	Channel *taskc;
+	Rasterparam *rp;
 	Rastertask *task;
 	SUparams *params;
 	Memimage *frag;
 	uvlong t0;
 
-	threadsetname("rasterizer");
-
-	taskc = arg;
+	rp = arg;
 	frag = rgb(DBlack);
 
-	while((task = recvp(taskc)) != nil){
+	threadsetname("rasterizer %d", rp->id);
+
+	while((task = recvp(rp->taskc)) != nil){
 		t0 = nanosec();
 
 		params = task->params;
@@ -411,18 +411,18 @@ tilerdurden(void *arg)
 	Point3 n;				/* surface normal */
 	Primitive *p;				/* primitives to raster */
 	Rectangle *wr, bbox;
-	Channel **taskc;
+	Channel **taskchans;
 	ulong Δy, nproc;
 	int i, np;
 	uvlong t0;
 
-	threadsetname("tilerdurden");
-
 	tp = arg;
 	p = emalloc(sizeof(*p)*16);
-	taskc = tp->tasksc;
+	taskchans = tp->taskchans;
 	nproc = tp->nproc;
 	wr = emalloc(nproc*sizeof(Rectangle));
+
+	threadsetname("tilerdurden %d", tp->id);
 
 	while((params = recvp(tp->paramsc)) != nil){
 		t0 = nanosec();
@@ -437,7 +437,7 @@ tilerdurden(void *arg)
 					task = emalloc(sizeof *task);
 					memset(task, 0, sizeof *task);
 					task->params = params;
-					sendp(taskc[i], task);
+					sendp(taskchans[i], task);
 				}
 			}
 			continue;
@@ -555,7 +555,7 @@ tilerdurden(void *arg)
 						task->p.v[0] = dupvertex(&p[np].v[0]);
 						task->p.v[1] = dupvertex(&p[np].v[1]);
 						task->p.v[2] = dupvertex(&p[np].v[2]);
-						sendp(taskc[i], task);
+						sendp(taskchans[i], task);
 					}
 //skiptri:
 				delvattrs(&p[np].v[0]);
@@ -571,8 +571,9 @@ tilerdurden(void *arg)
 static void
 entityproc(void *arg)
 {
-	Channel *paramsin, **paramsout, **taskc;
+	Channel *paramsin, **paramsout, **taskchans;
 	Tilerparam *tp;
+	Rasterparam *rp;
 	SUparams *params, *newparams;
 	OBJElem **eb, **ee;
 	char *nprocs;
@@ -591,18 +592,21 @@ entityproc(void *arg)
 	free(nprocs);
 
 	paramsout = emalloc(nproc*sizeof(*paramsout));
-	taskc = emalloc(nproc*sizeof(*taskc));
+	taskchans = emalloc(nproc*sizeof(*taskchans));
 	for(i = 0; i < nproc; i++){
 		paramsout[i] = chancreate(sizeof(SUparams*), 8);
 		tp = emalloc(sizeof *tp);
+		tp->id = i;
 		tp->paramsc = paramsout[i];
-		tp->tasksc = taskc;
+		tp->taskchans = taskchans;
 		tp->nproc = nproc;
 		proccreate(tilerdurden, tp, mainstacksize);
 	}
 	for(i = 0; i < nproc; i++){
-		taskc[i] = chancreate(sizeof(Rastertask*), 32);
-		proccreate(rasterizer, taskc[i], mainstacksize);
+		rp = emalloc(sizeof *rp);
+		rp->id = i;
+		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask*), 32);
+		proccreate(rasterizer, rp, mainstacksize);
 	}
 
 	while((params = recvp(paramsin)) != nil){

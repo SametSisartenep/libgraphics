@@ -108,9 +108,9 @@ shootcamera(Camera *c, Shadertab *s)
 	t1 = nanosec();
 	c->vp->fbctl->swap(c->vp->fbctl);
 
+	updatestats(c, t1-t0);
 	updatetimes(c, job);
+
 	chanfree(job->donec);
 	free(job);
-
-	updatestats(c, t1-t0);
 }

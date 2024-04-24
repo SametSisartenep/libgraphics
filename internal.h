@@ -1,19 +1,27 @@
 typedef struct Tilerparam Tilerparam;
+typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
+
+struct Tilerparam
+{
+	int id;
+	Channel *paramsc;
+	Channel **taskchans;	/* Channel*[nproc] */
+	Rectangle *wr;		/* Rectangle[nproc] */
+	ulong nproc;
+};
+
+struct Rasterparam
+{
+	int id;
+	Channel *taskc;
+};
 
 struct Rastertask
 {
 	SUparams *params;
 	Rectangle wr;		/* working rect */
 	Primitive p;
-};
-
-struct Tilerparam
-{
-	Channel *paramsc;
-	Channel **tasksc;	/* Channel*[nproc] */
-	Rectangle *wr;		/* Rectangle[nproc] */
-	ulong nproc;
 };
 
 /* alloc */
