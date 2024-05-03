@@ -205,7 +205,8 @@ rasterize(Rastertask *task)
 		p0 = Pt(prim.v[0].p.x, prim.v[0].p.y);
 		p1 = Pt(prim.v[1].p.x, prim.v[1].p.y);
 		/* clip it against our wr */
-		rectclipline(task->wr, &p0, &p1);
+		if(rectclipline(task->wr, &p0, &p1) < 0)
+			break;
 
 		/* transpose the points */
 		if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){

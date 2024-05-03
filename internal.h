@@ -52,7 +52,7 @@ void fprintvattrs(int, Vertex*);
 
 /* clip */
 int clipprimitive(Primitive*);
-void rectclipline(Rectangle, Point*, Point*);
+int rectclipline(Rectangle, Point*, Point*);
 
 /* util */
 int min(int, int);

@@ -179,22 +179,25 @@ outcode(Point p, Rectangle r)
 /*
  * Cohen-Sutherland rectangle-line clipping
  */
-void
+int
 rectclipline(Rectangle r, Point *p0, Point *p1)
 {
 	int code0, code1;
-	int Δx;
+	int Δx, Δy;
 	double m;
 
 	Δx = p1->x - p0->x;
-	m = Δx == 0? 0: (p1->y - p0->y)/Δx;
+	Δy = p1->y - p0->y;
+	m = Δx == 0? 0: (double)Δy/Δx;
 
 	for(;;){
 		code0 = outcode(*p0, r);
 		code1 = outcode(*p1, r);
 
-		if(lineisinside(code0, code1) || lineisoutside(code0, code1))
-			break;
+		if(lineisinside(code0, code1))
+			return 0;
+		else if(lineisoutside(code0, code1))
+			return -1;
 
 		if(ptisinside(code0)){
 			swappt(p0, p1);
@@ -207,11 +210,11 @@ rectclipline(Rectangle r, Point *p0, Point *p1)
 		}else if(code0 & CLIPR){
 			p0->y += (r.max.x - p0->x)*m;
 			p0->x = r.max.x;
-		}else if(code0 & CLIPB){
+		}else if(code0 & CLIPT){
 			if(p0->x != p1->x && m != 0)
 				p0->x += (r.min.y - p0->y)/m;
 			p0->y = r.min.y;
-		}else if(code0 & CLIPT){
+		}else if(code0 & CLIPB){
 			if(p0->x != p1->x && m != 0)
 				p0->x += (r.max.y - p0->y)/m;
 			p0->y = r.max.y;
