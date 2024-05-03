@@ -52,133 +52,6 @@ isfacingback(Primitive p)
 	return sa <= 0;
 }
 
-static void
-mulsdm(double r[6], double m[6][4], Point3 p)
-{
-	int i;
-
-	for(i = 0; i < 6; i++)
-		r[i] = m[i][0]*p.x + m[i][1]*p.y + m[i][2]*p.z + m[i][3]*p.w;
-}
-
-typedef struct
-{
-	Vertex *v;
-	ulong n;
-	ulong cap;
-} Polygon;
-
-static int
-addvert(Polygon *p, Vertex v)
-{
-	if(++p->n > p->cap)
-		p->v = erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
-	p->v[p->n-1] = v;
-	return p->n;
-}
-
-static void
-swappoly(Polygon *a, Polygon *b)
-{
-	Polygon tmp;
-
-	tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-static void
-cleanpoly(Polygon *p)
-{
-	int i;
-
-	for(i = 0; i < p->n; i++)
-		delvattrs(&p->v[i]);
-	p->n = 0;
-}
-
-/*
- * references:
- * 	- James F. Blinn, Martin E. Newell, “Clipping Using Homogeneous Coordinates”,
- * 	  SIGGRAPH '78, pp. 245-251
- * 	- https://cs418.cs.illinois.edu/website/text/clipping.html
- * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
- */
-static int
-cliptriangle(Primitive *p)
-{
-	/* signed distance from each clipping plane */
-	static double sdm[6][4] = {
-		 1,  0,  0, 1,	/* l */
-		-1,  0,  0, 1,	/* r */
-		 0,  1,  0, 1,	/* b */
-		 0, -1,  0, 1,	/* t */
-		 0,  0,  1, 1,	/* f */
-		 0,  0, -1, 1,	/* n */
-	};
-	double sd0[6], sd1[6];
-	double d0, d1, perc;
-	Polygon Vin, Vout;
-	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
-	int i, j, nt;
-
-	nt = 0;
-	memset(&Vin, 0, sizeof Vin);
-	memset(&Vout, 0, sizeof Vout);
-	for(i = 0; i < 3; i++)
-		addvert(&Vin, p[0].v[i]);
-
-	for(j = 0; j < 6 && Vin.n > 0; j++){
-		for(i = 0; i < Vin.n; i++){
-			v0 = &Vin.v[i];
-			v1 = &Vin.v[(i+1) % Vin.n];
-
-			mulsdm(sd0, sdm, v0->p);
-			mulsdm(sd1, sdm, v1->p);
-
-			if(sd0[j] < 0 && sd1[j] < 0)
-				continue;
-
-			if(sd0[j] >= 0 && sd1[j] >= 0)
-				goto allin;
-
-			d0 = (j&1) == 0? sd0[j]: -sd0[j];
-			d1 = (j&1) == 0? sd1[j]: -sd1[j];
-			perc = d0/(d0 - d1);
-
-			lerpvertex(&v, v0, v1, perc);
-			addvert(&Vout, v);
-
-			if(sd1[j] >= 0){
-allin:
-				addvert(&Vout, dupvertex(v1));
-			}
-		}
-		cleanpoly(&Vin);
-		if(j < 6-1)
-			swappoly(&Vin, &Vout);
-	}
-
-	/* triangulate */
-	if(Vout.n < 3)
-		cleanpoly(&Vout);
-	else
-		for(i = 0; i < Vout.n-2; i++, nt++){
-			/*
-			 * when performing fan triangulation, indices 0 and 2
-			 * are referenced on every triangle, so duplicate them
-			 * to avoid complications during rasterization.
-			 */
-			p[nt].v[0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
-			p[nt].v[1] = Vout.v[i+1];
-			p[nt].v[2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
-		}
-	free(Vout.v);
-	free(Vin.v);
-
-	return nt;
-}
-
 /*
  * transforms p from e's reference frame into
  * the world.
@@ -297,54 +170,83 @@ rasterize(Rastertask *task)
 	SUparams *params;
 	Primitive prim;
 	FSparams fsp;
-	Triangle2 t₂;
+	Triangle2 t;
 	Rectangle bbox;
-	Point p;
+	Point p, dp, Δp, p0, p1;
 	Point3 bc;
 	Color c;
-	double z, depth;
+	double z, depth, dplen, perc;
+	int steep = 0, Δe, e, Δy;
 
 	params = task->params;
 	prim = task->p;
 	memmove(prim.v, task->p.v, sizeof prim.v);
-
-	t₂.p0 = Pt2(prim.v[0].p.x, prim.v[0].p.y, 1);
-	t₂.p1 = Pt2(prim.v[1].p.x, prim.v[1].p.y, 1);
-	t₂.p2 = Pt2(prim.v[2].p.x, prim.v[2].p.y, 1);
-	/* find the triangle's bbox and clip it against our wr */
-	bbox.min.x = min(min(t₂.p0.x, t₂.p1.x), t₂.p2.x);
-	bbox.min.y = min(min(t₂.p0.y, t₂.p1.y), t₂.p2.y);
-	bbox.max.x = max(max(t₂.p0.x, t₂.p1.x), t₂.p2.x)+1;
-	bbox.max.y = max(max(t₂.p0.y, t₂.p1.y), t₂.p2.y)+1;
-	bbox.min.x = max(bbox.min.x, task->wr.min.x);
-	bbox.min.y = max(bbox.min.y, task->wr.min.y);
-	bbox.max.x = min(bbox.max.x, task->wr.max.x);
-	bbox.max.y = min(bbox.max.y, task->wr.max.y);
 	fsp.su = params;
 	memset(&fsp.v, 0, sizeof fsp.v);
 
-	for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
-		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
-			bc = barycoords(t₂, Pt2(p.x,p.y,1));
-			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
-				continue;
+	switch(prim.type){
+	case PPoint:
+		p = Pt(prim.v[0].p.x, prim.v[0].p.y);
 
-			z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
+		depth = fclamp(prim.v[0].p.z, 0, 1);
+		if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+			break;
+		params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
+
+		fsp.v = dupvertex(&prim.v[0]);
+		fsp.p = p;
+		c = params->fshader(&fsp);
+		memfillcolor(params->frag, col2ul(c));
+
+		pixel(params->fb->cb, p, params->frag);
+		delvattrs(&fsp.v);
+		break;
+	case PLine:
+		p0 = Pt(prim.v[0].p.x, prim.v[0].p.y);
+		p1 = Pt(prim.v[1].p.x, prim.v[1].p.y);
+		/* clip it against our wr */
+		rectclipline(task->wr, &p0, &p1);
+
+		/* transpose the points */
+		if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){
+			steep = 1;
+			swapi(&p0.x, &p0.y);
+			swapi(&p1.x, &p1.y);
+		}
+
+		/* make them left-to-right */
+		if(p0.x > p1.x){
+			swapi(&p0.x, &p1.x);
+			swapi(&p0.y, &p1.y);
+		}
+
+		dp = subpt(p1, p0);
+		Δe = 2*abs(dp.y);
+		e = 0;
+		Δy = p1.y > p0.y? 1: -1;
+
+		/* TODO find out why sometimes lines go invisible depending on their location */
+
+		for(p = p0; p.x <= p1.x; p.x++){
+			Δp = subpt(p, p0);
+			dplen = hypot(dp.x, dp.y);
+			perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
+
+			if(steep) swapi(&p.x, &p.y);
+
+			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			depth = fclamp(z, 0, 1);
 			if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-				continue;
+				break;
 			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
 
 			/* interpolate z⁻¹ and get actual z */
-			z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
+			z = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
 			z = 1.0/(z < 1e-5? 1e-5: z);
 
 			/* perspective-correct attribute interpolation  */
-			bc.x *= prim.v[0].p.w;
-			bc.y *= prim.v[1].p.w;
-			bc.z *= prim.v[2].p.w;
-			bc = mulpt3(bc, z);
-			berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
+			perc *= prim.v[0].p.w * z;
+			lerpvertex(&fsp.v, &prim.v[0], &prim.v[1], perc);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -352,7 +254,62 @@ rasterize(Rastertask *task)
 
 			pixel(params->fb->cb, p, params->frag);
 			delvattrs(&fsp.v);
+
+			if(steep) swapi(&p.x, &p.y);
+
+			e += Δe;
+			if(e > dp.x){
+				p.y += Δy;
+				e -= 2*dp.x;
+			}
 		}
+		break;
+	case PTriangle:
+		t.p0 = Pt2(prim.v[0].p.x, prim.v[0].p.y, 1);
+		t.p1 = Pt2(prim.v[1].p.x, prim.v[1].p.y, 1);
+		t.p2 = Pt2(prim.v[2].p.x, prim.v[2].p.y, 1);
+		/* find the triangle's bbox and clip it against our wr */
+		bbox.min.x = min(min(t.p0.x, t.p1.x), t.p2.x);
+		bbox.min.y = min(min(t.p0.y, t.p1.y), t.p2.y);
+		bbox.max.x = max(max(t.p0.x, t.p1.x), t.p2.x)+1;
+		bbox.max.y = max(max(t.p0.y, t.p1.y), t.p2.y)+1;
+		bbox.min.x = max(bbox.min.x, task->wr.min.x);
+		bbox.min.y = max(bbox.min.y, task->wr.min.y);
+		bbox.max.x = min(bbox.max.x, task->wr.max.x);
+		bbox.max.y = min(bbox.max.y, task->wr.max.y);
+
+		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
+			for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
+				bc = barycoords(t, Pt2(p.x,p.y,1));
+				if(bc.x < 0 || bc.y < 0 || bc.z < 0)
+					continue;
+
+				z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
+				depth = fclamp(z, 0, 1);
+				if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+					continue;
+				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
+
+				/* interpolate z⁻¹ and get actual z */
+				z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
+				z = 1.0/(z < 1e-5? 1e-5: z);
+
+				/* perspective-correct attribute interpolation  */
+				bc.x *= prim.v[0].p.w;
+				bc.y *= prim.v[1].p.w;
+				bc.z *= prim.v[2].p.w;
+				bc = mulpt3(bc, z);
+				berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
+
+				fsp.p = p;
+				c = params->fshader(&fsp);
+				memfillcolor(params->frag, col2ul(c));
+
+				pixel(params->fb->cb, p, params->frag);
+				delvattrs(&fsp.v);
+			}
+		break;
+	}
 }
 
 static void
@@ -363,6 +320,7 @@ rasterizer(void *arg)
 	SUparams *params;
 	Memimage *frag;
 	uvlong t0;
+	int i;
 
 	rp = arg;
 	frag = rgb(DBlack);
@@ -389,9 +347,8 @@ rasterizer(void *arg)
 		params->frag = frag;
 		rasterize(task);
 
-		delvattrs(&task->p.v[0]);
-		delvattrs(&task->p.v[1]);
-		delvattrs(&task->p.v[2]);
+		for(i = 0; i < task->p.type+1; i++)
+			delvattrs(&task->p.v[i]);
 		params->job->times.Rn.t1 = nanosec();
 		free(params);
 		free(task);
@@ -405,11 +362,7 @@ tilerdurden(void *arg)
 	SUparams *params, *newparams;
 	Rastertask *task;
 	VSparams vsp;
-	OBJVertex *verts, *tverts, *nverts;	/* geometric, texture and normals vertices */
-	OBJIndexArray *idxtab;
-	OBJElem **ep;
-	Point3 n;				/* surface normal */
-	Primitive *p;				/* primitives to raster */
+	Primitive *ep, *p;			/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
 	ulong Δy, nproc;
@@ -452,98 +405,31 @@ tilerdurden(void *arg)
 		if(wr[nproc-1].max.y < params->fb->r.max.y)
 			wr[nproc-1].max.y = params->fb->r.max.y;
 
-		verts = params->entity->mdl->obj->vertdata[OBJVGeometric].verts;
-		tverts = params->entity->mdl->obj->vertdata[OBJVTexture].verts;
-		nverts = params->entity->mdl->obj->vertdata[OBJVNormal].verts;
-
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			/* TODO handle all the primitive types */
+			memmove(p, ep, sizeof *p);
+			switch(ep->type){
+			case PPoint:
+				p[0].v[0].c = Pt3(1,1,1,1);
+				p[0].v[0].mtl = ep->mtl;
+				p[0].v[0].attrs = nil;
+				p[0].v[0].nattrs = 0;
 
-			idxtab = &(*ep)->indextab[OBJVGeometric];
-			p[0].v[0].p = Pt3(verts[idxtab->indices[0]].x,
-					  verts[idxtab->indices[0]].y,
-					  verts[idxtab->indices[0]].z,
-					  verts[idxtab->indices[0]].w);
-			p[0].v[1].p = Pt3(verts[idxtab->indices[1]].x,
-					  verts[idxtab->indices[1]].y,
-					  verts[idxtab->indices[1]].z,
-					  verts[idxtab->indices[1]].w);
-			p[0].v[2].p = Pt3(verts[idxtab->indices[2]].x,
-					  verts[idxtab->indices[2]].y,
-					  verts[idxtab->indices[2]].z,
-					  verts[idxtab->indices[2]].w);
+				vsp.v = &p[0].v[0];
+				vsp.idx = 0;
+				p[0].v[0].p = params->vshader(&vsp);
 
-			idxtab = &(*ep)->indextab[OBJVNormal];
-			if(idxtab->nindex == 3){
-				p[0].v[0].n = Vec3(nverts[idxtab->indices[0]].i,
-						   nverts[idxtab->indices[0]].j,
-						   nverts[idxtab->indices[0]].k);
-				p[0].v[0].n = normvec3(p[0].v[0].n);
-				p[0].v[1].n = Vec3(nverts[idxtab->indices[1]].i,
-						   nverts[idxtab->indices[1]].j,
-						   nverts[idxtab->indices[1]].k);
-				p[0].v[1].n = normvec3(p[0].v[1].n);
-				p[0].v[2].n = Vec3(nverts[idxtab->indices[2]].i,
-						   nverts[idxtab->indices[2]].j,
-						   nverts[idxtab->indices[2]].k);
-				p[0].v[2].n = normvec3(p[0].v[2].n);
-			}else{
-				/* TODO build a list of per-vertex normals earlier */
-				n = normvec3(crossvec3(subpt3(p[0].v[1].p, p[0].v[0].p), subpt3(p[0].v[2].p, p[0].v[0].p)));
-				p[0].v[0].n = p[0].v[1].n = p[0].v[2].n = n;
-			}
+				if(!isvisible(p[0].v[0].p))
+					break;
 
-			idxtab = &(*ep)->indextab[OBJVTexture];
-			if(idxtab->nindex == 3){
-				p[0].v[0].uv = Pt2(tverts[idxtab->indices[0]].u,
-						   tverts[idxtab->indices[0]].v, 1);
-				p[0].v[1].uv = Pt2(tverts[idxtab->indices[1]].u,
-						   tverts[idxtab->indices[1]].v, 1);
-				p[0].v[2].uv = Pt2(tverts[idxtab->indices[2]].u,
-						   tverts[idxtab->indices[2]].v, 1);
-			}else{
-				p[0].v[0].uv = p[0].v[1].uv = p[0].v[2].uv = Vec2(0,0);
-			}
+				p[0].v[0].p = clip2ndc(p[0].v[0].p);
+				p[0].v[0].p = ndc2viewport(params->fb, p[0].v[0].p);
 
-			for(i = 0; i < 3; i++){
-				p[0].v[i].c = Pt3(1,1,1,1);
-				p[0].v[i].mtl = (*ep)->mtl;
-				p[0].v[i].attrs = nil;
-				p[0].v[i].nattrs = 0;
-			}
-
-			vsp.v = &p[0].v[0];
-			vsp.idx = 0;
-			p[0].v[0].p = params->vshader(&vsp);
-			vsp.v = &p[0].v[1];
-			vsp.idx = 1;
-			p[0].v[1].p = params->vshader(&vsp);
-			vsp.v = &p[0].v[2];
-			vsp.idx = 2;
-			p[0].v[2].p = params->vshader(&vsp);
-
-			if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p) || !isvisible(p[0].v[2].p))
-				np = cliptriangle(p);
-
-			while(np--){
-				p[np].v[0].p = clip2ndc(p[np].v[0].p);
-				p[np].v[1].p = clip2ndc(p[np].v[1].p);
-				p[np].v[2].p = clip2ndc(p[np].v[2].p);
-
-				/* culling */
-//				if(isfacingback(p[np]))
-//					goto skiptri;
-
-				p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
-				p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
-				p[np].v[2].p = ndc2viewport(params->fb, p[np].v[2].p);
-
-				bbox.min.x = min(min(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x);
-				bbox.min.y = min(min(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y);
-				bbox.max.x = max(max(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x)+1;
-				bbox.max.y = max(max(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y)+1;
+				bbox.min.x = p[0].v[0].p.x;
+				bbox.min.y = p[0].v[0].p.y;
+				bbox.max.x = p[0].v[0].p.x+1;
+				bbox.max.y = p[0].v[0].p.y+1;
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox,wr[i])){
@@ -552,15 +438,112 @@ tilerdurden(void *arg)
 						task = emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
-						task->p.v[0] = dupvertex(&p[np].v[0]);
-						task->p.v[1] = dupvertex(&p[np].v[1]);
-						task->p.v[2] = dupvertex(&p[np].v[2]);
+						memmove(&task->p, &p[0], sizeof task->p);
+						task->p.v[0] = dupvertex(&p[0].v[0]);
 						sendp(taskchans[i], task);
 					}
+				delvattrs(&p[0].v[0]);
+				break;
+			case PLine:
+				for(i = 0; i < 2; i++){
+					p[0].v[i].c = Pt3(1,1,1,1);
+					p[0].v[i].mtl = ep->mtl;
+					p[0].v[i].attrs = nil;
+					p[0].v[i].nattrs = 0;
+
+					vsp.v = &p[0].v[i];
+					vsp.idx = i;
+					p[0].v[i].p = params->vshader(&vsp);
+				}
+
+				if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p))
+					np = clipprimitive(p);
+
+				while(np--){
+					p[np].v[0].p = clip2ndc(p[np].v[0].p);
+					p[np].v[1].p = clip2ndc(p[np].v[1].p);
+
+					/* culling */
+//					if(isfacingback(p[np]))
+//						goto skiptri2;
+
+					p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
+					p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
+
+					bbox.min.x = min(p[np].v[0].p.x, p[np].v[1].p.x);
+					bbox.min.y = min(p[np].v[0].p.y, p[np].v[1].p.y);
+					bbox.max.x = max(p[np].v[0].p.x, p[np].v[1].p.x)+1;
+					bbox.max.y = max(p[np].v[0].p.y, p[np].v[1].p.y)+1;
+
+					for(i = 0; i < nproc; i++)
+						if(rectXrect(bbox,wr[i])){
+							newparams = emalloc(sizeof *newparams);
+							*newparams = *params;
+							task = emalloc(sizeof *task);
+							task->params = newparams;
+							task->wr = wr[i];
+							memmove(&task->p, &p[np], sizeof task->p);
+							task->p.v[0] = dupvertex(&p[np].v[0]);
+							task->p.v[1] = dupvertex(&p[np].v[1]);
+							sendp(taskchans[i], task);
+						}
+//skiptri2:
+					delvattrs(&p[np].v[0]);
+					delvattrs(&p[np].v[1]);
+				}
+				break;
+			case PTriangle:
+				for(i = 0; i < 3; i++){
+					p[0].v[i].c = Pt3(1,1,1,1);
+					p[0].v[i].mtl = p->mtl;
+					p[0].v[i].attrs = nil;
+					p[0].v[i].nattrs = 0;
+
+					vsp.v = &p[0].v[i];
+					vsp.idx = i;
+					p[0].v[i].p = params->vshader(&vsp);
+				}
+
+				if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p) || !isvisible(p[0].v[2].p))
+					np = clipprimitive(p);
+
+				while(np--){
+					p[np].v[0].p = clip2ndc(p[np].v[0].p);
+					p[np].v[1].p = clip2ndc(p[np].v[1].p);
+					p[np].v[2].p = clip2ndc(p[np].v[2].p);
+
+					/* culling */
+//					if(isfacingback(p[np]))
+//						goto skiptri;
+
+					p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
+					p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
+					p[np].v[2].p = ndc2viewport(params->fb, p[np].v[2].p);
+
+					bbox.min.x = min(min(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x);
+					bbox.min.y = min(min(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y);
+					bbox.max.x = max(max(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x)+1;
+					bbox.max.y = max(max(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y)+1;
+
+					for(i = 0; i < nproc; i++)
+						if(rectXrect(bbox,wr[i])){
+							newparams = emalloc(sizeof *newparams);
+							*newparams = *params;
+							task = emalloc(sizeof *task);
+							task->params = newparams;
+							task->wr = wr[i];
+							memmove(&task->p, &p[np], sizeof task->p);
+							task->p.v[0] = dupvertex(&p[np].v[0]);
+							task->p.v[1] = dupvertex(&p[np].v[1]);
+							task->p.v[2] = dupvertex(&p[np].v[2]);
+							sendp(taskchans[i], task);
+						}
 //skiptri:
-				delvattrs(&p[np].v[0]);
-				delvattrs(&p[np].v[1]);
-				delvattrs(&p[np].v[2]);
+					delvattrs(&p[np].v[0]);
+					delvattrs(&p[np].v[1]);
+					delvattrs(&p[np].v[2]);
+				}
+				break;
 			}
 		}
 		params->job->times.Tn.t1 = nanosec();
@@ -575,9 +558,9 @@ entityproc(void *arg)
 	Tilerparam *tp;
 	Rasterparam *rp;
 	SUparams *params, *newparams;
-	OBJElem **eb, **ee;
+	Primitive *eb, *ee;
 	char *nprocs;
-	ulong stride, nelems, nproc, nworkers;
+	ulong stride, nprims, nproc, nworkers;
 	int i;
 	uvlong t0;
 
@@ -622,16 +605,16 @@ entityproc(void *arg)
 			continue;
 		}
 
-		eb = params->entity->mdl->elems;
-		nelems = params->entity->mdl->nelems;
-		ee = eb + nelems;
+		eb = params->entity->mdl->prims;
+		nprims = params->entity->mdl->nprims;
+		ee = eb + nprims;
 
-		if(nelems <= nproc){
-			nworkers = nelems;
+		if(nprims <= nproc){
+			nworkers = nprims;
 			stride = 1;
 		}else{
 			nworkers = nproc;
-			stride = nelems/nproc;
+			stride = nprims/nproc;
 		}
 
 		for(i = 0; i < nworkers; i++){

@@ -5,6 +5,7 @@ OFILES=\
 	camera.$O\
 	viewport.$O\
 	render.$O\
+	clip.$O\
 	scene.$O\
 	vertex.$O\
 	texture.$O\

@@ -33,6 +33,26 @@ fmax(double a, double b)
 }
 
 void
+swapi(int *a, int *b)
+{
+	int t;
+
+	t = *a;
+	*a = *b;
+	*b = t;
+}
+
+void
+swappt(Point *a, Point *b)
+{
+	Point t;
+
+	t = *a;
+	*a = *b;
+	*b = t;
+}
+
+void
 memsetd(double *p, double v, usize len)
 {
 	double *dp;

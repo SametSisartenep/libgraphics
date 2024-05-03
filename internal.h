@@ -1,6 +1,14 @@
+typedef struct Polygon Polygon;
 typedef struct Tilerparam Tilerparam;
 typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
+
+struct Polygon
+{
+	Vertex *v;
+	ulong n;
+	ulong cap;
+};
 
 struct Tilerparam
 {
@@ -42,9 +50,15 @@ void berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
 void delvattrs(Vertex*);
 void fprintvattrs(int, Vertex*);
 
+/* clip */
+int clipprimitive(Primitive*);
+void rectclipline(Rectangle, Point*, Point*);
+
 /* util */
 int min(int, int);
 int max(int, int);
+void swapi(int*, int*);
+void swappt(Point*, Point*);
 void memsetd(double*, double, usize);
 
 /* nanosec */

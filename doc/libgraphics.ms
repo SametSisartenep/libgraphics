@@ -13,6 +13,7 @@ Rendering graph
 .ps 7
 circlerad = 0.3
 moveht = 0.1
+arrowhead = 9
 box "Renderjob"
 arrow
 R: circle "renderer"

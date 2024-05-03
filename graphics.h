@@ -86,7 +86,7 @@ struct Vertex
 	Point3 n;		/* surface normal */
 	Color c;		/* shading color */
 	Point2 uv;		/* texture coordinate */
-	OBJMaterial *mtl;
+	Material *mtl;
 
 	/* TODO it'd be neat to use a dynamic hash table instead */
 	Vertexattr *attrs;	/* attributes (aka varyings) */
@@ -106,25 +106,24 @@ struct Material
 	Color diffuse;
 	Color specular;
 	double shininess;
+	Memimage *diffusemap;
 };
 
 struct Primitive
 {
 	int type;
 	Vertex v[3];
+	Material *mtl;
 };
 
 struct Model
 {
-	Primitive *mesh;
+	Primitive *prims;
+	ulong nprims;
 	Memimage *tex;		/* texture map */
 	Memimage *nor;		/* normals map */
 	Material *materials;
 	ulong nmaterials;
-
-	OBJ *obj;
-	OBJElem **elems;	/* cache of renderable elems */
-	ulong nelems;
 };
 
 struct Entity
@@ -167,7 +166,7 @@ struct SUparams
 	Memimage *frag;
 	Renderjob *job;
 	Entity *entity;
-	OBJElem **eb, **ee;
+	Primitive *eb, *ee;
 
 	uvlong uni_time;
 
@@ -283,7 +282,7 @@ void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 
 /* scene */
-int refreshmodel(Model*);
+int loadobjmodel(Model*, OBJ*);
 Model *newmodel(void);
 void delmodel(Model*);
 Entity *newentity(Model*);
