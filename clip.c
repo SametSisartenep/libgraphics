@@ -208,11 +208,11 @@ rectclipline(Rectangle r, Point *p0, Point *p1)
 			p0->y += (r.max.x - p0->x)*m;
 			p0->x = r.max.x;
 		}else if(code0 & CLIPB){
-			if(p0->x != p1->x)
+			if(p0->x != p1->x && m != 0)
 				p0->x += (r.min.y - p0->y)/m;
 			p0->y = r.min.y;
 		}else if(code0 & CLIPT){
-			if(p0->x != p1->x)
+			if(p0->x != p1->x && m != 0)
 				p0->x += (r.max.y - p0->y)/m;
 			p0->y = r.max.y;
 		}
