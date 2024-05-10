@@ -306,6 +306,8 @@ delmodel(Model *m)
 		freememimage(m->tex);
 	if(m->nor != nil)
 		freememimage(m->nor);
+	if(m->nmaterials > 0)
+		free(m->materials);
 	if(m->nprims > 0)
 		free(m->prims);
 	free(m);
