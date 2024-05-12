@@ -102,6 +102,7 @@ struct LightSource
 
 struct Material
 {
+	char *name;
 	Color ambient;
 	Color diffuse;
 	Color specular;

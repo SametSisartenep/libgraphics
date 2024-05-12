@@ -154,6 +154,11 @@ loadobjmodel(Model *m, OBJ *obj)
 			mtl = &m->materials[m->nmaterials-1];
 			memset(mtl, 0, sizeof *mtl);
 
+			if(objmtl->name != nil){
+				mtl->name = strdup(objmtl->name);
+				if(mtl->name == nil)
+					sysfatal("strdup: %r");
+			}
 			mtl->ambient.r = objmtl->Ka.r;
 			mtl->ambient.g = objmtl->Ka.g;
 			mtl->ambient.b = objmtl->Ka.b;
@@ -306,8 +311,11 @@ delmodel(Model *m)
 		freememimage(m->tex);
 	if(m->nor != nil)
 		freememimage(m->nor);
-	if(m->nmaterials > 0)
+	if(m->nmaterials > 0){
+		while(m->nmaterials--)
+			free(m->materials[m->nmaterials].name);
 		free(m->materials);
+	}
 	if(m->nprims > 0)
 		free(m->prims);
 	free(m);
