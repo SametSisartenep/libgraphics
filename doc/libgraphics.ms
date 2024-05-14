@@ -22,9 +22,9 @@ E: circle "entityproc"
 move
 Tiler: [
 	down
-	T0: circle "tiler 0"
+	T0: circle "tiler 1"
 	move
-	T1: circle "tiler 1"
+	T1: circle "tiler 2"
 	move
 	Td: circle "…"
 	move
@@ -33,9 +33,9 @@ Tiler: [
 move
 Raster: [
 	down
-	R0: circle "rasterizer 0"
+	R0: circle "rasterizer 1"
 	move
-	R1: circle "rasterizer 1"
+	R1: circle "rasterizer 2"
 	move
 	Rd: circle "…"
 	move
@@ -57,7 +57,7 @@ arrow from Tiler.T1 to Raster.Rn chop
 .PE
 .B "Figure 1" :
 For a
-.B 2(n+1)
+.B 2n
 processor machine.
 .SH
 The scene
@@ -91,8 +91,8 @@ Tiles: [
 	boxht = 0.2
 	boxwid = 1.25
 	down
-	T0: box dashed "tile 0"
-	T1: box dashed "tile 1"
+	T0: box dashed "tile 1"
+	T1: box dashed "tile 2"
 	Td: box dashed "…"
 	Tn: box dashed "tile n"
 ]
@@ -101,9 +101,9 @@ box ht last [].ht+0.1 wid last [].wid+0.1 at last []
 Raster: [
 	moveht = 0.1
 	down
-	R0: circle "rasterizer 0"
+	R0: circle "rasterizer 1"
 	move
-	R1: circle "rasterizer 1"
+	R1: circle "rasterizer 2"
 	move
 	Rd: circle "…"
 	move
@@ -123,8 +123,8 @@ Tiles: [
 	boxht = 0.2
 	boxwid = 1.25
 	down
-	T0: box dashed "0"
-	T1: box dashed "1"
+	T0: box dashed "1"
+	T1: box dashed "2"
 	Td: box dashed "…"
 	Tn: box dashed "n"
 ]
@@ -136,9 +136,9 @@ box ht last [].ht+0.1 wid last [].wid+0.1 at last []
 Raster: [
 	moveht = 0.1
 	down
-	R0: circle "rasterizer 0"
+	R0: circle "rasterizer 1"
 	move
-	R1: circle "rasterizer 1"
+	R1: circle "rasterizer 2"
 	move
 	Rd: circle "…"
 	move
