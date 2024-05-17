@@ -226,19 +226,16 @@ rasterize(Rastertask *task)
 		e = 0;
 		Δy = p1.y > p0.y? 1: -1;
 
-		/* TODO find out why sometimes lines go invisible depending on their location */
-
 		for(p = p0; p.x <= p1.x; p.x++){
 			Δp = subpt(p, p0);
 			dplen = hypot(dp.x, dp.y);
 			perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
 
-			if(steep) swapi(&p.x, &p.y);
-
+			/* TODO it seems depth testing messes with the output. find out why */
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			depth = fclamp(z, 0, 1);
 			if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-				break;
+				continue;
 			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
 
 			/* interpolate z⁻¹ and get actual z */
@@ -248,6 +245,8 @@ rasterize(Rastertask *task)
 			/* perspective-correct attribute interpolation  */
 			perc *= prim.v[0].p.w * z;
 			lerpvertex(&fsp.v, &prim.v[0], &prim.v[1], perc);
+
+			if(steep) swapi(&p.x, &p.y);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -639,11 +638,12 @@ renderer(void *arg)
 	Entity *ent;
 	SUparams *params;
 	Channel *paramsc;
-	uvlong time;
+	uvlong time, lastid;
 
 	threadsetname("renderer");
 
 	jobc = arg;
+	lastid = 0;
 	paramsc = chancreate(sizeof(SUparams*), 8);
 
 	proccreate(entityproc, paramsc, mainstacksize);
@@ -651,6 +651,7 @@ renderer(void *arg)
 	while((job = recvp(jobc)) != nil){
 		time = nanosec();
 		job->times.R.t0 = time;
+		job->id = lastid++;
 		sc = job->scene;
 		if(sc->nents < 1){
 			nbsend(job->donec, nil);

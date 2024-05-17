@@ -195,6 +195,7 @@ struct Rendertime
 struct Renderjob
 {
 	Ref;
+	uvlong id;
 	Framebuf *fb;
 	Scene *scene;
 	Shadertab *shaders;
@@ -248,7 +249,7 @@ struct Camera
 	struct {
 		double n, f;	/* near and far clipping planes */
 	} clip;
-	Matrix3 proj;		/* VCS to NDC xform */
+	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
 
 	struct {
