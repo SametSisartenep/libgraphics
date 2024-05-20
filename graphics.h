@@ -276,10 +276,19 @@ void rmviewport(Viewport*);
 
 /* render */
 Renderer *initgraphics(void);
+
+/* xform */
 Point3 model2world(Entity*, Point3);
 Point3 world2vcs(Camera*, Point3);
 Point3 vcs2clip(Camera*, Point3);
 Point3 world2clip(Camera*, Point3);
+Point3 clip2ndc(Point3);
+Point3 ndc2viewport(Framebuf*, Point3);
+Point3 viewport2ndc(Framebuf*, Point3);
+Point3 ndc2vcs(Camera*, Point3);
+Point3 viewport2vcs(Camera*, Point3);
+Point3 vcs2world(Camera*, Point3);
+Point3 viewport2world(Camera*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 

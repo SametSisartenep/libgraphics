@@ -6,6 +6,7 @@ OFILES=\
 	viewport.$O\
 	render.$O\
 	clip.$O\
+	xform.$O\
 	scene.$O\
 	vertex.$O\
 	texture.$O\
