@@ -119,11 +119,12 @@ rasterize(Rastertask *task)
 			dplen = hypot(dp.x, dp.y);
 			perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
 
-			/* TODO it seems depth testing messes with the output. find out why */
+			if(steep) swapi(&p.x, &p.y);
+
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			depth = fclamp(z, 0, 1);
-			if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-				continue;
+			if(!ptinrect(p, params->fb->r) || depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+				goto discard;
 			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
 
 			/* interpolate z⁻¹ and get actual z */
@@ -134,15 +135,13 @@ rasterize(Rastertask *task)
 			perc *= prim.v[0].p.w * z;
 			lerpvertex(&fsp.v, &prim.v[0], &prim.v[1], perc);
 
-			if(steep) swapi(&p.x, &p.y);
-
 			fsp.p = p;
 			c = params->fshader(&fsp);
 			memfillcolor(params->frag, col2ul(c));
 
 			pixel(params->fb->cb, p, params->frag);
 			delvattrs(&fsp.v);
-
+discard:
 			if(steep) swapi(&p.x, &p.y);
 
 			e += Δe;

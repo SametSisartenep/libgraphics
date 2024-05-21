@@ -53,6 +53,21 @@ cleanpoly(Polygon *p)
 	p->n = 0;
 }
 
+static void
+fprintpoly(int fd, Polygon *p)
+{
+	int i;
+
+	for(i = 0; i < p->n; i++)
+		fprint(fd, "%d/%lud p %V\n", i, p->n, p->v[i].p);
+}
+
+static int
+eqpt3(Point3 a, Point3 b)
+{
+	return vec3len(subpt3(a, b)) < 1e-6;
+}
+
 /*
  * references:
  * 	- James F. Blinn, Martin E. Newell, “Clipping Using Homogeneous Coordinates”,
@@ -76,9 +91,9 @@ clipprimitive(Primitive *p)
 	double d0, d1, perc;
 	Polygon Vin, Vout;
 	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
-	int i, j, nt;
+	int i, j, np;
 
-	nt = 0;
+	np = 0;
 	memset(&Vin, 0, sizeof Vin);
 	memset(&Vout, 0, sizeof Vout);
 	for(i = 0; i < p[0].type+1; i++)
@@ -119,30 +134,30 @@ allin:
 		cleanpoly(&Vout);
 	else switch(p[0].type){
 	case PLine:
-		/* TODO fix line clipping (they disappear instead, why?) */
 		p[0].v[0] = dupvertex(&Vout.v[0]);
-		p[0].v[1] = dupvertex(&Vout.v[1]);
+		p[0].v[1] = eqpt3(Vout.v[0].p, Vout.v[1].p)? dupvertex(&Vout.v[2]): dupvertex(&Vout.v[1]);
 		cleanpoly(&Vout);
+		np = 1;
 		break;
 	case PTriangle:
 		/* triangulate */
-		for(i = 0; i < Vout.n-2; i++, nt++){
+		for(i = 0; i < Vout.n-2; i++, np++){
 			/*
 			 * when performing fan triangulation, indices 0 and 2
 			 * are referenced on every triangle, so duplicate them
 			 * to avoid complications during rasterization.
 			 */
-			memmove(&p[nt], &p[0], sizeof *p);
-			p[nt].v[0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
-			p[nt].v[1] = Vout.v[i+1];
-			p[nt].v[2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
+			memmove(&p[np], &p[0], sizeof *p);
+			p[np].v[0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
+			p[np].v[1] = Vout.v[i+1];
+			p[np].v[2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
 		}
 		break;
 	}
 	free(Vout.v);
 	free(Vin.v);
 
-	return nt;
+	return np;
 }
 
 static int
