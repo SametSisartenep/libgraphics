@@ -13,10 +13,10 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 {
 	Framebuf *fb;
 
-	lock(ctl);
+	qlock(ctl);
 	fb = ctl->getfb(ctl);
 	loadimage(dst, rectaddpt(fb->r, dst->r.min), byteaddr(fb->cb, fb->r.min), bytesperline(fb->r, fb->cb->depth)*Dy(fb->r));
-	unlock(ctl);
+	qunlock(ctl);
 }
 
 static void
@@ -24,18 +24,18 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 {
 	Framebuf *fb;
 
-	lock(ctl);
+	qlock(ctl);
 	fb = ctl->getfb(ctl);
 	memimagedraw(dst, dst->r, fb->cb, ZP, nil, ZP, SoverD);
-	unlock(ctl);
+	qunlock(ctl);
 }
 
 static void
 framebufctl_swap(Framebufctl *ctl)
 {
-	lock(ctl);
+	qlock(ctl);
 	ctl->idx ^= 1;
-	unlock(ctl);
+	qunlock(ctl);
 }
 
 static void

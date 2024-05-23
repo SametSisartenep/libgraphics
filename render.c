@@ -123,6 +123,7 @@ rasterize(Rastertask *task)
 
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			depth = fclamp(z, 0, 1);
+			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
 			if(!ptinrect(p, params->fb->r) || depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
 				goto discard;
 			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;

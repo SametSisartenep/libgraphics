@@ -217,7 +217,7 @@ struct Framebuf
 
 struct Framebufctl
 {
-	Lock;
+	QLock;
 	Framebuf *fb[2];	/* double buffering */
 	uint idx;		/* front buffer index */
 
