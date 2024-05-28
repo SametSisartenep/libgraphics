@@ -108,6 +108,7 @@ struct Material
 	Color specular;
 	double shininess;
 	Memimage *diffusemap;
+	Memimage *normalmap;
 };
 
 struct Primitive

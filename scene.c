@@ -180,6 +180,13 @@ loadobjmodel(Model *m, OBJ *obj)
 				mtl->diffusemap->data->ref++;
 			}
 
+			if(objmtl->norm != nil){
+				mtl->normalmap = allocmemimaged(objmtl->norm->r, objmtl->norm->chan, objmtl->norm->data);
+				if(mtl->normalmap == nil)
+					sysfatal("allocmemimaged: %r");
+				mtl->normalmap->data->ref++;
+			}
+
 			addmtlmap(&mtlmap, objmtl, m->nmaterials-1);
 		}
 
