@@ -139,6 +139,12 @@ viewport2world(Camera *c, Point3 p)
 	return vcs2world(c, viewport2vcs(c, p));
 }
 
+Point3
+world2model(Entity *e, Point3 p)
+{
+	return rframexform3(p, *e);
+}
+
 void
 perspective(Matrix3 m, double fovy, double a, double n, double f)
 {

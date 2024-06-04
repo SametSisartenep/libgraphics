@@ -87,6 +87,7 @@ struct Vertex
 	Color c;		/* shading color */
 	Point2 uv;		/* texture coordinate */
 	Material *mtl;
+	Point3 tangent;
 
 	/* TODO it'd be neat to use a dynamic hash table instead */
 	Vertexattr *attrs;	/* attributes (aka varyings) */
@@ -116,6 +117,7 @@ struct Primitive
 	int type;
 	Vertex v[3];
 	Material *mtl;
+	Point3 tangent;		/* used for normal mapping */
 };
 
 struct Model
@@ -123,7 +125,6 @@ struct Model
 	Primitive *prims;
 	ulong nprims;
 	Memimage *tex;		/* texture map */
-	Memimage *nor;		/* normals map */
 	Material *materials;
 	ulong nmaterials;
 };
@@ -290,6 +291,7 @@ Point3 ndc2vcs(Camera*, Point3);
 Point3 viewport2vcs(Camera*, Point3);
 Point3 vcs2world(Camera*, Point3);
 Point3 viewport2world(Camera*, Point3);
+Point3 world2model(Entity*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 

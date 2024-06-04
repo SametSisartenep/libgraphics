@@ -351,10 +351,6 @@ tilerdurden(void *arg)
 					p[np].v[0].p = clip2ndc(p[np].v[0].p);
 					p[np].v[1].p = clip2ndc(p[np].v[1].p);
 
-					/* culling */
-//					if(isfacingback(p[np]))
-//						goto skiptri2;
-
 					p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
 					p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
 
@@ -375,7 +371,6 @@ tilerdurden(void *arg)
 							task->p.v[1] = dupvertex(&p[np].v[1]);
 							sendp(taskchans[i], task);
 						}
-//skiptri2:
 					delvattrs(&p[np].v[0]);
 					delvattrs(&p[np].v[1]);
 				}
@@ -386,6 +381,7 @@ tilerdurden(void *arg)
 					p[0].v[i].mtl = p->mtl;
 					p[0].v[i].attrs = nil;
 					p[0].v[i].nattrs = 0;
+					p[0].v[i].tangent = p->tangent;
 
 					vsp.v = &p[0].v[i];
 					vsp.idx = i;

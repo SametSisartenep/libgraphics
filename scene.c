@@ -277,6 +277,23 @@ loadobjmodel(Model *m, OBJ *obj)
 								p->v[idx].uv = Pt2(v->u, v->v, 1);
 							}
 						}
+						if(p->v[0].uv.w != 0){
+							Point3 e0, e1;
+							Point2 Δuv0, Δuv1;
+							double det;
+
+							e0 = subpt3(p->v[1].p, p->v[0].p);
+							e1 = subpt3(p->v[2].p, p->v[0].p);
+							Δuv0 = subpt2(p->v[1].uv, p->v[0].uv);
+							Δuv1 = subpt2(p->v[2].uv, p->v[0].uv);
+
+							det = Δuv0.x * Δuv1.y - Δuv1.x * Δuv0.y;
+							det = det == 0? 0: 1.0/det;
+							p->tangent.x = det*(Δuv1.y * e0.x - Δuv0.y * e1.x);
+							p->tangent.y = det*(Δuv1.y * e0.y - Δuv0.y * e1.y);
+							p->tangent.z = det*(Δuv1.y * e0.z - Δuv0.y * e1.z);
+							p->tangent = normvec3(p->tangent);
+						}
 						if(neednormal){
 							/* TODO build a list of per-vertex normals earlier */
 							n = normvec3(crossvec3(subpt3(p->v[1].p, p->v[0].p), subpt3(p->v[2].p, p->v[0].p)));
@@ -316,11 +333,12 @@ delmodel(Model *m)
 		return;
 	if(m->tex != nil)
 		freememimage(m->tex);
-	if(m->nor != nil)
-		freememimage(m->nor);
 	if(m->nmaterials > 0){
-		while(m->nmaterials--)
+		while(m->nmaterials--){
+			freememimage(m->materials[m->nmaterials].diffusemap);
+			freememimage(m->materials[m->nmaterials].normalmap);
 			free(m->materials[m->nmaterials].name);
+		}
 		free(m->materials);
 	}
 	if(m->nprims > 0)
