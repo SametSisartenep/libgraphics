@@ -152,3 +152,12 @@ arrow from Tiles.Tn.e to Raster.Rn.w
 .PE
 .B "Figure 3" :
 Raster task scheduling.
+.SH
+Frames of reference
+.PP
+Frames are right-handed throughout every stage.
+.PS
+.ps 7
+
+.ps 10
+.PE

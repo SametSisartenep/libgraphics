@@ -70,8 +70,7 @@ eqpt3(Point3 a, Point3 b)
 
 /*
  * references:
- * 	- James F. Blinn, Martin E. Newell, “Clipping Using Homogeneous Coordinates”,
- * 	  SIGGRAPH '78, pp. 245-251
+ * 	- “Clipping Using Homogeneous Coordinates”, James F. Blinn, Martin E. Newell, SIGGRAPH '78, pp. 245-251
  * 	- https://cs418.cs.illinois.edu/website/text/clipping.html
  * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
  */

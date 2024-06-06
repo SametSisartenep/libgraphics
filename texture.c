@@ -8,6 +8,15 @@
 #include "graphics.h"
 #include "internal.h"
 
+enum {
+	CUBEMAP_FACE_LEFT,	/* -x */
+	CUBEMAP_FACE_RIGHT,	/* +x */
+	CUBEMAP_FACE_BOTTOM,	/* -y */
+	CUBEMAP_FACE_TOP,	/* +y */
+	CUBEMAP_FACE_FRONT,	/* -z */
+	CUBEMAP_FACE_BACK,	/* +z */
+};
+
 /*
  * uv-coords belong to the 1st quadrant (v grows bottom-up),
  * hence the need to reverse the v coord.
@@ -107,4 +116,97 @@ Color
 texture(Memimage *i, Point2 uv, Color(*sampler)(Memimage*,Point2))
 {
 	return sampler(i, uv);
+}
+
+/* cubemap sampling */
+
+Cubemap *
+readcubemap(char *paths[6])
+{
+	Cubemap *cm;
+	char **p;
+	int fd;
+
+	cm = emalloc(sizeof *cm);
+	memset(cm, 0, sizeof *cm);
+	
+	for(p = paths; p < paths+6; p++){
+		assert(*p != nil);
+		fd = open(*p, OREAD);
+		if(fd < 0)
+			sysfatal("open: %r");
+		cm->faces[p-paths] = readmemimage(fd);
+		if(cm->faces[p-paths] == nil)
+			sysfatal("readmemimage: %r");
+		close(fd);
+	}
+	return cm;
+}
+
+void
+freecubemap(Cubemap *cm)
+{
+	int i;
+
+	for(i = 0; i < 6; i++)
+		freememimage(cm->faces[i]);
+	free(cm->name);
+	free(cm);
+}
+
+/*
+ * references:
+ * 	- https://github.com/zauonlok/renderer/blob/9ed5082f0eda453f0b2a0d5ec37cf5a60f0207f6/renderer/core/texture.c#L206
+ * 	- “Cubemap Texture Selection”, OpenGL ES 2.0 § 3.7.5, November 2010
+ */
+Color
+cubemaptexture(Cubemap *cm, Point3 d, Color(*sampler)(Memimage*,Point2))
+{
+	Point2 uv;
+	double ax, ay, az, ma, sc, tc;
+	int face;
+
+	ax = fabs(d.x);
+	ay = fabs(d.y);
+	az = fabs(d.z);
+
+	if(ax > ay && ax > az){
+		ma = ax;
+		if(d.x > 0){
+			face = CUBEMAP_FACE_RIGHT;
+			sc = -d.z;
+			tc = -d.y;
+		}else{
+			face = CUBEMAP_FACE_LEFT;
+			sc =  d.z;
+			tc = -d.y;
+		}
+	}else if(ay > az){
+		ma = ay;
+		if(d.y > 0){
+			face = CUBEMAP_FACE_TOP;
+			sc = d.x;
+			tc = d.z;
+		}else{
+			face = CUBEMAP_FACE_BOTTOM;
+			sc =  d.x;
+			tc = -d.z;
+		}
+	}else{
+		ma = az;
+		if(d.z > 0){
+			face = CUBEMAP_FACE_BACK;
+			sc =  d.x;
+			tc = -d.y;
+		}else{
+			face = CUBEMAP_FACE_FRONT;
+			sc = -d.x;
+			tc = -d.y;
+		}
+	}
+
+	uv.x = (sc/ma + 1)/2;
+	uv.y = 1 - (tc/ma + 1)/2;
+	uv.w = 1;
+	return sampler(cm->faces[face], uv);
 }

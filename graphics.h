@@ -23,6 +23,7 @@ enum {
 };
 
 typedef struct Color Color;
+typedef struct Cubemap Cubemap;
 typedef struct Vertexattr Vertexattr;
 typedef struct Vertex Vertex;
 typedef struct LightSource LightSource;
@@ -46,6 +47,12 @@ typedef struct Camera Camera;
 struct Color
 {
 	double r, g, b, a;
+};
+
+struct Cubemap
+{
+	char *name;
+	Memimage *faces[6];
 };
 
 /*
@@ -124,7 +131,7 @@ struct Model
 {
 	Primitive *prims;
 	ulong nprims;
-	Memimage *tex;		/* texture map */
+	Memimage *tex;		/* texture map (TODO get rid of it, use materials) */
 	Material *materials;
 	ulong nmaterials;
 };
@@ -142,6 +149,7 @@ struct Scene
 	char *name;
 	Entity ents;
 	ulong nents;
+	Cubemap *skybox;
 
 	void (*addent)(Scene*, Entity*);
 	void (*delent)(Scene*, Entity*);
@@ -168,6 +176,7 @@ struct SUparams
 	Framebuf *fb;
 	Memimage *frag;
 	Renderjob *job;
+	Camera *camera;
 	Entity *entity;
 	Primitive *eb, *ee;
 
@@ -199,6 +208,7 @@ struct Renderjob
 	Ref;
 	uvlong id;
 	Framebuf *fb;
+	Camera *camera;
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
@@ -245,7 +255,7 @@ struct Camera
 {
 	RFrame3;		/* VCS */
 	Viewport *vp;
-	Scene *s;
+	Scene *scene;
 	Renderer *rctl;
 	double fov;		/* vertical FOV */
 	struct {
@@ -313,6 +323,9 @@ Vertexattr *getvattr(Vertex*, char*);
 Color neartexsampler(Memimage*, Point2);
 Color bilitexsampler(Memimage*, Point2);
 Color texture(Memimage*, Point2, Color(*)(Memimage*, Point2));
+Cubemap *readcubemap(char*[6]);
+void freecubemap(Cubemap*);
+Color cubemaptexture(Cubemap*, Point3, Color(*)(Memimage*, Point2));
 
 /* util */
 double fmin(double, double);

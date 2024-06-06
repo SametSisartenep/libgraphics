@@ -8,6 +8,73 @@
 #include "graphics.h"
 #include "internal.h"
 
+/*
+ * references:
+ * 	- https://learnopengl.com/Advanced-OpenGL/Cubemaps
+ */
+static Point3
+skyboxvs(VSparams *sp)
+{
+	Point3 p;
+
+	addvattr(sp->v, "dir", VAPoint, &sp->v->p);
+	/* only rotate along with the camera */
+	p = sp->v->p; p.w = 0;
+	p = world2vcs(sp->su->camera, p); p.w = 1;
+	p = vcs2clip(sp->su->camera, p);
+	/* force the cube to always be on the far plane */
+	p.z = -p.w;
+	return p;
+}
+
+static Color
+skyboxfs(FSparams *sp)
+{
+	Vertexattr *va;
+	Color c;
+
+	va = getvattr(&sp->v, "dir");
+	c = cubemaptexture(sp->su->camera->scene->skybox, va->p, neartexsampler);
+	return c;
+}
+
+static Model *
+mkskyboxmodel(void)
+{
+	static Point3 axes[3] = {{0,1,0,0}, {1,0,0,0}, {0,0,1,0}};
+	static Point3 center = {0,0,0,1};
+	Model *m;
+	Primitive t[2];
+	Point3 p, v1, v2;
+	int i, j, k;
+
+	m = newmodel();
+	memset(t, 0, sizeof t);
+	t[0].type = t[1].type = PTriangle;
+
+	p = Vec3(-0.5,-0.5,0.5);
+	v1 = Vec3(1,0,0);
+	v2 = Vec3(0,1,0);
+	t[0].v[0].p = addpt3(center, p);
+	t[0].v[1].p = addpt3(center, addpt3(p, v1));
+	t[0].v[2].p = addpt3(center, addpt3(p, addpt3(v1, v2)));
+	t[1].v[0] = t[0].v[0];
+	t[1].v[1] = t[0].v[2];
+	t[1].v[2].p = addpt3(center, addpt3(p, v2));
+
+	for(i = 0; i < 6; i++){
+		for(j = 0; j < 2; j++)
+			for(k = 0; k < 3; k++)
+				if(i > 0)
+					t[j].v[k].p = qrotate(t[j].v[k].p, axes[i%3], PI/2);
+
+		m->prims = erealloc(m->prims, (m->nprims += 2)*sizeof(*m->prims));
+		m->prims[m->nprims-2] = t[0];
+		m->prims[m->nprims-1] = t[1];
+	}
+	return m;
+}
+
 static void
 updatestats(Camera *c, uvlong v)
 {
@@ -91,13 +158,17 @@ reloadcamera(Camera *c)
 void
 shootcamera(Camera *c, Shadertab *s)
 {
+	static Scene *skyboxscene;
+	static Shadertab skyboxshader = { nil, skyboxvs, skyboxfs };
+	Model *mdl;
 	Renderjob *job;
 	uvlong t0, t1;
 
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
 	job->fb = c->vp->fbctl->getbb(c->vp->fbctl);
-	job->scene = c->s;
+	job->camera = c;
+	job->scene = c->scene;
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
@@ -105,6 +176,22 @@ shootcamera(Camera *c, Shadertab *s)
 	t0 = nanosec();
 	sendp(c->rctl->c, job);
 	recvp(job->donec);
+	/*
+	 * if the scene has a skybox, do another render pass,
+	 * filling in the fragments left untouched by the z-buffer.
+	 */
+	if(c->scene->skybox != nil){
+		if(skyboxscene == nil){
+			skyboxscene = newscene("skybox");
+			mdl = mkskyboxmodel();
+			skyboxscene->addent(skyboxscene, newentity(mdl));
+		}
+		skyboxscene->skybox = c->scene->skybox;
+		job->scene = skyboxscene;
+		job->shaders = &skyboxshader;
+		sendp(c->rctl->c, job);
+		recvp(job->donec);
+	}
 	t1 = nanosec();
 	c->vp->fbctl->swap(c->vp->fbctl);
 

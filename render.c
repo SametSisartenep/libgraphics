@@ -547,6 +547,7 @@ renderer(void *arg)
 			memset(params, 0, sizeof *params);
 			params->fb = job->fb;
 			params->job = job;
+			params->camera = job->camera;
 			params->entity = ent;
 			params->uni_time = time;
 			params->vshader = job->shaders->vshader;

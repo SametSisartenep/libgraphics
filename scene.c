@@ -399,6 +399,7 @@ newscene(char *name)
 	s->name = name == nil? nil: strdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;
+	s->skybox = nil;
 	s->addent = scene_addent;
 	s->delent = scene_delent;
 	return s;
@@ -418,10 +419,13 @@ void
 clearscene(Scene *s)
 {
 	Entity *e, *ne;
+	int i;
 
 	for(e = s->ents.next; e != &s->ents; e = ne){
 		ne = e->next;
 		s->delent(s, e);
 		delentity(e);
 	}
+	if(s->skybox != nil)
+		freecubemap(s->skybox);
 }
