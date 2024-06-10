@@ -15,10 +15,10 @@ col2ul(Color c)
 {
 	uchar cbuf[4];
 
-	cbuf[0] = c.a*0xFF;
-	cbuf[1] = c.b*0xFF;
-	cbuf[2] = c.g*0xFF;
-	cbuf[3] = c.r*0xFF;
+	cbuf[0] = fclamp(c.a, 0, 1)*0xFF;
+	cbuf[1] = fclamp(c.b, 0, 1)*0xFF;
+	cbuf[2] = fclamp(c.g, 0, 1)*0xFF;
+	cbuf[3] = fclamp(c.r, 0, 1)*0xFF;
 	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
 }
 

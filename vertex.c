@@ -43,6 +43,9 @@ dupvertex(Vertex *v)
 	return nv;
 }
 
+/*
+ * linear attribute interpolation
+ */
 void
 lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 {
@@ -68,7 +71,7 @@ lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 }
 
 /*
- * perspective-correct barycentric attribute interpolation
+ * barycentric attribute interpolation
  */
 void
 berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)

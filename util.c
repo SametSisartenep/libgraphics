@@ -52,6 +52,18 @@ swappt(Point *a, Point *b)
 	*b = t;
 }
 
+Point2
+modulapt2(Point2 a, Point2 b)
+{
+	return (Point2){a.x*b.x, a.y*b.y, a.w*b.w};
+}
+
+Point3
+modulapt3(Point3 a, Point3 b)
+{
+	return (Point3){a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w};
+}
+
 void
 memsetd(double *p, double v, usize len)
 {

@@ -104,8 +104,12 @@ struct Vertex
 struct LightSource
 {
 	Point3 p;
+	Point3 dir;
 	Color c;
 	int type;
+	/* spotlights */
+	double θu;	/* umbra angle. anything beyond is unlit */
+	double θp;	/* penumbra angle. anything within is fully lit */
 };
 
 struct Material
@@ -330,11 +334,14 @@ Color cubemaptexture(Cubemap*, Point3, Color(*)(Memimage*, Point2));
 /* util */
 double fmin(double, double);
 double fmax(double, double);
+Point2 modulapt2(Point2, Point2);
+Point3 modulapt3(Point3, Point3);
 Memimage *rgb(ulong);
 
 /* shadeop */
 double sign(double);
 double step(double, double);
 double smoothstep(double, double, double);
+Color getlightcolor(LightSource*, Point3);
 
 extern Rectangle UR;	/* unit rectangle */

@@ -159,18 +159,9 @@ loadobjmodel(Model *m, OBJ *obj)
 				if(mtl->name == nil)
 					sysfatal("strdup: %r");
 			}
-			mtl->ambient.r = objmtl->Ka.r;
-			mtl->ambient.g = objmtl->Ka.g;
-			mtl->ambient.b = objmtl->Ka.b;
-			mtl->ambient.a = 1;
-			mtl->diffuse.r = objmtl->Kd.r;
-			mtl->diffuse.g = objmtl->Kd.g;
-			mtl->diffuse.b = objmtl->Kd.b;
-			mtl->diffuse.a = 1;
-			mtl->specular.r = objmtl->Ks.r;
-			mtl->specular.g = objmtl->Ks.g;
-			mtl->specular.b = objmtl->Ks.b;
-			mtl->specular.a = 1;
+			mtl->ambient = Pt3(objmtl->Ka.r, objmtl->Ka.g, objmtl->Ka.b, 1);
+			mtl->diffuse = Pt3(objmtl->Kd.r, objmtl->Kd.g, objmtl->Kd.b, 1);
+			mtl->specular = Pt3(objmtl->Ks.r, objmtl->Ks.g, objmtl->Ks.b, 1);
 			mtl->shininess = objmtl->Ns;
 
 			if(objmtl->map_Kd != nil){
@@ -419,7 +410,6 @@ void
 clearscene(Scene *s)
 {
 	Entity *e, *ne;
-	int i;
 
 	for(e = s->ents.next; e != &s->ents; e = ne){
 		ne = e->next;
