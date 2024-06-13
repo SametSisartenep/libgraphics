@@ -64,7 +64,7 @@ world2clip(Camera *c, Point3 p)
 Point3
 clip2ndc(Point3 p)
 {
-	p.w = p.w == 0? 1: 1.0/p.w;
+	p.w = p.w == 0? 0: 1.0/p.w;
 	p.x *= p.w;
 	p.y *= p.w;
 	p.z *= p.w;

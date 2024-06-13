@@ -22,13 +22,28 @@ col2ul(Color c)
 	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
 }
 
-static void
-pixel(Memimage *dst, Point p, Memimage *src)
+static Color
+ul2col(ulong l)
 {
-	if(dst == nil || src == nil)
-		return;
+	Color c;
 
-	memimagedraw(dst, rectaddpt(UR, p), src, ZP, nil, ZP, SoverD);
+	c.a = (l     & 0xff)/255.0;
+	c.b = (l>>8  & 0xff)/255.0;
+	c.g = (l>>16 & 0xff)/255.0;
+	c.r = (l>>24 & 0xff)/255.0;
+	return c;
+}
+
+static void
+pixel(Framebuf *fb, Point p, Color c)
+{
+	Color dc;
+	ulong *dst;
+
+	dst = fb->cb;
+	dc = ul2col(dst[Dx(fb->r)*p.y + p.x]);
+	c = lerp3(dc, c, c.a);	/* SoverD */
+	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
 }
 
 static int
@@ -63,7 +78,7 @@ rasterize(Rastertask *task)
 	Point p, dp, Δp, p0, p1;
 	Point3 bc;
 	Color c;
-	double z, depth, dplen, perc;
+	double z, dplen, perc;
 	int steep = 0, Δe, e, Δy;
 
 	params = task->params;
@@ -76,17 +91,15 @@ rasterize(Rastertask *task)
 	case PPoint:
 		p = Pt(prim.v[0].p.x, prim.v[0].p.y);
 
-		depth = fclamp(prim.v[0].p.z, 0, 1);
-		if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+		z = fclamp(prim.v[0].p.z, 0, 1);
+		if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
 			break;
-		params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
+		params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
 
 		fsp.v = dupvertex(&prim.v[0]);
 		fsp.p = p;
 		c = params->fshader(&fsp);
-		memfillcolor(params->frag, col2ul(c));
-
-		pixel(params->fb->cb, p, params->frag);
+		pixel(params->fb, p, c);
 		delvattrs(&fsp.v);
 		break;
 	case PLine:
@@ -122,11 +135,10 @@ rasterize(Rastertask *task)
 			if(steep) swapi(&p.x, &p.y);
 
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
-			depth = fclamp(z, 0, 1);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if(!ptinrect(p, params->fb->r) || depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+			if(!ptinrect(p, params->fb->r) || z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
 				goto discard;
-			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
+			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
 
 			/* interpolate z⁻¹ and get actual z */
 			z = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
@@ -138,9 +150,7 @@ rasterize(Rastertask *task)
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
-			memfillcolor(params->frag, col2ul(c));
-
-			pixel(params->fb->cb, p, params->frag);
+			pixel(params->fb, p, c);
 			delvattrs(&fsp.v);
 discard:
 			if(steep) swapi(&p.x, &p.y);
@@ -173,27 +183,21 @@ discard:
 					continue;
 
 				z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
-				depth = fclamp(z, 0, 1);
-				if(depth <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+				if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
 					continue;
-				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = depth;
+				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
 
 				/* interpolate z⁻¹ and get actual z */
 				z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
 				z = 1.0/(z < 1e-5? 1e-5: z);
 
 				/* perspective-correct attribute interpolation  */
-				bc.x *= prim.v[0].p.w;
-				bc.y *= prim.v[1].p.w;
-				bc.z *= prim.v[2].p.w;
-				bc = mulpt3(bc, z);
+				bc = modulapt3(bc, Vec3(prim.v[0].p.w*z,prim.v[1].p.w*z,prim.v[2].p.w*z));
 				berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
 
 				fsp.p = p;
 				c = params->fshader(&fsp);
-				memfillcolor(params->frag, col2ul(c));
-
-				pixel(params->fb->cb, p, params->frag);
+				pixel(params->fb, p, c);
 				delvattrs(&fsp.v);
 			}
 		break;
@@ -206,12 +210,10 @@ rasterizer(void *arg)
 	Rasterparam *rp;
 	Rastertask *task;
 	SUparams *params;
-	Memimage *frag;
 	uvlong t0;
 	int i;
 
 	rp = arg;
-	frag = rgb(DBlack);
 
 	threadsetname("rasterizer %d", rp->id);
 
@@ -232,7 +234,6 @@ rasterizer(void *arg)
 		if(params->job->times.Rn.t0 == 0)
 			params->job->times.Rn.t0 = t0;
 
-		params->frag = frag;
 		rasterize(task);
 
 		for(i = 0; i < task->p.type+1; i++)

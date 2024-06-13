@@ -15,7 +15,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadimage(dst, rectaddpt(fb->r, dst->r.min), byteaddr(fb->cb, fb->r.min), bytesperline(fb->r, fb->cb->depth)*Dy(fb->r));
+	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
@@ -26,7 +26,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	memimagedraw(dst, dst->r, fb->cb, ZP, nil, ZP, SoverD);
+	loadmemimage(dst, dst->r, (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
@@ -46,7 +46,7 @@ framebufctl_reset(Framebufctl *ctl)
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
 	memsetd(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
-	memfillcolor(fb->cb, DTransparent);
+	memset(fb->cb, 0, Dx(fb->r)*Dy(fb->r)*4);
 }
 
 static Framebuf *
@@ -68,7 +68,7 @@ mkfb(Rectangle r)
 
 	fb = emalloc(sizeof *fb);
 	memset(fb, 0, sizeof *fb);
-	fb->cb = eallocmemimage(r, RGBA32);
+	fb->cb = emalloc(Dx(r)*Dy(r)*4);
 	fb->zb = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zb));
 	memsetd(fb->zb, Inf(-1), Dx(r)*Dy(r));
 	fb->r = r;
@@ -79,7 +79,7 @@ void
 rmfb(Framebuf *fb)
 {
 	free(fb->zb);
-	freememimage(fb->cb);
+	free(fb->cb);
 	free(fb);
 }
 

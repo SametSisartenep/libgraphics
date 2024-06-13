@@ -79,6 +79,7 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 	Vertexattr va;
 	int i;
 
+	v->p = berp3(v0->p, v1->p, v2->p, bc);
 	v->n = berp3(v0->n, v1->n, v2->n, bc);
 	v->c = berp3(v0->c, v1->c, v2->c, bc);
 	v->uv = berp2(v0->uv, v1->uv, v2->uv, bc);

@@ -178,7 +178,6 @@ struct FSparams
 struct SUparams
 {
 	Framebuf *fb;
-	Memimage *frag;
 	Renderjob *job;
 	Camera *camera;
 	Entity *entity;
@@ -226,7 +225,7 @@ struct Renderjob
 
 struct Framebuf
 {
-	Memimage *cb;	/* color buffer */
+	ulong *cb;	/* color buffer */
 	double *zb;	/* z/depth buffer */
 	Rectangle r;
 };
