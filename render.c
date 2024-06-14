@@ -46,6 +46,15 @@ pixel(Framebuf *fb, Point p, Color c)
 	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
 }
 
+static void
+pixeln(Framebuf *fb, Point p, Color c)
+{
+	ulong *dst;
+
+	dst = fb->nb;
+	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
+}
+
 static int
 isvisible(Point3 p)
 {
@@ -65,6 +74,21 @@ isfacingback(Primitive p)
 	     p.v[1].p.x * p.v[2].p.y - p.v[1].p.y * p.v[2].p.x +
 	     p.v[2].p.x * p.v[0].p.y - p.v[2].p.y * p.v[0].p.x;
 	return sa <= 0;
+}
+
+static Point3
+_barycoords(Triangle2 t, Point2 p)
+{
+	Point2 p0p1 = subpt2(t.p1, t.p0);
+	Point2 p0p2 = subpt2(t.p2, t.p0);
+	Point2 pp0  = subpt2(t.p0, p);
+
+	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
+
+	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
+	if(fabs(v.z) < 1e-5)
+		return Pt3(-1,-1,-1,1);
+	return Pt3(1 - (v.x + v.y)/v.z, v.y/v.z, v.x/v.z, 1);
 }
 
 static void
@@ -178,7 +202,7 @@ discard:
 
 		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 			for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
-				bc = barycoords(t, Pt2(p.x,p.y,1));
+				bc = _barycoords(t, Pt2(p.x,p.y,1));
 				if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 					continue;
 
@@ -198,6 +222,8 @@ discard:
 				fsp.p = p;
 				c = params->fshader(&fsp);
 				pixel(params->fb, p, c);
+				fsp.v.n.w = 1;
+				pixeln(params->fb, p, fsp.v.n);
 				delvattrs(&fsp.v);
 			}
 		break;

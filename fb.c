@@ -31,6 +31,17 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 }
 
 static void
+framebufctl_drawnormals(Framebufctl *ctl, Image *dst)
+{
+	Framebuf *fb;
+
+	qlock(ctl);
+	fb = ctl->getfb(ctl);
+	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->nb, Dx(fb->r)*Dy(fb->r)*4);
+	qunlock(ctl);
+}
+
+static void
 framebufctl_swap(Framebufctl *ctl)
 {
 	qlock(ctl);
@@ -45,6 +56,7 @@ framebufctl_reset(Framebufctl *ctl)
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
+	memset(fb->nb, 0, Dx(fb->r)*Dy(fb->r)*4);
 	memsetd(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
 	memset(fb->cb, 0, Dx(fb->r)*Dy(fb->r)*4);
 }
@@ -71,6 +83,7 @@ mkfb(Rectangle r)
 	fb->cb = emalloc(Dx(r)*Dy(r)*4);
 	fb->zb = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zb));
 	memsetd(fb->zb, Inf(-1), Dx(r)*Dy(r));
+	fb->nb = emalloc(Dx(r)*Dy(r)*4);
 	fb->r = r;
 	return fb;
 }
@@ -94,6 +107,7 @@ mkfbctl(Rectangle r)
 	fc->fb[1] = mkfb(r);
 	fc->draw = framebufctl_draw;
 	fc->memdraw = framebufctl_memdraw;
+	fc->drawnormals = framebufctl_drawnormals;
 	fc->swap = framebufctl_swap;
 	fc->reset = framebufctl_reset;
 	fc->getfb = framebufctl_getfb;

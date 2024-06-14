@@ -227,6 +227,7 @@ struct Framebuf
 {
 	ulong *cb;	/* color buffer */
 	double *zb;	/* z/depth buffer */
+	ulong *nb;	/* normals buffer (DBG only) */
 	Rectangle r;
 };
 
@@ -238,6 +239,7 @@ struct Framebufctl
 
 	void (*draw)(Framebufctl*, Image*);
 	void (*memdraw)(Framebufctl*, Memimage*);
+	void (*drawnormals)(Framebufctl*, Image*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
 	Framebuf *(*getfb)(Framebufctl*);
