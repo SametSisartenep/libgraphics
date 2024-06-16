@@ -227,6 +227,7 @@ discard:
 				delvattrs(&fsp.v);
 			}
 		break;
+	default: sysfatal("alien primitive detected");
 	}
 }
 
@@ -326,7 +327,6 @@ tilerdurden(void *arg)
 			memmove(p, ep, sizeof *p);
 			switch(ep->type){
 			case PPoint:
-				p[0].v[0].c = Pt3(1,1,1,1);
 				p[0].v[0].mtl = ep->mtl;
 				p[0].v[0].attrs = nil;
 				p[0].v[0].nattrs = 0;
@@ -361,7 +361,6 @@ tilerdurden(void *arg)
 				break;
 			case PLine:
 				for(i = 0; i < 2; i++){
-					p[0].v[i].c = Pt3(1,1,1,1);
 					p[0].v[i].mtl = ep->mtl;
 					p[0].v[i].attrs = nil;
 					p[0].v[i].nattrs = 0;
@@ -404,7 +403,6 @@ tilerdurden(void *arg)
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
-					p[0].v[i].c = Pt3(1,1,1,1);
 					p[0].v[i].mtl = p->mtl;
 					p[0].v[i].attrs = nil;
 					p[0].v[i].nattrs = 0;
@@ -455,6 +453,7 @@ tilerdurden(void *arg)
 					delvattrs(&p[np].v[2]);
 				}
 				break;
+			default: sysfatal("alien primitive detected");
 			}
 		}
 		params->job->times.Tn.t1 = nanosec();
