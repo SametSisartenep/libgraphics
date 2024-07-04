@@ -13,6 +13,7 @@ OFILES=\
 	alloc.$O\
 	fb.$O\
 	shadeop.$O\
+	color.$O\
 	util.$O\
 	nanosec.$O\
 

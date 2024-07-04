@@ -339,6 +339,10 @@ Point2 modulapt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
 Memimage *rgb(ulong);
 
+/* color */
+Color srgb2linear(Color);
+Color linear2srgb(Color);
+
 /* shadeop */
 double sign(double);
 double step(double, double);

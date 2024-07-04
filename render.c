@@ -41,9 +41,9 @@ pixel(Framebuf *fb, Point p, Color c)
 	ulong *dst;
 
 	dst = fb->cb;
-	dc = ul2col(dst[Dx(fb->r)*p.y + p.x]);
+	dc = srgb2linear(ul2col(dst[Dx(fb->r)*p.y + p.x]));
 	c = lerp3(dc, c, c.a);	/* SoverD */
-	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
+	dst[Dx(fb->r)*p.y + p.x] = col2ul(linear2srgb(c));
 }
 
 static void

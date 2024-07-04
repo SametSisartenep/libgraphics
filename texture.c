@@ -29,18 +29,6 @@ uv2tp(Point2 uv, Memimage *i)
 }
 
 static Color
-ul2col(ulong l)
-{
-	Color c;
-
-	c.a = (l     & 0xff)/255.0;
-	c.b = (l>>8  & 0xff)/255.0;
-	c.g = (l>>16 & 0xff)/255.0;
-	c.r = (l>>24 & 0xff)/255.0;
-	return c;
-}
-
-static Color
 cbuf2col(uchar b[4])
 {
 	Color c;
@@ -72,7 +60,11 @@ _memreadcolor(Memimage *i, Point sp)
 		break;
 	}
 
-	return cbuf2col(cbuf);
+	/* TODO
+	 * not all textures require color space conversion. implement a better
+	 * interface to let the user decide.
+	 */
+	return srgb2linear(cbuf2col(cbuf));
 }
 
 /*
