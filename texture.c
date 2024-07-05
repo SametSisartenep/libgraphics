@@ -22,10 +22,10 @@ enum {
  * hence the need to reverse the v coord.
  */
 static Point
-uv2tp(Point2 uv, Memimage *i)
+uv2tp(Point2 uv, Texture *t)
 {
 	assert(uv.x >= 0 && uv.x <= 1 && uv.y >= 0 && uv.y <= 1);
-	return Pt(uv.x*Dx(i->r), (1 - uv.y)*Dy(i->r));
+	return Pt(uv.x*Dx(t->image->r), (1 - uv.y)*Dy(t->image->r));
 }
 
 static Color
@@ -41,73 +41,92 @@ cbuf2col(uchar b[4])
 }
 
 static Color
-_memreadcolor(Memimage *i, Point sp)
+_memreadcolor(Texture *t, Point sp)
 {
+	Color c;
 	uchar cbuf[4];
 
-	switch(i->chan){
+	switch(t->image->chan){
 	case RGB24:
-		unloadmemimage(i, rectaddpt(UR, sp), cbuf+1, sizeof cbuf - 1);
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf+1, sizeof cbuf - 1);
 		cbuf[0] = 0xFF;
 		break;
 	case RGBA32:
-		unloadmemimage(i, rectaddpt(UR, sp), cbuf, sizeof cbuf);
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf, sizeof cbuf);
 		break;
 	case XRGB32:
-		unloadmemimage(i, rectaddpt(UR, sp), cbuf, sizeof cbuf);
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf, sizeof cbuf);
 		memmove(cbuf+1, cbuf, 3);
 		cbuf[0] = 0xFF;
 		break;
 	}
 
-	/* TODO
-	 * not all textures require color space conversion. implement a better
-	 * interface to let the user decide.
-	 */
-	return srgb2linear(cbuf2col(cbuf));
+	c = cbuf2col(cbuf);
+	switch(t->type){
+	case sRGBTexture: c = srgb2linear(c); break;
+	}
+	return c;
 }
 
 /*
  * nearest-neighbour sampler
  */
 Color
-neartexsampler(Memimage *i, Point2 uv)
+neartexsampler(Texture *t, Point2 uv)
 {
-	return _memreadcolor(i, uv2tp(uv, i));
+	return _memreadcolor(t, uv2tp(uv, t));
 }
 
 /*
  * bilinear sampler
  */
 Color
-bilitexsampler(Memimage *i, Point2 uv)
+bilitexsampler(Texture *t, Point2 uv)
 {
 	Rectangle r;
 	Color c1, c2;
 
-	r = rectaddpt(UR, uv2tp(uv, i));
-	if(r.min.x < i->r.min.x){
+	r = rectaddpt(UR, uv2tp(uv, t));
+	if(r.min.x < t->image->r.min.x){
 		r.min.x++;
 		r.max.x++;
-	}if(r.min.y < i->r.min.y){
+	}if(r.min.y < t->image->r.min.y){
 		r.min.y++;
 		r.max.y++;
-	}if(r.max.x >= i->r.max.x){
+	}if(r.max.x >= t->image->r.max.x){
 		r.min.x--;
 		r.max.x--;
-	}if(r.max.y >= i->r.max.y){
+	}if(r.max.y >= t->image->r.max.y){
 		r.min.y--;
 		r.max.y--;
 	}
-	c1 = lerp3(_memreadcolor(i, r.min), _memreadcolor(i, Pt(r.max.x, r.min.y)), 0.5);
-	c2 = lerp3(_memreadcolor(i, Pt(r.min.x, r.max.y)), _memreadcolor(i, r.max), 0.5);
+	c1 = lerp3(_memreadcolor(t, r.min), _memreadcolor(t, Pt(r.max.x, r.min.y)), 0.5);
+	c2 = lerp3(_memreadcolor(t, Pt(r.min.x, r.max.y)), _memreadcolor(t, r.max), 0.5);
 	return lerp3(c1, c2, 0.5);
 }
 
 Color
-texture(Memimage *i, Point2 uv, Color(*sampler)(Memimage*,Point2))
+texture(Texture *t, Point2 uv, Color(*sampler)(Texture*,Point2))
 {
-	return sampler(i, uv);
+	return sampler(t, uv);
+}
+
+Texture *
+alloctexture(int type, Memimage *i)
+{
+	Texture *t;
+
+	t = emalloc(sizeof *t);
+	t->image = i;
+	t->type = type;
+	return t;
+}
+
+void
+freetexture(Texture *t)
+{
+	freememimage(t->image);
+	free(t);
 }
 
 /* cubemap sampling */
@@ -116,6 +135,7 @@ Cubemap *
 readcubemap(char *paths[6])
 {
 	Cubemap *cm;
+	Memimage *i;
 	char **p;
 	int fd;
 
@@ -127,9 +147,10 @@ readcubemap(char *paths[6])
 		fd = open(*p, OREAD);
 		if(fd < 0)
 			sysfatal("open: %r");
-		cm->faces[p-paths] = readmemimage(fd);
-		if(cm->faces[p-paths] == nil)
+		i = readmemimage(fd);
+		if(i == nil)
 			sysfatal("readmemimage: %r");
+		cm->faces[p-paths] = alloctexture(sRGBTexture, i);
 		close(fd);
 	}
 	return cm;
@@ -141,7 +162,7 @@ freecubemap(Cubemap *cm)
 	int i;
 
 	for(i = 0; i < 6; i++)
-		freememimage(cm->faces[i]);
+		freetexture(cm->faces[i]);
 	free(cm->name);
 	free(cm);
 }
@@ -152,7 +173,7 @@ freecubemap(Cubemap *cm)
  * 	- “Cubemap Texture Selection”, OpenGL ES 2.0 § 3.7.5, November 2010
  */
 Color
-cubemaptexture(Cubemap *cm, Point3 d, Color(*sampler)(Memimage*,Point2))
+cubemaptexture(Cubemap *cm, Point3 d, Color(*sampler)(Texture*,Point2))
 {
 	Point2 uv;
 	double ax, ay, az, ma, sc, tc;

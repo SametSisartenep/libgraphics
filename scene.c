@@ -165,17 +165,19 @@ loadobjmodel(Model *m, OBJ *obj)
 			mtl->shininess = objmtl->Ns;
 
 			if(objmtl->map_Kd != nil){
-				mtl->diffusemap = allocmemimaged(objmtl->map_Kd->r, objmtl->map_Kd->chan, objmtl->map_Kd->data);
-				if(mtl->diffusemap == nil)
+				mtl->diffusemap = alloctexture(sRGBTexture, nil);
+				mtl->diffusemap->image = allocmemimaged(objmtl->map_Kd->r, objmtl->map_Kd->chan, objmtl->map_Kd->data);
+				if(mtl->diffusemap->image == nil)
 					sysfatal("allocmemimaged: %r");
-				mtl->diffusemap->data->ref++;
+				mtl->diffusemap->image->data->ref++;
 			}
 
 			if(objmtl->norm != nil){
-				mtl->normalmap = allocmemimaged(objmtl->norm->r, objmtl->norm->chan, objmtl->norm->data);
-				if(mtl->normalmap == nil)
+				mtl->normalmap = alloctexture(RAWTexture, nil);
+				mtl->normalmap->image = allocmemimaged(objmtl->norm->r, objmtl->norm->chan, objmtl->norm->data);
+				if(mtl->normalmap->image == nil)
 					sysfatal("allocmemimaged: %r");
-				mtl->normalmap->data->ref++;
+				mtl->normalmap->image->data->ref++;
 			}
 
 			addmtlmap(&mtlmap, objmtl, m->nmaterials-1);
@@ -323,11 +325,11 @@ delmodel(Model *m)
 	if(m == nil)
 		return;
 	if(m->tex != nil)
-		freememimage(m->tex);
+		freetexture(m->tex);
 	if(m->nmaterials > 0){
 		while(m->nmaterials--){
-			freememimage(m->materials[m->nmaterials].diffusemap);
-			freememimage(m->materials[m->nmaterials].normalmap);
+			freetexture(m->materials[m->nmaterials].diffusemap);
+			freetexture(m->materials[m->nmaterials].normalmap);
 			free(m->materials[m->nmaterials].name);
 		}
 		free(m->materials);

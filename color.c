@@ -9,6 +9,10 @@
 #include "internal.h"
 
 /*
+ * see also “The Importance of Being Linear”, Gritz and d'Eon, GPU Gems 3, Ch. 24, December 2007
+ */
+
+/*
  * generated with:
  * 	% seq 0 255 | awk '{$0 = $0/255; if($0 > 0.04045) $0 = (($0+0.055)/1.055)^2.4; else $0 = $0/12.92; printf("\t0x%02X,%s", int($0*255+0.5), NR%8 == 0? "\n": "")}'
  */

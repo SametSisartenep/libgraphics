@@ -18,11 +18,17 @@ enum {
 };
 
 enum {
+	RAWTexture,
+	sRGBTexture,
+};
+
+enum {
 	VAPoint,
 	VANumber,
 };
 
 typedef struct Color Color;
+typedef struct Texture Texture;
 typedef struct Cubemap Cubemap;
 typedef struct Vertexattr Vertexattr;
 typedef struct Vertex Vertex;
@@ -49,10 +55,16 @@ struct Color
 	double r, g, b, a;
 };
 
+struct Texture
+{
+	Memimage *image;
+	int type;
+};
+
 struct Cubemap
 {
 	char *name;
-	Memimage *faces[6];
+	Texture *faces[6];
 };
 
 /*
@@ -119,8 +131,8 @@ struct Material
 	Color diffuse;
 	Color specular;
 	double shininess;
-	Memimage *diffusemap;
-	Memimage *normalmap;
+	Texture *diffusemap;
+	Texture *normalmap;
 };
 
 struct Primitive
@@ -135,7 +147,7 @@ struct Model
 {
 	Primitive *prims;
 	ulong nprims;
-	Memimage *tex;		/* texture map (TODO get rid of it, use materials) */
+	Texture *tex;		/* texture map (TODO get rid of it, use materials) */
 	Material *materials;
 	ulong nmaterials;
 };
@@ -325,12 +337,14 @@ void addvattr(Vertex*, char*, int, void*);
 Vertexattr *getvattr(Vertex*, char*);
 
 /* texture */
-Color neartexsampler(Memimage*, Point2);
-Color bilitexsampler(Memimage*, Point2);
-Color texture(Memimage*, Point2, Color(*)(Memimage*, Point2));
+Texture *alloctexture(int, Memimage*);
+void freetexture(Texture*);
+Color neartexsampler(Texture*, Point2);
+Color bilitexsampler(Texture*, Point2);
+Color texture(Texture*, Point2, Color(*)(Texture*, Point2));
 Cubemap *readcubemap(char*[6]);
 void freecubemap(Cubemap*);
-Color cubemaptexture(Cubemap*, Point3, Color(*)(Memimage*, Point2));
+Color cubemaptexture(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
 /* util */
 double fmin(double, double);
