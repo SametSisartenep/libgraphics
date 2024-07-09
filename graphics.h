@@ -18,7 +18,7 @@ enum {
 };
 
 enum {
-	RAWTexture,
+	RAWTexture,	/* unmanaged */
 	sRGBTexture,
 };
 
@@ -341,10 +341,10 @@ Texture *alloctexture(int, Memimage*);
 void freetexture(Texture*);
 Color neartexsampler(Texture*, Point2);
 Color bilitexsampler(Texture*, Point2);
-Color texture(Texture*, Point2, Color(*)(Texture*, Point2));
+Color sampletexture(Texture*, Point2, Color(*)(Texture*, Point2));
 Cubemap *readcubemap(char*[6]);
 void freecubemap(Cubemap*);
-Color cubemaptexture(Cubemap*, Point3, Color(*)(Texture*, Point2));
+Color samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
 /* util */
 double fmin(double, double);

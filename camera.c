@@ -34,7 +34,7 @@ skyboxfs(FSparams *sp)
 	Color c;
 
 	va = getvattr(&sp->v, "dir");
-	c = cubemaptexture(sp->su->camera->scene->skybox, va->p, neartexsampler);
+	c = samplecubemap(sp->su->camera->scene->skybox, va->p, neartexsampler);
 	return c;
 }
 

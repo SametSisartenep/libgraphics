@@ -106,7 +106,7 @@ bilitexsampler(Texture *t, Point2 uv)
 }
 
 Color
-texture(Texture *t, Point2 uv, Color(*sampler)(Texture*,Point2))
+sampletexture(Texture *t, Point2 uv, Color(*sampler)(Texture*,Point2))
 {
 	return sampler(t, uv);
 }
@@ -173,7 +173,7 @@ freecubemap(Cubemap *cm)
  * 	- “Cubemap Texture Selection”, OpenGL ES 2.0 § 3.7.5, November 2010
  */
 Color
-cubemaptexture(Cubemap *cm, Point3 d, Color(*sampler)(Texture*,Point2))
+samplecubemap(Cubemap *cm, Point3 d, Color(*sampler)(Texture*,Point2))
 {
 	Point2 uv;
 	double ax, ay, az, ma, sc, tc;

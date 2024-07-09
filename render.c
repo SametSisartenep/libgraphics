@@ -15,10 +15,10 @@ col2ul(Color c)
 {
 	uchar cbuf[4];
 
-	cbuf[0] = fclamp(c.a, 0, 1)*0xFF;
-	cbuf[1] = fclamp(c.b, 0, 1)*0xFF;
-	cbuf[2] = fclamp(c.g, 0, 1)*0xFF;
-	cbuf[3] = fclamp(c.r, 0, 1)*0xFF;
+	cbuf[0] = fclamp(c.b, 0, 1)*0xFF;
+	cbuf[1] = fclamp(c.g, 0, 1)*0xFF;
+	cbuf[2] = fclamp(c.r, 0, 1)*0xFF;
+	cbuf[3] = fclamp(c.a, 0, 1)*0xFF;
 	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
 }
 
@@ -27,10 +27,10 @@ ul2col(ulong l)
 {
 	Color c;
 
-	c.a = (l     & 0xff)/255.0;
-	c.b = (l>>8  & 0xff)/255.0;
-	c.g = (l>>16 & 0xff)/255.0;
-	c.r = (l>>24 & 0xff)/255.0;
+	c.b = (l     & 0xff)/255.0;
+	c.g = (l>>8  & 0xff)/255.0;
+	c.r = (l>>16 & 0xff)/255.0;
+	c.a = (l>>24 & 0xff)/255.0;
 	return c;
 }
 
@@ -52,6 +52,7 @@ pixeln(Framebuf *fb, Point p, Color c)
 	ulong *dst;
 
 	dst = fb->nb;
+	c.a = 1;
 	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
 }
 
@@ -222,7 +223,6 @@ discard:
 				fsp.p = p;
 				c = params->fshader(&fsp);
 				pixel(params->fb, p, c);
-				fsp.v.n.w = 1;
 				pixeln(params->fb, p, fsp.v.n);
 				delvattrs(&fsp.v);
 			}
