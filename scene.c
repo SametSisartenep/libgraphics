@@ -288,7 +288,6 @@ loadobjmodel(Model *m, OBJ *obj)
 							p->tangent = normvec3(p->tangent);
 						}
 						if(neednormal){
-							/* TODO build a list of per-vertex normals earlier */
 							n = normvec3(crossvec3(subpt3(p->v[1].p, p->v[0].p), subpt3(p->v[2].p, p->v[0].p)));
 							p->v[0].n = p->v[1].n = p->v[2].n = n;
 						}
@@ -336,6 +335,7 @@ delmodel(Model *m)
 	}
 	if(m->nprims > 0)
 		free(m->prims);
+	memset(m, 0, sizeof *m);
 	free(m);
 }
 
@@ -361,6 +361,7 @@ delentity(Entity *e)
 		return;
 	if(e->mdl != nil)
 		delmodel(e->mdl);
+	memset(e, 0, sizeof *e);
 	free(e);
 }
 
@@ -405,6 +406,7 @@ delscene(Scene *s)
 		return;
 	clearscene(s);
 	free(s->name);
+	memset(s, 0, sizeof *s);
 	free(s);
 }
 

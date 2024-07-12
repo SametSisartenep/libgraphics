@@ -34,9 +34,9 @@ addvert(Polygon *p, Vertex v)
 }
 
 static void
-swappoly(Polygon *a, Polygon *b)
+swappoly(Polygon **a, Polygon **b)
 {
-	Polygon tmp;
+	Polygon *tmp;
 
 	tmp = *a;
 	*a = *b;
@@ -88,20 +88,22 @@ clipprimitive(Primitive *p)
 	};
 	double sd0[6], sd1[6];
 	double d0, d1, perc;
-	Polygon Vin, Vout;
+	Polygon Vinp, Voutp, *Vin, *Vout;
 	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
 	int i, j, np;
 
 	np = 0;
-	memset(&Vin, 0, sizeof Vin);
-	memset(&Vout, 0, sizeof Vout);
+	Vin = &Vinp;
+	Vout = &Voutp;
+	memset(Vin, 0, sizeof Vinp);
+	memset(Vout, 0, sizeof Voutp);
 	for(i = 0; i < p[0].type+1; i++)
-		addvert(&Vin, p[0].v[i]);
+		addvert(Vin, p[0].v[i]);
 
-	for(j = 0; j < 6 && Vin.n > 0; j++){
-		for(i = 0; i < Vin.n; i++){
-			v0 = &Vin.v[i];
-			v1 = &Vin.v[(i+1) % Vin.n];
+	for(j = 0; j < 6 && Vin->n > 0; j++){
+		for(i = 0; i < Vin->n; i++){
+			v0 = &Vin->v[i];
+			v1 = &Vin->v[(i+1) % Vin->n];
 
 			mulsdm(sd0, sdm, v0->p);
 			mulsdm(sd1, sdm, v1->p);
@@ -117,44 +119,44 @@ clipprimitive(Primitive *p)
 			perc = d0/(d0 - d1);
 
 			lerpvertex(&v, v0, v1, perc);
-			addvert(&Vout, v);
+			addvert(Vout, v);
 
 			if(sd1[j] >= 0){
 allin:
-				addvert(&Vout, dupvertex(v1));
+				addvert(Vout, dupvertex(v1));
 			}
 		}
-		cleanpoly(&Vin);
+		cleanpoly(Vin);
 		if(j < 6-1)
 			swappoly(&Vin, &Vout);
 	}
 
-	if(Vout.n < 2)
-		cleanpoly(&Vout);
+	if(Vout->n < 2)
+		cleanpoly(Vout);
 	else switch(p[0].type){
 	case PLine:
-		p[0].v[0] = dupvertex(&Vout.v[0]);
-		p[0].v[1] = eqpt3(Vout.v[0].p, Vout.v[1].p)? dupvertex(&Vout.v[2]): dupvertex(&Vout.v[1]);
-		cleanpoly(&Vout);
+		p[0].v[0] = dupvertex(&Vout->v[0]);
+		p[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? dupvertex(&Vout->v[2]): dupvertex(&Vout->v[1]);
+		cleanpoly(Vout);
 		np = 1;
 		break;
 	case PTriangle:
 		/* triangulate */
-		for(i = 0; i < Vout.n-2; i++, np++){
+		for(i = 0; i < Vout->n-2; i++, np++){
 			/*
 			 * when performing fan triangulation, indices 0 and 2
 			 * are referenced on every triangle, so duplicate them
 			 * to avoid complications during rasterization.
 			 */
-			memmove(&p[np], &p[0], sizeof *p);
-			p[np].v[0] = i < Vout.n-2-1? dupvertex(&Vout.v[0]): Vout.v[0];
-			p[np].v[1] = Vout.v[i+1];
-			p[np].v[2] = i < Vout.n-2-1? dupvertex(&Vout.v[i+2]): Vout.v[i+2];
+			p[np] = p[0];
+			p[np].v[0] = i < Vout->n-2-1? dupvertex(&Vout->v[0]): Vout->v[0];
+			p[np].v[1] = Vout->v[i+1];
+			p[np].v[2] = i < Vout->n-2-1? dupvertex(&Vout->v[i+2]): Vout->v[i+2];
 		}
 		break;
 	}
-	free(Vout.v);
-	free(Vin.v);
+	free(Vout->v);
+	free(Vin->v);
 
 	return np;
 }

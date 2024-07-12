@@ -108,7 +108,6 @@ rasterize(Rastertask *task)
 
 	params = task->params;
 	prim = task->p;
-	memmove(prim.v, task->p.v, sizeof prim.v);
 	fsp.su = params;
 	memset(&fsp.v, 0, sizeof fsp.v);
 
@@ -278,7 +277,7 @@ tilerdurden(void *arg)
 	SUparams *params, *newparams;
 	Rastertask *task;
 	VSparams vsp;
-	Primitive *ep, *p;			/* primitives to raster */
+	Primitive *ep, *p;	/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
 	ulong Δy, nproc;
@@ -324,7 +323,7 @@ tilerdurden(void *arg)
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			memmove(p, ep, sizeof *p);
+			*p = *ep;
 			switch(ep->type){
 			case PPoint:
 				p[0].v[0].mtl = ep->mtl;
@@ -353,7 +352,7 @@ tilerdurden(void *arg)
 						task = emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
-						memmove(&task->p, &p[0], sizeof task->p);
+						task->p = p[0];
 						task->p.v[0] = dupvertex(&p[0].v[0]);
 						sendp(taskchans[i], task);
 					}
@@ -392,7 +391,7 @@ tilerdurden(void *arg)
 							task = emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = wr[i];
-							memmove(&task->p, &p[np], sizeof task->p);
+							task->p = p[np];
 							task->p.v[0] = dupvertex(&p[np].v[0]);
 							task->p.v[1] = dupvertex(&p[np].v[1]);
 							sendp(taskchans[i], task);
@@ -441,7 +440,7 @@ tilerdurden(void *arg)
 							task = emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = wr[i];
-							memmove(&task->p, &p[np], sizeof task->p);
+							task->p = p[np];
 							task->p.v[0] = dupvertex(&p[np].v[0]);
 							task->p.v[1] = dupvertex(&p[np].v[1]);
 							task->p.v[2] = dupvertex(&p[np].v[2]);

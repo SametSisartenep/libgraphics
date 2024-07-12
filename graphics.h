@@ -147,9 +147,10 @@ struct Model
 {
 	Primitive *prims;
 	ulong nprims;
-	Texture *tex;		/* texture map (TODO get rid of it, use materials) */
 	Material *materials;
 	ulong nmaterials;
+
+	Texture *tex;		/* texture map (TODO get rid of it, use materials) */
 };
 
 struct Entity
