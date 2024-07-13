@@ -36,6 +36,7 @@ mkviewport(Rectangle r)
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);
 	v->fbctl = mkfbctl(r);
+	v->r = r;
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
 	v->getfb = viewport_getfb;

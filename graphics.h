@@ -267,6 +267,7 @@ struct Viewport
 {
 	RFrame;
 	Framebufctl *fbctl;
+	Rectangle r;
 
 	void (*draw)(Viewport*, Image*);
 	void (*memdraw)(Viewport*, Memimage*);
@@ -298,9 +299,14 @@ struct Camera
 };
 
 /* camera */
+Camera *Cam(Rectangle, Renderer*, Projection, double, double, double);
+Camera *newcamera(void);
+void delcamera(Camera*);
 void reloadcamera(Camera*);
-void configcamera(Camera*, Viewport*, double, double, double, Projection);
-void placecamera(Camera*, Point3, Point3, Point3);
+void configcamera(Camera*, Projection, double, double, double);
+void placecamera(Camera*, Scene*, Point3, Point3, Point3);
+void movecamera(Camera*, Point3);
+void rotatecamera(Camera*, Point3, double);
 void aimcamera(Camera*, Point3);
 void shootcamera(Camera*, Shadertab*);
 

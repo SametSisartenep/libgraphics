@@ -106,12 +106,40 @@ verifycfg(Camera *c)
 	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
 }
 
-/* TODO the current camera abstraction is quite dirty, not pleasant to work with. make it better. */
-//Camera *
-//Cam(Camcfg cfg)
-//{
-//	
-//}
+Camera *
+Cam(Rectangle vr, Renderer *r, Projection p, double fov, double clipn, double clipf)
+{
+	Camera *c;
+
+	c = newcamera();
+	c->vp = mkviewport(vr);
+	c->rctl = r;
+	c->projtype = p;
+	c->fov = fov;
+	c->clip.n = clipn;
+	c->clip.f = clipf;
+	reloadcamera(c);
+	return c;
+}
+
+Camera *
+newcamera(void)
+{
+	Camera *c;
+
+	c = emalloc(sizeof *c);
+	memset(c, 0, sizeof *c);
+	return c;
+}
+
+void
+delcamera(Camera *c)
+{
+	if(c == nil)
+		return;
+	rmviewport(c->vp);
+	free(c);
+}
 
 void
 reloadcamera(Camera *c)
@@ -120,16 +148,17 @@ reloadcamera(Camera *c)
 	double l, r, b, t;
 
 	verifycfg(c);
+
 	switch(c->projtype){
 	case ORTHOGRAPHIC:
-		r = Dx(c->vp->fbctl->fb[0]->r)/2;
-		t = Dy(c->vp->fbctl->fb[0]->r)/2;
+		r = Dx(c->vp->r)/2;
+		t = Dy(c->vp->r)/2;
 		l = -r;
 		b = -t;
 		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
 		break;
 	case PERSPECTIVE:
-		a = (double)Dx(c->vp->fbctl->fb[0]->r)/Dy(c->vp->fbctl->fb[0]->r);
+		a = (double)Dx(c->vp->r)/Dy(c->vp->r);
 		perspective(c->proj, c->fov, a, c->clip.n, c->clip.f);
 		break;
 	default: sysfatal("unknown projection type");
@@ -137,19 +166,19 @@ reloadcamera(Camera *c)
 }
 
 void
-configcamera(Camera *c, Viewport *v, double fov, double n, double f, Projection p)
+configcamera(Camera *c, Projection p, double fov, double n, double f)
 {
-	c->vp = v;
+	c->projtype = p;
 	c->fov = fov;
 	c->clip.n = n;
 	c->clip.f = f;
-	c->projtype = p;
 	reloadcamera(c);
 }
 
 void
-placecamera(Camera *c, Point3 p, Point3 focus, Point3 up)
+placecamera(Camera *c, Scene *s, Point3 p, Point3 focus, Point3 up)
 {
+	c->scene = s;
 	c->p = p;
 	c->bz = focus.w == 0? focus: normvec3(subpt3(c->p, focus));
 	c->bx = normvec3(crossvec3(up, c->bz));
@@ -157,9 +186,25 @@ placecamera(Camera *c, Point3 p, Point3 focus, Point3 up)
 }
 
 void
+movecamera(Camera *c, Point3 p)
+{
+	c->p = p.w == 0? addpt3(c->p, p): p;
+}
+
+void
+rotatecamera(Camera *c, Point3 axis, double θ)
+{
+	c->bx = qrotate(c->bx, axis, θ);
+	c->by = qrotate(c->by, axis, θ);
+	c->bz = qrotate(c->bz, axis, θ);
+}
+
+void
 aimcamera(Camera *c, Point3 focus)
 {
-	placecamera(c, c->p, focus, c->by);
+	c->bz = focus.w == 0? focus: normvec3(subpt3(c->p, focus));
+	c->bx = normvec3(crossvec3(c->by, c->bz));
+	c->by = crossvec3(c->bz, c->bx);
 }
 
 void
@@ -167,16 +212,19 @@ shootcamera(Camera *c, Shadertab *s)
 {
 	static Scene *skyboxscene;
 	static Shadertab skyboxshader = { nil, skyboxvs, skyboxfs };
+	Camera cam;
 	Model *mdl;
 	Renderjob *job;
 	uvlong t0, t1;
 
+	assert(c->vp != nil && c->rctl != nil && s != nil);
+
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
 	job->fb = c->vp->fbctl->getbb(c->vp->fbctl);
-	job->camera = emalloc(sizeof *c);
-	*job->camera = *c;
-	job->scene = dupscene(c->scene);	/* take a snapshot */
+	cam = *c;
+	job->camera = &cam;
+	job->scene = dupscene(c->scene);	/* take a snapshot */	
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
@@ -209,6 +257,5 @@ shootcamera(Camera *c, Shadertab *s)
 	updatetimes(c, job);
 
 	chanfree(job->donec);
-	free(job->camera);
 	free(job);
 }
