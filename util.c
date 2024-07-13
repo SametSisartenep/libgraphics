@@ -84,3 +84,18 @@ rgb(ulong c)
 	memfillcolor(i, c);
 	return i;
 }
+
+Memimage *
+dupmemimage(Memimage *i)
+{
+	Memimage *ni;
+
+	if(i == nil)
+		return nil;
+
+	ni = allocmemimaged(i->r, i->chan, i->data);
+	if(ni == nil)
+		sysfatal("allocmemimaged: %r");
+	ni->data->ref++;
+	return ni;
+}

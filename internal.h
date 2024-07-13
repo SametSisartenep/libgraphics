@@ -51,7 +51,7 @@ void delvattrs(Vertex*);
 void fprintvattrs(int, Vertex*);
 
 /* clip */
-int clipprimitive(Primitive*);
+int clipprimitive(Primitive*, Primitive*);
 int rectclipline(Rectangle, Point*, Point*);
 
 /* util */

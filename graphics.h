@@ -156,6 +156,7 @@ struct Model
 struct Entity
 {
 	RFrame3;
+	char *name;
 	Model *mdl;
 
 	Entity *prev, *next;
@@ -294,10 +295,10 @@ struct Camera
 };
 
 /* camera */
+void reloadcamera(Camera*);
 void configcamera(Camera*, Viewport*, double, double, double, Projection);
 void placecamera(Camera*, Point3, Point3, Point3);
 void aimcamera(Camera*, Point3);
-void reloadcamera(Camera*);
 void shootcamera(Camera*, Shadertab*);
 
 /* viewport */
@@ -326,10 +327,13 @@ void orthographic(Matrix3, double, double, double, double, double, double);
 /* scene */
 int loadobjmodel(Model*, OBJ*);
 Model *newmodel(void);
+Model *dupmodel(Model*);
 void delmodel(Model*);
-Entity *newentity(Model*);
+Entity *newentity(char*, Model*);
+Entity *dupentity(Entity*);
 void delentity(Entity*);
 Scene *newscene(char*);
+Scene *dupscene(Scene*);
 void delscene(Scene*);
 void clearscene(Scene*);
 
@@ -339,6 +343,7 @@ Vertexattr *getvattr(Vertex*, char*);
 
 /* texture */
 Texture *alloctexture(int, Memimage*);
+Texture *duptexture(Texture*);
 void freetexture(Texture*);
 Color neartexsampler(Texture*, Point2);
 Color bilitexsampler(Texture*, Point2);
@@ -353,6 +358,7 @@ double fmax(double, double);
 Point2 modulapt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
 Memimage *rgb(ulong);
+Memimage *dupmemimage(Memimage*);
 
 /* color */
 Color srgb2linear(Color);

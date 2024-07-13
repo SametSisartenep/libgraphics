@@ -122,9 +122,25 @@ alloctexture(int type, Memimage *i)
 	return t;
 }
 
+Texture *
+duptexture(Texture *t)
+{
+	Texture *nt;
+
+	if(t == nil)
+		return nil;
+
+	nt = alloctexture(t->type, nil);
+	nt->image = dupmemimage(t->image);
+	return nt;
+}
+
 void
 freetexture(Texture *t)
 {
+	if(t == nil)
+		return;
+
 	freememimage(t->image);
 	free(t);
 }
@@ -160,6 +176,9 @@ void
 freecubemap(Cubemap *cm)
 {
 	int i;
+
+	if(cm == nil)
+		return;
 
 	for(i = 0; i < 6; i++)
 		freetexture(cm->faces[i]);

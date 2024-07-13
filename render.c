@@ -67,13 +67,13 @@ isvisible(Point3 p)
 }
 
 static int
-isfacingback(Primitive p)
+isfacingback(Primitive *p)
 {
 	double sa;	/* signed area */
 
-	sa = p.v[0].p.x * p.v[1].p.y - p.v[0].p.y * p.v[1].p.x +
-	     p.v[1].p.x * p.v[2].p.y - p.v[1].p.y * p.v[2].p.x +
-	     p.v[2].p.x * p.v[0].p.y - p.v[2].p.y * p.v[0].p.x;
+	sa = p->v[0].p.x * p->v[1].p.y - p->v[0].p.y * p->v[1].p.x +
+	     p->v[1].p.x * p->v[2].p.y - p->v[1].p.y * p->v[2].p.x +
+	     p->v[2].p.x * p->v[0].p.y - p->v[2].p.y * p->v[0].p.x;
 	return sa <= 0;
 }
 
@@ -277,7 +277,7 @@ tilerdurden(void *arg)
 	SUparams *params, *newparams;
 	Rastertask *task;
 	VSparams vsp;
-	Primitive *ep, *p;	/* primitives to raster */
+	Primitive *ep, *cp, *p;		/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
 	ulong Δy, nproc;
@@ -285,7 +285,7 @@ tilerdurden(void *arg)
 	uvlong t0;
 
 	tp = arg;
-	p = emalloc(sizeof(*p)*16);
+	cp = emalloc(sizeof(*cp)*16);
 	taskchans = tp->taskchans;
 	nproc = tp->nproc;
 	wr = emalloc(nproc*sizeof(Rectangle));
@@ -323,27 +323,27 @@ tilerdurden(void *arg)
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			*p = *ep;
-			switch(ep->type){
+			p = ep;
+			switch(p->type){
 			case PPoint:
-				p[0].v[0].mtl = ep->mtl;
-				p[0].v[0].attrs = nil;
-				p[0].v[0].nattrs = 0;
+				p->v[0].mtl = p->mtl;
+				p->v[0].attrs = nil;
+				p->v[0].nattrs = 0;
 
-				vsp.v = &p[0].v[0];
+				vsp.v = &p->v[0];
 				vsp.idx = 0;
-				p[0].v[0].p = params->vshader(&vsp);
+				p->v[0].p = params->vshader(&vsp);
 
-				if(!isvisible(p[0].v[0].p))
+				if(!isvisible(p->v[0].p))
 					break;
 
-				p[0].v[0].p = clip2ndc(p[0].v[0].p);
-				p[0].v[0].p = ndc2viewport(params->fb, p[0].v[0].p);
+				p->v[0].p = clip2ndc(p->v[0].p);
+				p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
 
-				bbox.min.x = p[0].v[0].p.x;
-				bbox.min.y = p[0].v[0].p.y;
-				bbox.max.x = p[0].v[0].p.x+1;
-				bbox.max.y = p[0].v[0].p.y+1;
+				bbox.min.x = p->v[0].p.x;
+				bbox.min.y = p->v[0].p.y;
+				bbox.max.x = p->v[0].p.x+1;
+				bbox.max.y = p->v[0].p.y+1;
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox,wr[i])){
@@ -352,37 +352,39 @@ tilerdurden(void *arg)
 						task = emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
-						task->p = p[0];
-						task->p.v[0] = dupvertex(&p[0].v[0]);
+						task->p = *p;
+						task->p.v[0] = dupvertex(&p->v[0]);
 						sendp(taskchans[i], task);
 					}
-				delvattrs(&p[0].v[0]);
+				delvattrs(&p->v[0]);
 				break;
 			case PLine:
 				for(i = 0; i < 2; i++){
-					p[0].v[i].mtl = ep->mtl;
-					p[0].v[i].attrs = nil;
-					p[0].v[i].nattrs = 0;
+					p->v[i].mtl = p->mtl;
+					p->v[i].attrs = nil;
+					p->v[i].nattrs = 0;
 
-					vsp.v = &p[0].v[i];
+					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p[0].v[i].p = params->vshader(&vsp);
+					p->v[i].p = params->vshader(&vsp);
 				}
 
-				if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p))
-					np = clipprimitive(p);
+				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
+					np = clipprimitive(p, cp);
+					p = cp;
+				}
 
-				while(np--){
-					p[np].v[0].p = clip2ndc(p[np].v[0].p);
-					p[np].v[1].p = clip2ndc(p[np].v[1].p);
+				for(; np--; p++){
+					p->v[0].p = clip2ndc(p->v[0].p);
+					p->v[1].p = clip2ndc(p->v[1].p);
 
-					p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
-					p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
+					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
+					p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
 
-					bbox.min.x = min(p[np].v[0].p.x, p[np].v[1].p.x);
-					bbox.min.y = min(p[np].v[0].p.y, p[np].v[1].p.y);
-					bbox.max.x = max(p[np].v[0].p.x, p[np].v[1].p.x)+1;
-					bbox.max.y = max(p[np].v[0].p.y, p[np].v[1].p.y)+1;
+					bbox.min.x = min(p->v[0].p.x, p->v[1].p.x);
+					bbox.min.y = min(p->v[0].p.y, p->v[1].p.y);
+					bbox.max.x = max(p->v[0].p.x, p->v[1].p.x)+1;
+					bbox.max.y = max(p->v[0].p.y, p->v[1].p.y)+1;
 
 					for(i = 0; i < nproc; i++)
 						if(rectXrect(bbox,wr[i])){
@@ -391,47 +393,49 @@ tilerdurden(void *arg)
 							task = emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = wr[i];
-							task->p = p[np];
-							task->p.v[0] = dupvertex(&p[np].v[0]);
-							task->p.v[1] = dupvertex(&p[np].v[1]);
+							task->p = *p;
+							task->p.v[0] = dupvertex(&p->v[0]);
+							task->p.v[1] = dupvertex(&p->v[1]);
 							sendp(taskchans[i], task);
 						}
-					delvattrs(&p[np].v[0]);
-					delvattrs(&p[np].v[1]);
+					delvattrs(&p->v[0]);
+					delvattrs(&p->v[1]);
 				}
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
-					p[0].v[i].mtl = p->mtl;
-					p[0].v[i].attrs = nil;
-					p[0].v[i].nattrs = 0;
-					p[0].v[i].tangent = p->tangent;
+					p->v[i].mtl = p->mtl;
+					p->v[i].attrs = nil;
+					p->v[i].nattrs = 0;
+					p->v[i].tangent = p->tangent;
 
-					vsp.v = &p[0].v[i];
+					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p[0].v[i].p = params->vshader(&vsp);
+					p->v[i].p = params->vshader(&vsp);
 				}
 
-				if(!isvisible(p[0].v[0].p) || !isvisible(p[0].v[1].p) || !isvisible(p[0].v[2].p))
-					np = clipprimitive(p);
+				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){
+					np = clipprimitive(p, cp);
+					p = cp;
+				}
 
-				while(np--){
-					p[np].v[0].p = clip2ndc(p[np].v[0].p);
-					p[np].v[1].p = clip2ndc(p[np].v[1].p);
-					p[np].v[2].p = clip2ndc(p[np].v[2].p);
+				for(; np--; p++){
+					p->v[0].p = clip2ndc(p->v[0].p);
+					p->v[1].p = clip2ndc(p->v[1].p);
+					p->v[2].p = clip2ndc(p->v[2].p);
 
 					/* culling */
-//					if(isfacingback(p[np]))
+//					if(isfacingback(*p))
 //						goto skiptri;
 
-					p[np].v[0].p = ndc2viewport(params->fb, p[np].v[0].p);
-					p[np].v[1].p = ndc2viewport(params->fb, p[np].v[1].p);
-					p[np].v[2].p = ndc2viewport(params->fb, p[np].v[2].p);
+					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
+					p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
+					p->v[2].p = ndc2viewport(params->fb, p->v[2].p);
 
-					bbox.min.x = min(min(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x);
-					bbox.min.y = min(min(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y);
-					bbox.max.x = max(max(p[np].v[0].p.x, p[np].v[1].p.x), p[np].v[2].p.x)+1;
-					bbox.max.y = max(max(p[np].v[0].p.y, p[np].v[1].p.y), p[np].v[2].p.y)+1;
+					bbox.min.x = min(min(p->v[0].p.x, p->v[1].p.x), p->v[2].p.x);
+					bbox.min.y = min(min(p->v[0].p.y, p->v[1].p.y), p->v[2].p.y);
+					bbox.max.x = max(max(p->v[0].p.x, p->v[1].p.x), p->v[2].p.x)+1;
+					bbox.max.y = max(max(p->v[0].p.y, p->v[1].p.y), p->v[2].p.y)+1;
 
 					for(i = 0; i < nproc; i++)
 						if(rectXrect(bbox,wr[i])){
@@ -440,16 +444,16 @@ tilerdurden(void *arg)
 							task = emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = wr[i];
-							task->p = p[np];
-							task->p.v[0] = dupvertex(&p[np].v[0]);
-							task->p.v[1] = dupvertex(&p[np].v[1]);
-							task->p.v[2] = dupvertex(&p[np].v[2]);
+							task->p = *p;
+							task->p.v[0] = dupvertex(&p->v[0]);
+							task->p.v[1] = dupvertex(&p->v[1]);
+							task->p.v[2] = dupvertex(&p->v[2]);
 							sendp(taskchans[i], task);
 						}
 //skiptri:
-					delvattrs(&p[np].v[0]);
-					delvattrs(&p[np].v[1]);
-					delvattrs(&p[np].v[2]);
+					delvattrs(&p->v[0]);
+					delvattrs(&p->v[1]);
+					delvattrs(&p->v[2]);
 				}
 				break;
 			default: sysfatal("alien primitive detected");

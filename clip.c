@@ -75,7 +75,7 @@ eqpt3(Point3 a, Point3 b)
  * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
  */
 int
-clipprimitive(Primitive *p)
+clipprimitive(Primitive *p, Primitive *cp)
 {
 	/* signed distance from each clipping plane */
 	static double sdm[6][4] = {
@@ -97,8 +97,8 @@ clipprimitive(Primitive *p)
 	Vout = &Voutp;
 	memset(Vin, 0, sizeof Vinp);
 	memset(Vout, 0, sizeof Voutp);
-	for(i = 0; i < p[0].type+1; i++)
-		addvert(Vin, p[0].v[i]);
+	for(i = 0; i < p->type+1; i++)
+		addvert(Vin, p->v[i]);
 
 	for(j = 0; j < 6 && Vin->n > 0; j++){
 		for(i = 0; i < Vin->n; i++){
@@ -133,10 +133,11 @@ allin:
 
 	if(Vout->n < 2)
 		cleanpoly(Vout);
-	else switch(p[0].type){
+	else switch(p->type){
 	case PLine:
-		p[0].v[0] = dupvertex(&Vout->v[0]);
-		p[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? dupvertex(&Vout->v[2]): dupvertex(&Vout->v[1]);
+		cp[0] = *p;
+		cp[0].v[0] = dupvertex(&Vout->v[0]);
+		cp[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? dupvertex(&Vout->v[2]): dupvertex(&Vout->v[1]);
 		cleanpoly(Vout);
 		np = 1;
 		break;
@@ -148,10 +149,10 @@ allin:
 			 * are referenced on every triangle, so duplicate them
 			 * to avoid complications during rasterization.
 			 */
-			p[np] = p[0];
-			p[np].v[0] = i < Vout->n-2-1? dupvertex(&Vout->v[0]): Vout->v[0];
-			p[np].v[1] = Vout->v[i+1];
-			p[np].v[2] = i < Vout->n-2-1? dupvertex(&Vout->v[i+2]): Vout->v[i+2];
+			cp[np] = *p;
+			cp[np].v[0] = i < Vout->n-2-1? dupvertex(&Vout->v[0]): Vout->v[0];
+			cp[np].v[1] = Vout->v[i+1];
+			cp[np].v[2] = i < Vout->n-2-1? dupvertex(&Vout->v[i+2]): Vout->v[i+2];
 		}
 		break;
 	}

@@ -106,6 +106,36 @@ verifycfg(Camera *c)
 	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
 }
 
+/* TODO the current camera abstraction is quite dirty, not pleasant to work with. make it better. */
+//Camera *
+//Cam(Camcfg cfg)
+//{
+//	
+//}
+
+void
+reloadcamera(Camera *c)
+{
+	double a;
+	double l, r, b, t;
+
+	verifycfg(c);
+	switch(c->projtype){
+	case ORTHOGRAPHIC:
+		r = Dx(c->vp->fbctl->fb[0]->r)/2;
+		t = Dy(c->vp->fbctl->fb[0]->r)/2;
+		l = -r;
+		b = -t;
+		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
+		break;
+	case PERSPECTIVE:
+		a = (double)Dx(c->vp->fbctl->fb[0]->r)/Dy(c->vp->fbctl->fb[0]->r);
+		perspective(c->proj, c->fov, a, c->clip.n, c->clip.f);
+		break;
+	default: sysfatal("unknown projection type");
+	}
+}
+
 void
 configcamera(Camera *c, Viewport *v, double fov, double n, double f, Projection p)
 {
@@ -133,29 +163,6 @@ aimcamera(Camera *c, Point3 focus)
 }
 
 void
-reloadcamera(Camera *c)
-{
-	double a;
-	double l, r, b, t;
-
-	verifycfg(c);
-	switch(c->projtype){
-	case ORTHOGRAPHIC:
-		r = Dx(c->vp->fbctl->fb[0]->r)/2;
-		t = Dy(c->vp->fbctl->fb[0]->r)/2;
-		l = -r;
-		b = -t;
-		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
-		break;
-	case PERSPECTIVE:
-		a = (double)Dx(c->vp->fbctl->fb[0]->r)/Dy(c->vp->fbctl->fb[0]->r);
-		perspective(c->proj, c->fov, a, c->clip.n, c->clip.f);
-		break;
-	default: sysfatal("unknown projection type");
-	}
-}
-
-void
 shootcamera(Camera *c, Shadertab *s)
 {
 	static Scene *skyboxscene;
@@ -167,8 +174,9 @@ shootcamera(Camera *c, Shadertab *s)
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
 	job->fb = c->vp->fbctl->getbb(c->vp->fbctl);
-	job->camera = c;
-	job->scene = c->scene;
+	job->camera = emalloc(sizeof *c);
+	*job->camera = *c;
+	job->scene = dupscene(c->scene);	/* take a snapshot */
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
@@ -176,21 +184,23 @@ shootcamera(Camera *c, Shadertab *s)
 	t0 = nanosec();
 	sendp(c->rctl->c, job);
 	recvp(job->donec);
+	delscene(job->scene);			/* destroy the snapshot */
 	/*
 	 * if the scene has a skybox, do another render pass,
-	 * filling in the fragments left untouched by the z-buffer.
+	 * filling in the pixels left untouched.
 	 */
 	if(c->scene->skybox != nil){
 		if(skyboxscene == nil){
 			skyboxscene = newscene("skybox");
 			mdl = mkskyboxmodel();
-			skyboxscene->addent(skyboxscene, newentity(mdl));
+			skyboxscene->addent(skyboxscene, newentity("skybox", mdl));
 		}
 		skyboxscene->skybox = c->scene->skybox;
-		job->scene = skyboxscene;
+		job->scene = dupscene(skyboxscene);
 		job->shaders = &skyboxshader;
 		sendp(c->rctl->c, job);
 		recvp(job->donec);
+		delscene(job->scene);
 	}
 	t1 = nanosec();
 	c->vp->fbctl->swap(c->vp->fbctl);
@@ -199,5 +209,6 @@ shootcamera(Camera *c, Shadertab *s)
 	updatetimes(c, job);
 
 	chanfree(job->donec);
+	free(job->camera);
 	free(job);
 }
