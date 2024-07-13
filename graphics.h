@@ -6,24 +6,27 @@ typedef enum {
 } Projection;
 
 enum {
-	PPoint,
+	/* culling modes */
+	CullNone,
+	CullFront,
+	CullBack,
+
+	/* primitive types */
+	PPoint = 0,
 	PLine,
 	PTriangle,
-};
 
-enum {
-	LIGHT_POINT,
+	/* light types */
+	LIGHT_POINT = 0,
 	LIGHT_DIRECTIONAL,
 	LIGHT_SPOT,
-};
 
-enum {
-	RAWTexture,	/* unmanaged */
+	/* texture formats */
+	RAWTexture = 0,	/* unmanaged */
 	sRGBTexture,
-};
 
-enum {
-	VAPoint,
+	/* vertex attribute types */
+	VAPoint = 0,
 	VANumber,
 };
 
@@ -282,12 +285,12 @@ struct Camera
 	} clip;
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
+	int cullmode;
 
 	struct {
 		uvlong min, avg, max, acc, n, v;
 		uvlong nframes;
 	} stats;
-
 	struct {
 		Rendertime R[100], E[100], Tn[100], Rn[100];
 		int cur;
