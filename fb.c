@@ -20,6 +20,30 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 }
 
 static void
+framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
+{
+	Framebuf *fb;
+	Rectangle blkr;
+	Point sp, dp;
+	ulong *blk;
+	int i;
+
+	blk = emalloc(scale.x*scale.y*4);
+	blkr = Rect(0,0,scale.x,scale.y);
+
+	qlock(ctl);
+	fb = ctl->getfb(ctl);
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
+		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+			for(i = 0; i < scale.x*scale.y; i++)
+				blk[i] = fb->cb[Dx(fb->r)*sp.y + sp.x];
+			loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+		}
+	qunlock(ctl);
+	free(blk);
+}
+
+static void
 framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 {
 	Framebuf *fb;
@@ -28,6 +52,30 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 	fb = ctl->getfb(ctl);
 	loadmemimage(dst, dst->r, (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
+}
+
+static void
+framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
+{
+	Framebuf *fb;
+	Rectangle blkr;
+	Point sp, dp;
+	ulong *blk;
+	int i;
+
+	blk = emalloc(scale.x*scale.y*4);
+	blkr = Rect(0,0,scale.x,scale.y);
+
+	qlock(ctl);
+	fb = ctl->getfb(ctl);
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
+		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+			for(i = 0; i < scale.x*scale.y; i++)
+				blk[i] = fb->cb[Dx(fb->r)*sp.y + sp.x];
+			loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+		}
+	qunlock(ctl);
+	free(blk);
 }
 
 static void
@@ -106,7 +154,9 @@ mkfbctl(Rectangle r)
 	fc->fb[0] = mkfb(r);
 	fc->fb[1] = mkfb(r);
 	fc->draw = framebufctl_draw;
+	fc->upscaledraw = framebufctl_upscaledraw;
 	fc->memdraw = framebufctl_memdraw;
+	fc->upscalememdraw = framebufctl_upscalememdraw;
 	fc->drawnormals = framebufctl_drawnormals;
 	fc->swap = framebufctl_swap;
 	fc->reset = framebufctl_reset;

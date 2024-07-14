@@ -11,13 +11,35 @@
 static void
 viewport_draw(Viewport *v, Image *dst)
 {
-	v->fbctl->draw(v->fbctl, dst);
+	Point scale;
+
+	scale.x = Dx(dst->r)/Dx(v->r);
+	scale.y = Dy(dst->r)/Dy(v->r);
+
+	/* no downsampling support yet */
+	assert(scale.x > 0 && scale.y > 0);
+
+	if(scale.x > 1 || scale.y > 1)
+		v->fbctl->upscaledraw(v->fbctl, dst, scale);
+	else
+		v->fbctl->draw(v->fbctl, dst);
 }
 
 static void
 viewport_memdraw(Viewport *v, Memimage *dst)
 {
-	v->fbctl->memdraw(v->fbctl, dst);
+	Point scale;
+
+	scale.x = Dx(dst->r)/Dx(v->r);
+	scale.y = Dy(dst->r)/Dy(v->r);
+
+	/* no downsampling support yet */
+	assert(scale.x > 0 && scale.y > 0);
+
+	if(scale.x > 1 || scale.y > 1)
+		v->fbctl->upscalememdraw(v->fbctl, dst, scale);
+	else
+		v->fbctl->memdraw(v->fbctl, dst);
 }
 
 static Framebuf *

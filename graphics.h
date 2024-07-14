@@ -255,7 +255,9 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 
 	void (*draw)(Framebufctl*, Image*);
+	void (*upscaledraw)(Framebufctl*, Image*, Point);
 	void (*memdraw)(Framebufctl*, Memimage*);
+	void (*upscalememdraw)(Framebufctl*, Memimage*, Point);
 	void (*drawnormals)(Framebufctl*, Image*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
