@@ -124,7 +124,7 @@ ndc2vcs(Camera *c, Point3 p)
 Point3
 viewport2vcs(Camera *c, Point3 p)
 {
-	return ndc2vcs(c, viewport2ndc(c->vp->getfb(c->vp), p));
+	return ndc2vcs(c, viewport2ndc(c->view->getfb(c->view), p));
 }
 
 Point3

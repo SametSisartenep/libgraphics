@@ -100,25 +100,21 @@ updatetimes(Camera *c, Renderjob *j)
 static void
 verifycfg(Camera *c)
 {
-	assert(c->vp != nil);
+	assert(c->view != nil);
 	if(c->projtype == PERSPECTIVE)
 		assert(c->fov > 0 && c->fov < 360*DEG);
 	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
 }
 
 Camera *
-Cam(Rectangle vr, Renderer *r, Projection p, double fov, double clipn, double clipf)
+Cam(Rectangle vr, Renderer *r, Projection p, double fov, double n, double f)
 {
 	Camera *c;
 
 	c = newcamera();
-	c->vp = mkviewport(vr);
+	c->view = mkviewport(vr);
 	c->rctl = r;
-	c->projtype = p;
-	c->fov = fov;
-	c->clip.n = clipn;
-	c->clip.f = clipf;
-	reloadcamera(c);
+	configcamera(c, p, fov, n, f);
 	return c;
 }
 
@@ -137,7 +133,7 @@ delcamera(Camera *c)
 {
 	if(c == nil)
 		return;
-	rmviewport(c->vp);
+	rmviewport(c->view);
 	free(c);
 }
 
@@ -151,14 +147,14 @@ reloadcamera(Camera *c)
 
 	switch(c->projtype){
 	case ORTHOGRAPHIC:
-		r = Dx(c->vp->r)/2;
-		t = Dy(c->vp->r)/2;
+		r = Dx(c->view->r)/2;
+		t = Dy(c->view->r)/2;
 		l = -r;
 		b = -t;
 		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
 		break;
 	case PERSPECTIVE:
-		a = (double)Dx(c->vp->r)/Dy(c->vp->r);
+		a = (double)Dx(c->view->r)/Dy(c->view->r);
 		perspective(c->proj, c->fov, a, c->clip.n, c->clip.f);
 		break;
 	default: sysfatal("unknown projection type");
@@ -217,18 +213,18 @@ shootcamera(Camera *c, Shadertab *s)
 	Renderjob *job;
 	uvlong t0, t1;
 
-	assert(c->vp != nil && c->rctl != nil && s != nil);
+	assert(c->view != nil && c->rctl != nil && c->scene != nil && s != nil);
 
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
-	job->fb = c->vp->fbctl->getbb(c->vp->fbctl);
+	job->fb = c->view->fbctl->getbb(c->view->fbctl);
 	cam = *c;
 	job->camera = &cam;
 	job->scene = dupscene(c->scene);	/* take a snapshot */	
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
-	c->vp->fbctl->reset(c->vp->fbctl);
+	c->view->fbctl->reset(c->view->fbctl);
 	t0 = nanosec();
 	sendp(c->rctl->c, job);
 	recvp(job->donec);
@@ -244,6 +240,7 @@ shootcamera(Camera *c, Shadertab *s)
 			skyboxscene->addent(skyboxscene, newentity("skybox", mdl));
 		}
 		skyboxscene->skybox = c->scene->skybox;
+		job->camera->cullmode = CullNone;
 		job->scene = dupscene(skyboxscene);
 		job->shaders = &skyboxshader;
 		sendp(c->rctl->c, job);
@@ -251,7 +248,7 @@ shootcamera(Camera *c, Shadertab *s)
 		delscene(job->scene);
 	}
 	t1 = nanosec();
-	c->vp->fbctl->swap(c->vp->fbctl);
+	c->view->fbctl->swap(c->view->fbctl);
 
 	updatestats(c, t1-t0);
 	updatetimes(c, job);

@@ -277,7 +277,7 @@ struct Viewport
 struct Camera
 {
 	RFrame3;		/* VCS */
-	Viewport *vp;
+	Viewport *view;
 	Scene *scene;
 	Renderer *rctl;
 	double fov;		/* vertical FOV */
