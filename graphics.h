@@ -360,6 +360,7 @@ Color neartexsampler(Texture*, Point2);
 Color bilitexsampler(Texture*, Point2);
 Color sampletexture(Texture*, Point2, Color(*)(Texture*, Point2));
 Cubemap *readcubemap(char*[6]);
+Cubemap *dupcubemap(Cubemap*);
 void freecubemap(Cubemap*);
 Color samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 

@@ -19,9 +19,9 @@ skyboxvs(VSparams *sp)
 
 	addvattr(sp->v, "dir", VAPoint, &sp->v->p);
 	/* only rotate along with the camera */
-	p = sp->v->p; p.w = 0;
-	p = world2vcs(sp->su->camera, p); p.w = 1;
-	p = vcs2clip(sp->su->camera, p);
+	p = sp->v->p;
+	p.w = 0; p = world2vcs(sp->su->camera, p);
+	p.w = 1; p = vcs2clip(sp->su->camera, p);
 	/* force the cube to always be on the far plane */
 	p.z = -p.w;
 	return p;
@@ -208,7 +208,6 @@ shootcamera(Camera *c, Shadertab *s)
 {
 	static Scene *skyboxscene;
 	static Shadertab skyboxshader = { nil, skyboxvs, skyboxfs };
-	Camera cam;
 	Model *mdl;
 	Renderjob *job;
 	uvlong t0, t1;
@@ -218,8 +217,8 @@ shootcamera(Camera *c, Shadertab *s)
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
 	job->fb = c->view->fbctl->getbb(c->view->fbctl);
-	cam = *c;
-	job->camera = &cam;
+	job->camera = emalloc(sizeof *c);
+	*job->camera = *c;
 	job->scene = dupscene(c->scene);	/* take a snapshot */	
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
@@ -239,8 +238,9 @@ shootcamera(Camera *c, Shadertab *s)
 			mdl = mkskyboxmodel();
 			skyboxscene->addent(skyboxscene, newentity("skybox", mdl));
 		}
-		skyboxscene->skybox = c->scene->skybox;
 		job->camera->cullmode = CullNone;
+		job->camera->fov = 90*DEG;
+		reloadcamera(job->camera);
 		job->scene = dupscene(skyboxscene);
 		job->shaders = &skyboxshader;
 		sendp(c->rctl->c, job);
@@ -254,5 +254,6 @@ shootcamera(Camera *c, Shadertab *s)
 	updatetimes(c, job);
 
 	chanfree(job->donec);
+	free(job->camera);
 	free(job);
 }

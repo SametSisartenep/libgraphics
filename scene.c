@@ -322,8 +322,7 @@ dupmodel(Model *m)
 		return nil;
 
 	nm = newmodel();
-	if(m->tex != nil)
-		nm->tex = duptexture(m->tex);
+	nm->tex = duptexture(m->tex);
 	if(m->nmaterials > 0){
 		nm->nmaterials = m->nmaterials;
 		nm->materials = emalloc(nm->nmaterials*sizeof(*nm->materials));
@@ -456,6 +455,7 @@ dupscene(Scene *s)
 	if(s->nents > 0)
 		for(e = s->ents.next; e != &s->ents; e = e->next)
 			ns->addent(ns, dupentity(e));
+	ns->skybox = dupcubemap(s->skybox);
 	return ns;
 }
 

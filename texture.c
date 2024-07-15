@@ -125,14 +125,9 @@ alloctexture(int type, Memimage *i)
 Texture *
 duptexture(Texture *t)
 {
-	Texture *nt;
-
 	if(t == nil)
 		return nil;
-
-	nt = alloctexture(t->type, nil);
-	nt->image = dupmemimage(t->image);
-	return nt;
+	return alloctexture(t->type, dupmemimage(t->image));
 }
 
 void
@@ -170,6 +165,24 @@ readcubemap(char *paths[6])
 		close(fd);
 	}
 	return cm;
+}
+
+Cubemap *
+dupcubemap(Cubemap *cm)
+{
+	Cubemap *ncm;
+	int i;
+
+	if(cm == nil)
+		return nil;
+
+	ncm = emalloc(sizeof *ncm);
+	memset(ncm, 0, sizeof *ncm);
+	if(cm->name != nil)
+		ncm->name = strdup(cm->name);
+	for(i = 0; i < 6; i++)
+		ncm->faces[i] = duptexture(cm->faces[i]);
+	return ncm;
 }
 
 void
