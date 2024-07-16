@@ -59,7 +59,13 @@ int min(int, int);
 int max(int, int);
 void swapi(int*, int*);
 void swappt(Point*, Point*);
-void memsetd(double*, double, usize);
+void memsetd(void*, double, usize);
+void memsetl(void*, ulong, usize);
 
 /* nanosec */
 uvlong nanosec(void);
+
+/* ulong getpixel(Framebuf *fb, Point p) */
+#define getpixel(fb, p) (((fb)->cb)[Dx((fb)->r)*(p).y + (p).x])
+/* void putpixel(Framebuf *fb, Point p, ulong c) */
+#define putpixel(fb, p, c) (((fb)->cb)[Dx((fb)->r)*(p).y + (p).x] = (c))

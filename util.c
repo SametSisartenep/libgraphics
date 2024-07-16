@@ -65,12 +65,21 @@ modulapt3(Point3 a, Point3 b)
 }
 
 void
-memsetd(double *p, double v, usize len)
+memsetd(void *dp, double v, usize len)
 {
-	double *dp;
+	double *p, *ep;
 
-	for(dp = p; dp < p+len; dp++)
-		*dp = v;
+	for(p = dp, ep = p+len; p < ep; p++)
+		*p = v;
+}
+
+void
+memsetl(void *dp, ulong v, usize len)
+{
+	ulong *p, *ep;
+
+	for(p = dp, ep = p+len; p < ep; p++)
+		*p = v;
 }
 
 Memimage *

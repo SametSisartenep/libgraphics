@@ -8,6 +8,74 @@
 #include "graphics.h"
 #include "internal.h"
 
+/*
+ * scale[234]x filters
+ *
+ * see https://www.scale2x.it/algorithm
+ */
+static void
+scale2x_filter(ulong *dst, Framebuf *fb, Point *sp)
+{
+	ulong B, D, E, F, H;
+
+	E = getpixel(fb, *sp);
+	B = sp->y == fb->r.min.y? E: getpixel(fb, addpt(*sp, Pt( 0,-1)));
+	D = sp->x == fb->r.min.x? E: getpixel(fb, addpt(*sp, Pt(-1, 0)));
+	F = sp->x == fb->r.max.x? E: getpixel(fb, addpt(*sp, Pt( 1, 0)));
+	H = sp->y == fb->r.max.y? E: getpixel(fb, addpt(*sp, Pt( 0, 1)));
+
+	if(B != H && D != F){
+		dst[0] = D == B? D: E;
+		dst[1] = B == F? F: E;
+		dst[2] = D == H? D: E;
+		dst[3] = H == F? F: E;
+	}else
+		memsetl(dst, E, 4);
+}
+
+static void
+scale3x_filter(ulong *dst, Framebuf *fb, Point *sp)
+{
+	ulong A, B, C, D, E, F, G, H, I;
+
+	E = getpixel(fb, *sp);
+	B = sp->y == fb->r.min.y? E: getpixel(fb, addpt(*sp, Pt( 0,-1)));
+	D = sp->x == fb->r.min.x? E: getpixel(fb, addpt(*sp, Pt(-1, 0)));
+	F = sp->x == fb->r.max.x? E: getpixel(fb, addpt(*sp, Pt( 1, 0)));
+	H = sp->y == fb->r.max.y? E: getpixel(fb, addpt(*sp, Pt( 0, 1)));
+	A = sp->y == fb->r.min.y && sp->x == fb->r.min.x? E:
+		sp->y == fb->r.min.y? D: sp->x == fb->r.min.x? B:
+		getpixel(fb, addpt(*sp, Pt(-1,-1)));
+	C = sp->y == fb->r.min.y && sp->x == fb->r.max.x? E:
+		sp->y == fb->r.min.y? F: sp->x == fb->r.max.x? B:
+		getpixel(fb, addpt(*sp, Pt( 1,-1)));
+	G = sp->y == fb->r.max.y && sp->x == fb->r.min.x? E:
+		sp->y == fb->r.max.y? D: sp->x == fb->r.min.x? H:
+		getpixel(fb, addpt(*sp, Pt(-1, 1)));
+	I = sp->y == fb->r.max.y && sp->x == fb->r.max.x? E:
+		sp->y == fb->r.max.y? F: sp->x == fb->r.max.x? H:
+		getpixel(fb, addpt(*sp, Pt( 1, 1)));
+
+	if(B != H && D != F){
+		dst[0] = D == B? D: E;
+		dst[1] = (D == B && E != C) || (B == F && E != A)? B: E;
+		dst[2] = B == F? F: E;
+		dst[3] = (D == B && E != G) || (D == H && E != A)? D: E;
+		dst[4] = E;
+		dst[5] = (B == F && E != I) || (H == F && E != C)? F: E;
+		dst[6] = D == H? D: E;
+		dst[7] = (D == H && E != I) || (H == F && E != G)? H: E;
+		dst[8] = H == F? F: E;
+	}else
+		memsetl(dst, E, 9);
+}
+
+//static void
+//scale4x_filter(ulong *dst, Framebuf *fb, Point *sp)
+//{
+//
+//}
+
 static void
 framebufctl_draw(Framebufctl *ctl, Image *dst)
 {
@@ -35,8 +103,11 @@ framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 	fb = ctl->getfb(ctl);
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-			for(i = 0; i < scale.x*scale.y; i++)
-				blk[i] = fb->cb[Dx(fb->r)*sp.y + sp.x];
+			/*if(scale.x == 2 && scale.y == 2)
+				scale2x_filter(blk, fb, &sp);
+			else if(scale.x == 3 && scale.y == 3)
+				scale3x_filter(blk, fb, &sp);
+			else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 			loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 		}
 	qunlock(ctl);
@@ -70,8 +141,11 @@ framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
 	fb = ctl->getfb(ctl);
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-			for(i = 0; i < scale.x*scale.y; i++)
-				blk[i] = fb->cb[Dx(fb->r)*sp.y + sp.x];
+			/*if(scale.x == 2 && scale.y == 2)
+				scale2x_filter(blk, fb, &sp);
+			else if(scale.x == 3 && scale.y == 3)
+				scale3x_filter(blk, fb, &sp);
+			else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 			loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 		}
 	qunlock(ctl);
