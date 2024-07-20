@@ -94,6 +94,7 @@ updatetimes(Camera *c, Renderjob *j)
 	c->times.E[c->times.cur] = j->times.E;
 	c->times.Tn[c->times.cur] = j->times.Tn;
 	c->times.Rn[c->times.cur] = j->times.Rn;
+	c->times.last = c->times.cur;
 	c->times.cur = ++c->times.cur % nelem(c->times.R);
 }
 

@@ -94,7 +94,6 @@ framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
-	int i;
 
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
@@ -102,14 +101,14 @@ framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-			/*if(scale.x == 2 && scale.y == 2)
-				scale2x_filter(blk, fb, &sp);
-			else if(scale.x == 3 && scale.y == 3)
-				scale3x_filter(blk, fb, &sp);
-			else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
-			loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
-		}
+	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+		/*if(scale.x == 2 && scale.y == 2)
+			scale2x_filter(blk, fb, &sp);
+		else if(scale.x == 3 && scale.y == 3)
+			scale3x_filter(blk, fb, &sp);
+		else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+	}
 	qunlock(ctl);
 	free(blk);
 }
@@ -132,7 +131,6 @@ framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
-	int i;
 
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
@@ -140,14 +138,14 @@ framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-		for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-			/*if(scale.x == 2 && scale.y == 2)
-				scale2x_filter(blk, fb, &sp);
-			else if(scale.x == 3 && scale.y == 3)
-				scale3x_filter(blk, fb, &sp);
-			else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
-			loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
-		}
+	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+		/*if(scale.x == 2 && scale.y == 2)
+			scale2x_filter(blk, fb, &sp);
+		else if(scale.x == 3 && scale.y == 3)
+			scale3x_filter(blk, fb, &sp);
+		else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+	}
 	qunlock(ctl);
 	free(blk);
 }

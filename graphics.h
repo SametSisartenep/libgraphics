@@ -295,8 +295,8 @@ struct Camera
 		uvlong nframes;
 	} stats;
 	struct {
-		Rendertime R[100], E[100], Tn[100], Rn[100];
-		int cur;
+		Rendertime R[10], E[10], Tn[10], Rn[10];
+		int last, cur;
 	} times;
 };
 
