@@ -1,14 +1,90 @@
 .TL
-libgraphics
+libgraphics: Design and Implementation
+.DA
 .AU
 Rodrigo G. López
 rgl@antares-labs.eu
-.AB
-To be determined.
-.AE
 .SH
-Rendering graph
-.PP
+Introduction
+.LP
+.I Libgraphics
+is a 3D computer graphics library that provides a way to set up a
+scene, fill it up with a bunch of models (with their own meshes and
+materials), lights and cameras, and start taking pictures at the user
+request.  It implements a fully concurrent retained mode software
+renderer, with support for vertex and fragment/pixel shaders written
+in C (not GPU ones, at least for now), a z-buffer, front- and
+back-face culling, textures and skyboxes, directional and punctual
+lights, tangent-space normal mapping, ???
+.SH
+The renderer
+.LP
+The
+.I renderer
+is the core of the library. It follows a
+.B "retained mode"
+model, which means that the user won't get a picture until the entire
+scene has been rendered.  Thanks to this we can also clear and swap
+the framebuffers without their intervention, they only need to concern
+themselves with shooting and “developing” a camera.
+.LP
+It's implemented as a tree of concurrent processes connected by
+.CW Channel s—as
+seen in
+.B "Figure 1" —,
+spawned with a call to
+.CW initgraphics ,
+each representing a stage of the pipeline:
+.IP
+The
+.B renderer
+process, the root of the tree, waits on a
+.CW channel
+for a
+.CW Renderjob
+sent by another user process, specifying a scene, a camera and a
+shader table.  It walks the scene and sends each
+.CW Entity
+individually to the
+entityproc.
+.IP
+The
+.B entityproc
+receives an entity and splits its geometry equitatively among the
+tilers, sending a batch for each of them to process.
+.IP
+Next, each
+.B tiler
+gets to work on their subset of the geometry (potentially in
+parallel)—see
+.B "Figure 2" .
+They walk the list of primitives, then for each of them
+apply the
+.B "vertex shader"
+to its vertices (which expects clip space coordinates in return),
+perform frustum culling and clipping, back-face culling, and then
+project them into the viewport (screen space).  Following this step,
+they build a bounding box, used to allocate each primitive into a
+rasterization bucket, or
+.B tile ,
+managed by one of the rasterizers; this is illustrated in
+.B "Figure 3" .
+If it spans multiple tiles, it will be copied and sent to each of
+them.
+.IP
+Finally, the
+.B rasterizers
+receive the primitive in screen space, slice it to fit their tile, and
+apply a rasterization routine based on its type (only
+.I points ,
+.I lines
+and
+.I triangles
+are supported). For each of the pixels, a
+.B "depth test"
+is performed, discarding fragments that are further away. Then a
+.B "fragment shader"
+is applied and the result written to the framebuffer after blending.
 .PS
 .ps 7
 circlerad = 0.3
@@ -56,32 +132,9 @@ arrow from Tiler.T1 to Raster.Rn chop
 .ps 10
 .PE
 .B "Figure 1" :
-For a
+The rendering graph for a
 .B 2n
 processor machine.
-.SH
-The scene
-.PP
-.PS
-.ps 7
-boxwid = 0.5
-boxht = 0.2
-linewid = 0.1
-lineht = 0.2
-box "Scene"
-down; line from last box.s; right; line
-box "Entity"
-down; line from last box.s; right; line
-box "Model"
-down; line from last box.s; right; line
-box "Mesh"
-down; line from last box.s; right; line
-box "Primitive"
-down
-line from 2nd last line.s; line; right; line
-box "Material"
-.ps 10
-.PE
 .SH
 Tile-based rendering
 .PP
@@ -144,7 +197,6 @@ Raster: [
 	move
 	Rn: circle "rasterizer n"
 ] with .w at Tiles.e + (0.5,0)
-arrow dashed from Tiles.T0.e to Raster.R0.w
 arrow from Tiles.T1.e to Raster.R1.w
 arrow from Tiles.Td.e to Raster.Rd.w
 arrow from Tiles.Tn.e to Raster.Rn.w
@@ -153,11 +205,69 @@ arrow from Tiles.Tn.e to Raster.Rn.w
 .B "Figure 3" :
 Raster task scheduling.
 .SH
+The scene
+.PP
+.PS
+.ps 7
+boxwid = 0.5
+boxht = 0.2
+linewid = 0.1
+lineht = 0.2
+box "Scene"
+down; line from last box.s; right; line
+box "Entity"
+down; line from last box.s; right; line
+box "Model"
+down; line from last box.s; right; line
+box "Mesh"
+down; line from last box.s; right; line
+box "Primitive"
+down
+line from 2nd last line.s; line; right; line
+box "Material"
+.ps 10
+.PE
+.SH
 Frames of reference
 .PP
 Frames are right-handed throughout every stage.
 .PS
 .ps 7
-
+RFrame: [
+	pi = 3.1415926535
+	circle fill rad 0.01 at (0,0)
+	"p" at last circle.c - (0.1,0)
+	xa = -5*pi/180
+	arrow from (0,0) to (cos(xa),sin(xa))
+	"bx" at last arrow.end + (0.1,0)
+	arrow from (0,0) to (0,1)
+	"by" at last arrow.end - (0.1,0)
+	za = -150*pi/180
+	arrow from (0,0) to (cos(za)+0.1,sin(za)+0.1)
+	"bz" at last arrow.end - (0.1,0)
+]
 .ps 10
 .PE
+.B "Figure 4" :
+Example right-handed rframe.
+.SH
+Viewports
+.PP
+.PS
+.ps 7
+View: [
+	boxwid = 3
+	boxht = 2
+	box with .nw at (-1,1)
+	"framebuffer" at last box.s + (0,0.2)
+	circle fill rad 0.01 at (-1,1)
+	"p" at last circle.c - (0.1,0)
+	arrow from (-1,1) to (-1,1) + (1,0)
+	"bx" at last arrow.end + (0,0.1)
+	arrow from (-1,1) to (-1,1) - (0,1)
+	"by" at last arrow.end - (0.1,0)
+]
+.ps 10
+.PE
+.B "Figure 5" :
+Illustration of a 3:2 viewport.
