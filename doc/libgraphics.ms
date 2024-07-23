@@ -1,22 +1,82 @@
+.\" Figure management
+.nr FI 0 1
+.de FI
+.ce
+\fBFigure \\n+(FI\fR: \\$1
+..
+
 .TL
 libgraphics: Design and Implementation
 .DA
 .AU
 Rodrigo G. López
 rgl@antares-labs.eu
-.SH
-Introduction
-.LP
+.AB
 .I Libgraphics
 is a 3D computer graphics library that provides a way to set up a
 scene, fill it up with a bunch of models (with their own meshes and
 materials), lights and cameras, and start taking pictures at the user
 request.  It implements a fully concurrent retained mode software
 renderer, with support for vertex and fragment/pixel shaders written
-in C (not GPU ones, at least for now), a z-buffer, front- and
+in C (not GPU ones, at least for now), and featuring a z-buffer, front- and
 back-face culling, textures and skyboxes, directional and punctual
-lights, tangent-space normal mapping, ???
+lights, tangent-space normal mapping, among other things.
+.AE
 .SH
+Introduction
+.LP
+.QP
+Write the intro last.
+.NH
+The scene
+.PP
+A scene is a container, represented as a graph, that hosts the
+entities that make up the world.  Each of these entities has a model
+made out of a series of meshes, which in turn are made out of
+geometric primitives (only
+.I points ,
+.I lines
+and
+.I triangles
+are supported). Each model also stores a list of materials.
+.PP
+.PS
+.ps 7
+boxwid = 0.5
+boxht = 0.2
+linewid = 0.1
+lineht = 0.2
+box "Scene"
+down; line from last box.s; right; line
+box "Entity"
+down; line from last box.s; right; line
+box "Model"
+down; line from last box.s; right; line
+box dashed "Mesh"
+down; line from last box.s; right; line
+box "Primitive"
+down
+line from 2nd last line.s; line; right; line
+box "Material"
+reset
+.ps 10
+.PE
+.FI "The scene graph."
+.NH 2
+Entities
+.NH 2
+Models
+.NH 2
+Meshes
+.NH 2
+Primitives
+.NH 2
+Materials
+.NH
+Cameras
+.PP
+
+.NH
 The renderer
 .LP
 The
@@ -31,33 +91,33 @@ themselves with shooting and “developing” a camera.
 It's implemented as a tree of concurrent processes connected by
 .CW Channel s—as
 seen in
-.B "Figure 1" —,
+.B "Figure 2" —,
 spawned with a call to
 .CW initgraphics ,
 each representing a stage of the pipeline:
-.IP
+.IP •
 The
 .B renderer
 process, the root of the tree, waits on a
 .CW channel
 for a
 .CW Renderjob
-sent by another user process, specifying a scene, a camera and a
-shader table.  It walks the scene and sends each
+sent by another user process, specifying a framebuffer, a scene, a
+camera and a shader table.  It walks the scene and sends each
 .CW Entity
 individually to the
 entityproc.
-.IP
+.IP •
 The
 .B entityproc
 receives an entity and splits its geometry equitatively among the
 tilers, sending a batch for each of them to process.
-.IP
+.IP •
 Next, each
 .B tiler
 gets to work on their subset of the geometry (potentially in
 parallel)—see
-.B "Figure 2" .
+.B "Figure 3" .
 They walk the list of primitives, then for each of them
 apply the
 .B "vertex shader"
@@ -67,24 +127,20 @@ project them into the viewport (screen space).  Following this step,
 they build a bounding box, used to allocate each primitive into a
 rasterization bucket, or
 .B tile ,
-managed by one of the rasterizers; this is illustrated in
-.B "Figure 3" .
+managed by one of the rasterizers; as illustrated in
+.B "Figure 4" .
 If it spans multiple tiles, it will be copied and sent to each of
 them.
-.IP
+.IP •
 Finally, the
 .B rasterizers
 receive the primitive in screen space, slice it to fit their tile, and
-apply a rasterization routine based on its type (only
-.I points ,
-.I lines
-and
-.I triangles
-are supported). For each of the pixels, a
+apply a rasterization routine based on its type. For each of the pixels, a
 .B "depth test"
 is performed, discarding fragments that are further away. Then a
 .B "fragment shader"
 is applied and the result written to the framebuffer after blending.
+.PP
 .PS
 .ps 7
 circlerad = 0.3
@@ -131,13 +187,7 @@ arrow from Tiler.T1 to Raster.Rd chop
 arrow from Tiler.T1 to Raster.Rn chop
 .ps 10
 .PE
-.B "Figure 1" :
-The rendering graph for a
-.B 2n
-processor machine.
-.SH
-Tile-based rendering
-.PP
+.FI "The rendering graph for a \fB2n\fR processor machine."
 .PS
 .ps 7
 Tiles: [
@@ -150,7 +200,7 @@ Tiles: [
 	Tn: box dashed "tile n"
 ]
 box ht last [].ht+0.1 wid last [].wid+0.1 at last []
-"Screen" rjust with .se at last [].nw - (0.1,0)
+"Framebuf" rjust with .se at last [].nw - (0.1,0)
 Raster: [
 	moveht = 0.1
 	down
@@ -168,8 +218,7 @@ line from Tiles.Td.e to Raster.Rd.w
 line from Tiles.Tn.e to Raster.Rn.w
 .ps 10
 .PE
-.B "Figure 2" :
-Per tile rasterizers.
+.FI "Per tile rasterizers."
 .PS
 .ps 7
 Tiles: [
@@ -185,7 +234,7 @@ line from last [].w + (0.1,-0.05) to last [].n - (-0.1,0.25)
 line to last [].se - (0.3,-0.1)
 line to 1st line
 box ht last [].ht+0.1 wid last [].wid+0.1 at last []
-"Screen" rjust with .se at last [].nw - (0.1,0)
+"Framebuf" rjust with .se at last [].nw - (0.1,0)
 Raster: [
 	moveht = 0.1
 	down
@@ -202,32 +251,8 @@ arrow from Tiles.Td.e to Raster.Rd.w
 arrow from Tiles.Tn.e to Raster.Rn.w
 .ps 10
 .PE
-.B "Figure 3" :
-Raster task scheduling.
-.SH
-The scene
-.PP
-.PS
-.ps 7
-boxwid = 0.5
-boxht = 0.2
-linewid = 0.1
-lineht = 0.2
-box "Scene"
-down; line from last box.s; right; line
-box "Entity"
-down; line from last box.s; right; line
-box "Model"
-down; line from last box.s; right; line
-box "Mesh"
-down; line from last box.s; right; line
-box "Primitive"
-down
-line from 2nd last line.s; line; right; line
-box "Material"
-.ps 10
-.PE
-.SH
+.FI "Raster task scheduling."
+.NH
 Frames of reference
 .PP
 Frames are right-handed throughout every stage.
@@ -235,31 +260,46 @@ Frames are right-handed throughout every stage.
 .ps 7
 RFrame: [
 	pi = 3.1415926535
+	deg = pi/180
 	circle fill rad 0.01 at (0,0)
 	"p" at last circle.c - (0.1,0)
-	xa = -5*pi/180
+	xa = -5*deg
 	arrow from (0,0) to (cos(xa),sin(xa))
 	"bx" at last arrow.end + (0.1,0)
 	arrow from (0,0) to (0,1)
 	"by" at last arrow.end - (0.1,0)
-	za = -150*pi/180
+	za = -150*deg
 	arrow from (0,0) to (cos(za)+0.1,sin(za)+0.1)
 	"bz" at last arrow.end - (0.1,0)
 ]
 .ps 10
 .PE
-.B "Figure 4" :
-Example right-handed rframe.
-.SH
+.FI "Example right-handed rframe."
+.NH
 Viewports
 .PP
+A
+.I viewport
+is a sort of virtual framebuffer, a device that lets users configure
+the way they visualize a framebuffer, which changes the resulting
+.I image (6)
+after a call to its
+.CW draw
+or
+.CW memdraw
+methods.  As of now, the only feature available is upscaling, which
+includes user-defined filters for specific ratios, such as the family
+of pixel art filters
+.I Scale[234]x ,
+used for 2x2, 3x3 and 4x4 scaling
+.I [?] . respectively
 .PS
 .ps 7
 View: [
 	boxwid = 3
 	boxht = 2
 	box with .nw at (-1,1)
-	"framebuffer" at last box.s + (0,0.2)
+	"Framebuf" at last box.s + (0,0.2)
 	circle fill rad 0.01 at (-1,1)
 	"p" at last circle.c - (0.1,0)
 	arrow from (-1,1) to (-1,1) + (1,0)
@@ -269,5 +309,9 @@ View: [
 ]
 .ps 10
 .PE
-.B "Figure 5" :
-Illustration of a 3:2 viewport.
+.FI "Illustration of a 3:2 viewport."
+.SH
+References
+.PP
+.IP [?]
+https://www.scale2x.it/
