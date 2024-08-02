@@ -99,7 +99,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadimage(dst, dst->r, (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
@@ -149,7 +149,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadmemimage(dst, dst->r, (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+	loadmemimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
