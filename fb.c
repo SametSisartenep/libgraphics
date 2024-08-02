@@ -14,15 +14,15 @@
  * see https://www.scale2x.it/algorithm
  */
 static void
-scale2x_filter(ulong *dst, Framebuf *fb, Point *sp)
+scale2x_filter(ulong *dst, Framebuf *fb, Point sp)
 {
 	ulong B, D, E, F, H;
 
-	E = getpixel(fb, *sp);
-	B = sp->y == fb->r.min.y? E: getpixel(fb, addpt(*sp, Pt( 0,-1)));
-	D = sp->x == fb->r.min.x? E: getpixel(fb, addpt(*sp, Pt(-1, 0)));
-	F = sp->x == fb->r.max.x? E: getpixel(fb, addpt(*sp, Pt( 1, 0)));
-	H = sp->y == fb->r.max.y? E: getpixel(fb, addpt(*sp, Pt( 0, 1)));
+	E = getpixel(fb, sp);
+	B = sp.y == fb->r.min.y? E: getpixel(fb, addpt(sp, Pt( 0,-1)));
+	D = sp.x == fb->r.min.x? E: getpixel(fb, addpt(sp, Pt(-1, 0)));
+	F = sp.x == fb->r.max.x? E: getpixel(fb, addpt(sp, Pt( 1, 0)));
+	H = sp.y == fb->r.max.y? E: getpixel(fb, addpt(sp, Pt( 0, 1)));
 
 	if(B != H && D != F){
 		dst[0] = D == B? D: E;
@@ -34,27 +34,27 @@ scale2x_filter(ulong *dst, Framebuf *fb, Point *sp)
 }
 
 static void
-scale3x_filter(ulong *dst, Framebuf *fb, Point *sp)
+scale3x_filter(ulong *dst, Framebuf *fb, Point sp)
 {
 	ulong A, B, C, D, E, F, G, H, I;
 
-	E = getpixel(fb, *sp);
-	B = sp->y == fb->r.min.y? E: getpixel(fb, addpt(*sp, Pt( 0,-1)));
-	D = sp->x == fb->r.min.x? E: getpixel(fb, addpt(*sp, Pt(-1, 0)));
-	F = sp->x == fb->r.max.x? E: getpixel(fb, addpt(*sp, Pt( 1, 0)));
-	H = sp->y == fb->r.max.y? E: getpixel(fb, addpt(*sp, Pt( 0, 1)));
-	A = sp->y == fb->r.min.y && sp->x == fb->r.min.x? E:
-		sp->y == fb->r.min.y? D: sp->x == fb->r.min.x? B:
-		getpixel(fb, addpt(*sp, Pt(-1,-1)));
-	C = sp->y == fb->r.min.y && sp->x == fb->r.max.x? E:
-		sp->y == fb->r.min.y? F: sp->x == fb->r.max.x? B:
-		getpixel(fb, addpt(*sp, Pt( 1,-1)));
-	G = sp->y == fb->r.max.y && sp->x == fb->r.min.x? E:
-		sp->y == fb->r.max.y? D: sp->x == fb->r.min.x? H:
-		getpixel(fb, addpt(*sp, Pt(-1, 1)));
-	I = sp->y == fb->r.max.y && sp->x == fb->r.max.x? E:
-		sp->y == fb->r.max.y? F: sp->x == fb->r.max.x? H:
-		getpixel(fb, addpt(*sp, Pt( 1, 1)));
+	E = getpixel(fb, sp);
+	B = sp.y == fb->r.min.y? E: getpixel(fb, addpt(sp, Pt( 0,-1)));
+	D = sp.x == fb->r.min.x? E: getpixel(fb, addpt(sp, Pt(-1, 0)));
+	F = sp.x == fb->r.max.x? E: getpixel(fb, addpt(sp, Pt( 1, 0)));
+	H = sp.y == fb->r.max.y? E: getpixel(fb, addpt(sp, Pt( 0, 1)));
+	A = sp.y == fb->r.min.y && sp.x == fb->r.min.x? E:
+		sp.y == fb->r.min.y? D: sp.x == fb->r.min.x? B:
+		getpixel(fb, addpt(sp, Pt(-1,-1)));
+	C = sp.y == fb->r.min.y && sp.x == fb->r.max.x? E:
+		sp.y == fb->r.min.y? F: sp.x == fb->r.max.x? B:
+		getpixel(fb, addpt(sp, Pt( 1,-1)));
+	G = sp.y == fb->r.max.y && sp.x == fb->r.min.x? E:
+		sp.y == fb->r.max.y? D: sp.x == fb->r.min.x? H:
+		getpixel(fb, addpt(sp, Pt(-1, 1)));
+	I = sp.y == fb->r.max.y && sp.x == fb->r.max.x? E:
+		sp.y == fb->r.max.y? F: sp.x == fb->r.max.x? H:
+		getpixel(fb, addpt(sp, Pt( 1, 1)));
 
 	if(B != H && D != F){
 		dst[0] = D == B? D: E;
@@ -71,9 +71,25 @@ scale3x_filter(ulong *dst, Framebuf *fb, Point *sp)
 }
 
 //static void
-//scale4x_filter(ulong *dst, Framebuf *fb, Point *sp)
+//scale4x_filter(ulong *dst, Framebuf *fb, Point sp)
 //{
 //
+//}
+
+//static void
+//framebufctl_draw⁻¹(Framebufctl *ctl, Image *dst)
+//{
+//	Framebuf *fb;
+//	Rectangle lr;
+//	Point sp, dp;
+//
+//	qlock(ctl);
+//	fb = ctl->getfb(ctl);
+//	lr = Rect(0,0,Dx(fb->r),1);
+//	sp.x = dp.x = 0;
+//	for(sp.y = fb->r.max.y, dp.y = dst->r.min.y; sp.y >= fb->r.min.y; sp.y--, dp.y++)
+//		loadimage(dst, rectaddpt(lr, dp), (uchar*)(fb->cb + sp.y*Dx(lr)), Dx(lr)*4);
+//	qunlock(ctl);
 //}
 
 static void
@@ -83,30 +99,43 @@ framebufctl_draw(Framebufctl *ctl, Image *dst)
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+	loadimage(dst, dst->r, (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
 static void
 framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 {
+	void (*filter)(ulong*, Framebuf*, Point);
 	Framebuf *fb;
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
 
+	filter = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
+
+	switch(ctl->upfilter){
+	case UFScale2x:
+		if(scale.x == scale.y && scale.y == 2)
+			filter = scale2x_filter;
+		break;
+	case UFScale3x:
+		if(scale.x == scale.y && scale.y == 3)
+			filter = scale3x_filter;
+		break;
+	}
+
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		/*if(scale.x == 2 && scale.y == 2)
-			scale2x_filter(blk, fb, &sp);
-		else if(scale.x == 3 && scale.y == 3)
-			scale3x_filter(blk, fb, &sp);
-		else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		if(filter != nil)
+			filter(blk, fb, sp);
+		else
+			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 		loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	qunlock(ctl);
@@ -127,23 +156,36 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
 static void
 framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
 {
+	void (*filter)(ulong*, Framebuf*, Point);
 	Framebuf *fb;
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
 
+	filter = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
+
+	switch(ctl->upfilter){
+	case UFScale2x:
+		if(scale.x == scale.y && scale.y == 2)
+			filter = scale2x_filter;
+		break;
+	case UFScale3x:
+		if(scale.x == scale.y && scale.y == 3)
+			filter = scale3x_filter;
+		break;
+	}
+
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		/*if(scale.x == 2 && scale.y == 2)
-			scale2x_filter(blk, fb, &sp);
-		else if(scale.x == 3 && scale.y == 3)
-			scale3x_filter(blk, fb, &sp);
-		else */memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		if(filter != nil)
+			filter(blk, fb, sp);
+		else
+			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 		loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	qunlock(ctl);
@@ -211,6 +253,7 @@ mkfb(Rectangle r)
 void
 rmfb(Framebuf *fb)
 {
+	free(fb->nb);
 	free(fb->zb);
 	free(fb->cb);
 	free(fb);

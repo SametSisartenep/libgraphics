@@ -13,11 +13,9 @@ viewport_draw(Viewport *v, Image *dst)
 {
 	Point scale;
 
-	scale.x = Dx(dst->r)/Dx(v->r);
-	scale.y = Dy(dst->r)/Dy(v->r);
-
 	/* no downsampling support yet */
-	assert(scale.x > 0 && scale.y > 0);
+	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
+	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
 
 	if(scale.x > 1 || scale.y > 1)
 		v->fbctl->upscaledraw(v->fbctl, dst, scale);
@@ -30,16 +28,29 @@ viewport_memdraw(Viewport *v, Memimage *dst)
 {
 	Point scale;
 
-	scale.x = Dx(dst->r)/Dx(v->r);
-	scale.y = Dy(dst->r)/Dy(v->r);
-
 	/* no downsampling support yet */
-	assert(scale.x > 0 && scale.y > 0);
+	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
+	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
 
 	if(scale.x > 1 || scale.y > 1)
 		v->fbctl->upscalememdraw(v->fbctl, dst, scale);
 	else
 		v->fbctl->memdraw(v->fbctl, dst);
+}
+
+static void
+viewport_setscale(Viewport *v, double sx, double sy)
+{
+	assert(sx > 0 && sy > 0);
+
+	v->bx.x = sx;
+	v->by.y = sy;
+}
+
+static void
+viewport_setscalefilter(Viewport *v, int f)
+{
+	v->fbctl->upfilter = f;
 }
 
 static Framebuf *
@@ -61,6 +72,8 @@ mkviewport(Rectangle r)
 	v->r = r;
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
+	v->setscale = viewport_setscale;
+	v->setscalefilter = viewport_setscalefilter;
 	v->getfb = viewport_getfb;
 	return v;
 }

@@ -25,6 +25,12 @@ enum {
 	RAWTexture = 0,	/* unmanaged */
 	sRGBTexture,
 
+	/* upscaling filters */
+	UFNone = 0,	/* nearest neighbour */
+	UFScale2x,
+	UFScale3x,
+	UFScale4x,
+
 	/* vertex attribute types */
 	VAPoint = 0,
 	VANumber,
@@ -253,6 +259,7 @@ struct Framebufctl
 	QLock;
 	Framebuf *fb[2];	/* double buffering */
 	uint idx;		/* front buffer index */
+	uint upfilter;		/* upscaling filter */
 
 	void (*draw)(Framebufctl*, Image*);
 	void (*upscaledraw)(Framebufctl*, Image*, Point);
@@ -273,6 +280,8 @@ struct Viewport
 
 	void (*draw)(Viewport*, Image*);
 	void (*memdraw)(Viewport*, Memimage*);
+	void (*setscale)(Viewport*, double, double);
+	void (*setscalefilter)(Viewport*, int);
 	Framebuf *(*getfb)(Viewport*);
 };
 
