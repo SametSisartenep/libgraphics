@@ -45,6 +45,7 @@ void rmfbctl(Framebufctl*);
 
 /* vertex */
 Vertex dupvertex(Vertex*);
+void swapvertex(Vertex*, Vertex*);
 void lerpvertex(Vertex*, Vertex*, Vertex*, double);
 void berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
 void delvattrs(Vertex*);
@@ -52,7 +53,7 @@ void fprintvattrs(int, Vertex*);
 
 /* clip */
 int clipprimitive(Primitive*, Primitive*);
-int rectclipline(Rectangle, Point*, Point*);
+int rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
 
 /* util */
 int min(int, int);
