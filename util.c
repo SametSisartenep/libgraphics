@@ -65,9 +65,9 @@ modulapt3(Point3 a, Point3 b)
 }
 
 void
-memsetd(void *dp, double v, usize len)
+memsetf(void *dp, float v, usize len)
 {
-	double *p, *ep;
+	float *p, *ep;
 
 	for(p = dp, ep = p+len; p < ep; p++)
 		*p = v;

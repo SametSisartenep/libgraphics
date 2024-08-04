@@ -219,7 +219,7 @@ framebufctl_reset(Framebufctl *ctl)
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
 	memset(fb->nb, 0, Dx(fb->r)*Dy(fb->r)*4);
-	memsetd(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
+	memsetf(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
 	memset(fb->cb, 0, Dx(fb->r)*Dy(fb->r)*4);
 }
 
@@ -244,7 +244,7 @@ mkfb(Rectangle r)
 	memset(fb, 0, sizeof *fb);
 	fb->cb = emalloc(Dx(r)*Dy(r)*4);
 	fb->zb = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zb));
-	memsetd(fb->zb, Inf(-1), Dx(r)*Dy(r));
+	memsetf(fb->zb, Inf(-1), Dx(r)*Dy(r));
 	fb->nb = emalloc(Dx(r)*Dy(r)*4);
 	fb->r = r;
 	return fb;

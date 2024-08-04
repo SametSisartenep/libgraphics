@@ -60,7 +60,7 @@ int min(int, int);
 int max(int, int);
 void swapi(int*, int*);
 void swappt(Point*, Point*);
-void memsetd(void*, double, usize);
+void memsetf(void*, float, usize);
 void memsetl(void*, ulong, usize);
 
 /* nanosec */

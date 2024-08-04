@@ -101,7 +101,8 @@ rasterize(Rastertask *task)
 	Point p, dp, Δp, p0, p1;
 	Point3 bc;
 	Color c;
-	double z, dplen, perc;
+	double dplen, perc;
+	float z;
 	int steep = 0, Δe, e, Δy;
 
 	params = task->params;

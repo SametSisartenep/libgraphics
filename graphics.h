@@ -249,7 +249,7 @@ struct Renderjob
 struct Framebuf
 {
 	ulong *cb;	/* color buffer */
-	double *zb;	/* z/depth buffer */
+	float *zb;	/* z/depth buffer */
 	ulong *nb;	/* normals buffer (DBG only) */
 	Rectangle r;
 };

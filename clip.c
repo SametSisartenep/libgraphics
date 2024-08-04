@@ -194,7 +194,7 @@ outcode(Point p, Rectangle r)
 }
 
 /* lerp vertex attributes to match the new positions */
-void
+static void
 adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 {
 	Vertex v[2];
