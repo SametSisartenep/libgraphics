@@ -135,14 +135,14 @@ rasterize(Rastertask *task)
 		/* transpose the points */
 		if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){
 			steep = 1;
-			swapi(&p0.x, &p0.y);
-			swapi(&p1.x, &p1.y);
+			SWAP(int, &p0.x, &p0.y);
+			SWAP(int, &p1.x, &p1.y);
 		}
 
 		/* make them left-to-right */
 		if(p0.x > p1.x){
-			swappt(&p0, &p1);
-			swapvertex(&prim.v[0], &prim.v[1]);
+			SWAP(Point, &p0, &p1);
+			SWAP(Vertex, &prim.v[0], &prim.v[1]);
 		}
 
 		dp = subpt(p1, p0);
@@ -155,7 +155,7 @@ rasterize(Rastertask *task)
 			dplen = hypot(dp.x, dp.y);
 			perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
 
-			if(steep) swapi(&p.x, &p.y);
+			if(steep) SWAP(int, &p.x, &p.y);
 
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
@@ -176,7 +176,7 @@ rasterize(Rastertask *task)
 			pixel(params->fb, p, c);
 			delvattrs(&fsp.v);
 discard:
-			if(steep) swapi(&p.x, &p.y);
+			if(steep) SWAP(int, &p.x, &p.y);
 
 			e += Δe;
 			if(e > dp.x){

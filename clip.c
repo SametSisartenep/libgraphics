@@ -34,16 +34,6 @@ addvert(Polygon *p, Vertex v)
 }
 
 static void
-swappoly(Polygon **a, Polygon **b)
-{
-	Polygon *tmp;
-
-	tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-static void
 cleanpoly(Polygon *p)
 {
 	int i;
@@ -128,7 +118,7 @@ allin:
 		}
 		cleanpoly(Vin);
 		if(j < 6-1)
-			swappoly(&Vin, &Vout);
+			SWAP(Polygon*, &Vin, &Vout);
 	}
 
 	if(Vout->n < 2)
@@ -213,8 +203,6 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	lerpvertex(&v[1], v0, v1, perc);
 
-	delvattrs(v0);
-	delvattrs(v1);
 	*v0 = dupvertex(&v[0]);
 	*v1 = dupvertex(&v[1]);
 }
@@ -244,9 +232,9 @@ rectclipline(Rectangle r, Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 			return -1;
 
 		if(ptisinside(code0)){
-			swappt(p0, p1);
-			swapi(&code0, &code1);
-			swapvertex(v0, v1);
+			SWAP(Point, p0, p1);
+			SWAP(int, &code0, &code1);
+			SWAP(Vertex, v0, v1);
 		}
 
 		if(code0 & CLIPL){

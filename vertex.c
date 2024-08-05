@@ -43,16 +43,6 @@ dupvertex(Vertex *v)
 	return nv;
 }
 
-void
-swapvertex(Vertex *a, Vertex *b)
-{
-	Vertex t;
-
-	t = *a;
-	*a = *b;
-	*b = t;
-}
-
 /*
  * linear attribute interpolation
  */

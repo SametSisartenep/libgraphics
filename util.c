@@ -32,26 +32,6 @@ fmax(double a, double b)
 	return a > b? a: b;
 }
 
-void
-swapi(int *a, int *b)
-{
-	int t;
-
-	t = *a;
-	*a = *b;
-	*b = t;
-}
-
-void
-swappt(Point *a, Point *b)
-{
-	Point t;
-
-	t = *a;
-	*a = *b;
-	*b = t;
-}
-
 Point2
 modulapt2(Point2 a, Point2 b)
 {
