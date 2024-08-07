@@ -11,31 +11,33 @@
 static void
 viewport_draw(Viewport *v, Image *dst)
 {
-	Point scale;
+	Point off, scale;
 
+	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
 	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
 	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
 
 	if(scale.x > 1 || scale.y > 1)
-		v->fbctl->upscaledraw(v->fbctl, dst, scale);
+		v->fbctl->upscaledraw(v->fbctl, dst, off, scale);
 	else
-		v->fbctl->draw(v->fbctl, dst);
+		v->fbctl->draw(v->fbctl, dst, off);
 }
 
 static void
 viewport_memdraw(Viewport *v, Memimage *dst)
 {
-	Point scale;
+	Point off, scale;
 
+	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
 	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
 	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
 
 	if(scale.x > 1 || scale.y > 1)
-		v->fbctl->upscalememdraw(v->fbctl, dst, scale);
+		v->fbctl->upscalememdraw(v->fbctl, dst, off, scale);
 	else
-		v->fbctl->memdraw(v->fbctl, dst);
+		v->fbctl->memdraw(v->fbctl, dst, off);
 }
 
 static void
@@ -59,6 +61,18 @@ viewport_getfb(Viewport *v)
 	return v->fbctl->getfb(v->fbctl);
 }
 
+static int
+viewport_getwidth(Viewport *v)
+{
+	return Dx(v->r)*v->bx.x;
+}
+
+static int
+viewport_getheight(Viewport *v)
+{
+	return Dy(v->r)*v->by.y;
+}
+
 Viewport *
 mkviewport(Rectangle r)
 {
@@ -75,6 +89,8 @@ mkviewport(Rectangle r)
 	v->setscale = viewport_setscale;
 	v->setscalefilter = viewport_setscalefilter;
 	v->getfb = viewport_getfb;
+	v->getwidth = viewport_getwidth;
+	v->getheight = viewport_getheight;
 	return v;
 }
 

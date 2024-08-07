@@ -93,18 +93,18 @@ scale3x_filter(ulong *dst, Framebuf *fb, Point sp)
 //}
 
 static void
-framebufctl_draw(Framebufctl *ctl, Image *dst)
+framebufctl_draw(Framebufctl *ctl, Image *dst, Point off)
 {
 	Framebuf *fb;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+	loadimage(dst, rectaddpt(fb->r, addpt(dst->r.min, off)), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
 static void
-framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
+framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point off, Point scale)
 {
 	void (*filter)(ulong*, Framebuf*, Point);
 	Framebuf *fb;
@@ -130,8 +130,8 @@ framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 		break;
 	}
 
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
+	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
 		if(filter != nil)
 			filter(blk, fb, sp);
 		else
@@ -143,18 +143,18 @@ framebufctl_upscaledraw(Framebufctl *ctl, Image *dst, Point scale)
 }
 
 static void
-framebufctl_memdraw(Framebufctl *ctl, Memimage *dst)
+framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, Point off)
 {
 	Framebuf *fb;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
-	loadmemimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+	loadmemimage(dst, rectaddpt(fb->r, addpt(dst->r.min, off)), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
 static void
-framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
+framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point off, Point scale)
 {
 	void (*filter)(ulong*, Framebuf*, Point);
 	Framebuf *fb;
@@ -180,8 +180,8 @@ framebufctl_upscalememdraw(Framebufctl *ctl, Memimage *dst, Point scale)
 		break;
 	}
 
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
+	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
 		if(filter != nil)
 			filter(blk, fb, sp);
 		else

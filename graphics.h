@@ -261,10 +261,10 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 	uint upfilter;		/* upscaling filter */
 
-	void (*draw)(Framebufctl*, Image*);
-	void (*upscaledraw)(Framebufctl*, Image*, Point);
-	void (*memdraw)(Framebufctl*, Memimage*);
-	void (*upscalememdraw)(Framebufctl*, Memimage*, Point);
+	void (*draw)(Framebufctl*, Image*, Point);
+	void (*upscaledraw)(Framebufctl*, Image*, Point, Point);
+	void (*memdraw)(Framebufctl*, Memimage*, Point);
+	void (*upscalememdraw)(Framebufctl*, Memimage*, Point, Point);
 	void (*drawnormals)(Framebufctl*, Image*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
@@ -283,6 +283,8 @@ struct Viewport
 	void (*setscale)(Viewport*, double, double);
 	void (*setscalefilter)(Viewport*, int);
 	Framebuf *(*getfb)(Viewport*);
+	int (*getwidth)(Viewport*);
+	int (*getheight)(Viewport*);
 };
 
 struct Camera
@@ -344,8 +346,11 @@ Point3 world2model(Entity*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 
-/* scene */
+/* obj */
 int loadobjmodel(Model*, OBJ*);
+Model *readobjmodel(char*);
+
+/* scene */
 Model *newmodel(void);
 Model *dupmodel(Model*);
 void delmodel(Model*);
