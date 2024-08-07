@@ -7,6 +7,7 @@ OFILES=\
 	render.$O\
 	clip.$O\
 	xform.$O\
+	obj.$O\
 	scene.$O\
 	vertex.$O\
 	texture.$O\
