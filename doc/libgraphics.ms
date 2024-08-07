@@ -30,16 +30,32 @@ Write the intro last.
 .NH
 The scene
 .PP
-A scene is a container, represented as a graph, that hosts the
-entities that make up the world.  Each of these entities has a model
-made out of a series of meshes, which in turn are made out of
-geometric primitives (only
+.P1
+struct Scene
+{
+	char *name;
+	Entity ents;
+	ulong nents;
+	Cubemap *skybox;
+
+	void (*addent)(Scene*, Entity*);
+	void (*delent)(Scene*, Entity*);
+};
+.P2
+.PP
+A
+.I scene
+is a container, represented as a graph, that hosts the entities that
+make up the world.  Each of these entities has a model made out of a
+series of meshes, which in turn are made out of geometric primitives
+(only
 .I points ,
 .I lines
 and
 .I triangles
 are supported). Each model also stores a list of materials.
 .PP
+.KS
 .PS
 .ps 7
 boxwid = 0.5
@@ -62,16 +78,64 @@ reset
 .ps 10
 .PE
 .FI "The scene graph."
+.KE
 .NH 2
 Entities
+.PP
+.P1
+struct Entity
+{
+	RFrame3;
+	char *name;
+	Model *mdl;
+
+	Entity *prev, *next;
+};
+.P2
+.PP
+.I Entities
+represent physical objects in the scene.
 .NH 2
 Models
+.PP
+.P1
+struct Model
+{
+	Primitive *prims;
+	ulong nprims;
+	Material *materials;
+	ulong nmaterials;
+};
+.P2
 .NH 2
 Meshes
 .NH 2
 Primitives
+.PP
+.P1
+struct Primitive
+{
+	int type;
+	Vertex v[3];
+	Material *mtl;
+	Point3 tangent;	/* used for normal mapping */
+};
+.P2
 .NH 2
 Materials
+.PP
+.P1
+struct Material
+{
+	char *name;
+	Color ambient;
+	Color diffuse;
+	Color specular;
+	double shininess;
+	Texture *diffusemap;
+	Texture *normalmap;
+};
+.P2
 .NH
 Cameras
 .PP
@@ -95,7 +159,7 @@ seen in
 spawned with a call to
 .CW initgraphics ,
 each representing a stage of the pipeline:
-.IP •
+.IP "S1:"
 The
 .B renderer
 process, the root of the tree, waits on a
@@ -107,40 +171,7 @@ camera and a shader table.  It walks the scene and sends each
 .CW Entity
 individually to the
 entityproc.
-.IP •
-The
-.B entityproc
-receives an entity and splits its geometry equitatively among the
-tilers, sending a batch for each of them to process.
-.IP •
-Next, each
-.B tiler
-gets to work on their subset of the geometry (potentially in
-parallel)—see
-.B "Figure 3" .
-They walk the list of primitives, then for each of them
-apply the
-.B "vertex shader"
-to its vertices (which expects clip space coordinates in return),
-perform frustum culling and clipping, back-face culling, and then
-project them into the viewport (screen space).  Following this step,
-they build a bounding box, used to allocate each primitive into a
-rasterization bucket, or
-.B tile ,
-managed by one of the rasterizers; as illustrated in
-.B "Figure 4" .
-If it spans multiple tiles, it will be copied and sent to each of
-them.
-.IP •
-Finally, the
-.B rasterizers
-receive the primitive in screen space, slice it to fit their tile, and
-apply a rasterization routine based on its type. For each of the pixels, a
-.B "depth test"
-is performed, discarding fragments that are further away. Then a
-.B "fragment shader"
-is applied and the result written to the framebuffer after blending.
-.PP
+.KS
 .PS
 .ps 7
 circlerad = 0.3
@@ -188,6 +219,32 @@ arrow from Tiler.T1 to Raster.Rn chop
 .ps 10
 .PE
 .FI "The rendering graph for a \fB2n\fR processor machine."
+.KE
+.IP "S2:"
+The
+.B entityproc
+receives an entity and splits its geometry equitatively among the
+tilers, sending a batch for each of them to process.
+.IP "S3:"
+Next, each
+.B tiler
+gets to work on their subset of the geometry (potentially in
+parallel)—see
+.B "Figure 3" .
+They walk the list of primitives, then for each of them
+apply the
+.B "vertex shader"
+to its vertices (which expects clip space coordinates in return),
+perform frustum culling and clipping, back-face culling, and then
+project them into the viewport (screen space).  Following this step,
+they build a bounding box, used to allocate each primitive into a
+rasterization bucket, or
+.B tile ,
+managed by one of the rasterizers; as illustrated in
+.B "Figure 4" .
+If it spans multiple tiles, it will be copied and sent to each of
+them.
+.KS
 .PS
 .ps 7
 Tiles: [
@@ -219,6 +276,18 @@ line from Tiles.Tn.e to Raster.Rn.w
 .ps 10
 .PE
 .FI "Per tile rasterizers."
+.KE
+.IP "S4:"
+Finally, the
+.B rasterizers
+receive the primitive in screen space, slice it to fit their tile, and
+apply a rasterization routine based on its type. For each of the pixels, a
+.B "depth test"
+is performed, discarding fragments that are further away. Then a
+.B "fragment shader"
+is applied and the result written to the framebuffer after blending.
+.PP
+.KS
 .PS
 .ps 7
 Tiles: [
@@ -252,10 +321,12 @@ arrow from Tiles.Tn.e to Raster.Rn.w
 .ps 10
 .PE
 .FI "Raster task scheduling."
+.KE
 .NH
 Frames of reference
 .PP
 Frames are right-handed throughout every stage.
+.KS
 .PS
 .ps 7
 RFrame: [
@@ -275,6 +346,7 @@ RFrame: [
 .ps 10
 .PE
 .FI "Example right-handed rframe."
+.KE
 .NH
 Viewports
 .PP
@@ -287,12 +359,18 @@ after a call to its
 .CW draw
 or
 .CW memdraw
-methods.  As of now, the only feature available is upscaling, which
+methods.  So far the only feature available is upscaling, which
 includes user-defined filters for specific ratios, such as the family
 of pixel art filters
 .I Scale[234]x ,
 used for 2x2, 3x3 and 4x4 scaling
-.I [?] . respectively
+.I [REF01] . respectively
+Users control it with calls to the viewport's
+.CW setscale
+and
+.CW setscalefilter
+methods.
+.KS
 .PS
 .ps 7
 View: [
@@ -310,8 +388,9 @@ View: [
 .ps 10
 .PE
 .FI "Illustration of a 3:2 viewport."
+.KE
 .SH
 References
 .PP
-.IP [?]
+.IP [REF01]
 https://www.scale2x.it/
