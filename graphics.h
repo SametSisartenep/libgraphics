@@ -54,6 +54,9 @@ typedef struct Shadertab Shadertab;
 typedef struct Renderer Renderer;
 typedef struct Rendertime Rendertime;
 typedef struct Renderjob Renderjob;
+typedef struct Fragment Fragment;
+typedef struct Astk Astk;
+typedef struct Abuf Abuf;
 typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
 typedef struct Viewport Viewport;
@@ -246,11 +249,34 @@ struct Renderjob
 	Renderjob *next;
 };
 
+struct Fragment
+{
+	Color c;
+	float z;
+};
+
+struct Astk
+{
+	Point p;
+	Fragment *items;
+	ulong size;
+	int active;
+};
+
+struct Abuf
+{
+	QLock;
+	Astk *stk;	/* framebuffer fragment stacks */
+	Astk **act;	/* active fragment stacks */
+	ulong nact;
+};
+
 struct Framebuf
 {
 	ulong *cb;	/* color buffer */
 	float *zb;	/* z/depth buffer */
 	ulong *nb;	/* normals buffer (DBG only) */
+	Abuf abuf;	/* A-buffer */
 	Rectangle r;
 };
 
@@ -300,6 +326,9 @@ struct Camera
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
 	int cullmode;
+	int enableblend;
+	int enabledepth;
+	int enableAbuff;
 
 	struct {
 		uvlong min, avg, max, acc, n, v;

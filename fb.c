@@ -212,12 +212,23 @@ framebufctl_swap(Framebufctl *ctl)
 }
 
 static void
+resetAbuf(Abuf *buf)
+{
+	while(buf->nact--)
+		free(buf->act[buf->nact]->items);
+	free(buf->act);
+	free(buf->stk);
+	memset(buf, 0, sizeof *buf);
+}
+
+static void
 framebufctl_reset(Framebufctl *ctl)
 {
 	Framebuf *fb;
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
+	resetAbuf(&fb->abuf);
 	memset(fb->nb, 0, Dx(fb->r)*Dy(fb->r)*4);
 	memsetf(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
 	memset(fb->cb, 0, Dx(fb->r)*Dy(fb->r)*4);

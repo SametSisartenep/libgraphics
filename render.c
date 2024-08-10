@@ -35,12 +35,14 @@ ul2col(ulong l)
 }
 
 static void
-pixel(Framebuf *fb, Point p, Color c)
+pixel(Framebuf *fb, Point p, Color c, int blend)
 {
 	Color dc;
 
-	dc = srgb2linear(ul2col(getpixel(fb, p)));
-	c = lerp3(dc, c, c.a);	/* SoverD */
+	if(blend){
+		dc = srgb2linear(ul2col(getpixel(fb, p)));
+		c = lerp3(dc, c, c.a);	/* SoverD */
+	}
 	putpixel(fb, p, col2ul(linear2srgb(c)));
 }
 
@@ -73,6 +75,57 @@ isfacingback(Primitive *p)
 	     p->v[1].p.x * p->v[2].p.y - p->v[1].p.y * p->v[2].p.x +
 	     p->v[2].p.x * p->v[0].p.y - p->v[2].p.y * p->v[0].p.x;
 	return sa <= 0;
+}
+
+static void
+pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
+{
+	Abuf *buf;
+	Astk *stk;
+	int i;
+
+	buf = &fb->abuf;
+	stk = &buf->stk[p.y*Dx(fb->r) + p.x];
+	stk->items = erealloc(stk->items, ++stk->size*sizeof(*stk->items));
+
+//fprint(2, "stk %#p items %#p size %lud (%d bytes)\n", stk, stk->items, stk->size, sizeof(*stk));
+
+	for(i = 0; i < stk->size; i++)
+		if(z < stk->items[i].z)
+			break;
+
+	if(i < stk->size){
+		memmove(&stk->items[i+1], &stk->items[i], (stk->size-1 - i)*sizeof(*stk->items));
+		stk->items[i] = (Fragment){c, z};
+	}else
+		stk->items[stk->size-1] = (Fragment){c, z};
+
+	if(!stk->active){
+		stk->active++;
+		stk->p = p;
+		qlock(buf);
+		buf->act = erealloc(buf->act, ++buf->nact*sizeof(*buf->act));
+		buf->act[buf->nact-1] = stk;
+		qunlock(buf);
+//fprint(2, "act %#p nact %lud (%d bytes)\n", buf->act, buf->nact, sizeof(*buf->act));
+	}
+}
+
+static void
+squashAbuf(Framebuf *fb, int blend)
+{
+	Abuf *buf;
+	Astk *stk;
+	int i;
+
+	buf = &fb->abuf;
+	for(i = 0; i < buf->nact; i++){
+		stk = buf->act[i];
+		while(stk->size--)
+			pixel(fb, stk->p, stk->items[stk->size].c, blend);
+		/* write to the depth buffer as well */
+//		fb->zb[stk->p.x + stk->p.y*Dx(fb->r)] = stk->items[stk->size].z;
+	}
 }
 
 static Point3
@@ -115,14 +168,19 @@ rasterize(Rastertask *task)
 		p = Pt(prim.v[0].p.x, prim.v[0].p.y);
 
 		z = fclamp(prim.v[0].p.z, 0, 1);
-		if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-			break;
-		params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+		if(params->camera->enabledepth){
+			if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+				break;
+			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+		}
 
 		fsp.v = dupvertex(&prim.v[0]);
 		fsp.p = p;
 		c = params->fshader(&fsp);
-		pixel(params->fb, p, c);
+		if(params->camera->enableAbuff)
+			pushtoAbuf(params->fb, p, c, z);
+		else
+			pixel(params->fb, p, c, params->camera->enableblend);
 		delvattrs(&fsp.v);
 		break;
 	case PLine:
@@ -159,9 +217,11 @@ rasterize(Rastertask *task)
 
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if(!ptinrect(p, params->fb->r) || z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-				goto discard;
-			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+			if(params->camera->enabledepth){
+				if(!ptinrect(p, params->fb->r) || z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+					goto discard;
+				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+			}
 
 			/* interpolate z⁻¹ and get actual z */
 			z = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
@@ -173,7 +233,10 @@ rasterize(Rastertask *task)
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
-			pixel(params->fb, p, c);
+			if(params->camera->enableAbuff)
+				pushtoAbuf(params->fb, p, c, z);
+			else
+				pixel(params->fb, p, c, params->camera->enableblend);
 			delvattrs(&fsp.v);
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
@@ -206,9 +269,11 @@ discard:
 					continue;
 
 				z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
-				if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
-					continue;
-				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+				if(params->camera->enabledepth){
+					if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+						continue;
+					params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+				}
 
 				/* interpolate z⁻¹ and get actual z */
 				z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
@@ -220,7 +285,10 @@ discard:
 
 				fsp.p = p;
 				c = params->fshader(&fsp);
-				pixel(params->fb, p, c);
+				if(params->camera->enableAbuff)
+					pushtoAbuf(params->fb, p, c, z);
+				else
+					pixel(params->fb, p, c, params->camera->enableblend);
 				pixeln(params->fb, p, fsp.v.n);
 				delvattrs(&fsp.v);
 			}
@@ -249,6 +317,8 @@ rasterizer(void *arg)
 		/* end of job */
 		if(params->entity == nil){
 			if(decref(params->job) < 1){
+				if(params->job->camera->enableAbuff)
+					squashAbuf(params->job->fb, params->job->camera->enableblend);
 				nbsend(params->job->donec, nil);
 				free(params);
 			}
@@ -569,6 +639,12 @@ renderer(void *arg)
 		if(sc->nents < 1){
 			nbsend(job->donec, nil);
 			continue;
+		}
+
+		/* initialize the A-buffer */
+		if(job->camera->enableAbuff){
+			job->fb->abuf.stk = emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
+			memset(job->fb->abuf.stk, 0, Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 		}
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){

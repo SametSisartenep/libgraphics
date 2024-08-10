@@ -126,6 +126,7 @@ newcamera(void)
 
 	c = emalloc(sizeof *c);
 	memset(c, 0, sizeof *c);
+	c->enabledepth = 1;
 	return c;
 }
 
