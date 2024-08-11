@@ -293,7 +293,7 @@ struct Framebufctl
 	void (*upscalememdraw)(Framebufctl*, Memimage*, Point, Point);
 	void (*drawnormals)(Framebufctl*, Image*);
 	void (*swap)(Framebufctl*);
-	void (*reset)(Framebufctl*);
+	void (*reset)(Framebufctl*, ulong);
 	Framebuf *(*getfb)(Framebufctl*);
 	Framebuf *(*getbb)(Framebufctl*);
 };
@@ -325,6 +325,7 @@ struct Camera
 	} clip;
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
+	int clearcolor;
 	int cullmode;
 	int enableblend;
 	int enabledepth;
@@ -418,6 +419,7 @@ Memimage *dupmemimage(Memimage*);
 /* color */
 Color srgb2linear(Color);
 Color linear2srgb(Color);
+ulong rgba2xrgb(ulong);
 
 /* shadeop */
 double sign(double);

@@ -222,16 +222,16 @@ resetAbuf(Abuf *buf)
 }
 
 static void
-framebufctl_reset(Framebufctl *ctl)
+framebufctl_reset(Framebufctl *ctl, ulong clr)
 {
 	Framebuf *fb;
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
 	resetAbuf(&fb->abuf);
-	memset(fb->nb, 0, Dx(fb->r)*Dy(fb->r)*4);
+	memsetl(fb->nb, 0, Dx(fb->r)*Dy(fb->r));
 	memsetf(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
-	memset(fb->cb, 0, Dx(fb->r)*Dy(fb->r)*4);
+	memsetl(fb->cb, rgba2xrgb(clr), Dx(fb->r)*Dy(fb->r));
 }
 
 static Framebuf *

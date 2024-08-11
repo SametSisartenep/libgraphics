@@ -140,3 +140,10 @@ linear2srgb(Color c)
 	c.b = _linear2srgb(c.b);
 	return c;
 }
+
+ulong
+rgba2xrgb(ulong c)
+{
+	return (c & 0xFF)<<24|(c>>8 & 0xFF)<<16|
+		(c>>16 & 0xFF)<<8|(c>>24 & 0xFF);
+}

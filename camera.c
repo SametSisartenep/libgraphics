@@ -211,21 +211,24 @@ shootcamera(Camera *c, Shadertab *s)
 	static Scene *skyboxscene;
 	static Shadertab skyboxshader = { nil, skyboxvs, skyboxfs };
 	Model *mdl;
+	Framebufctl *fbctl;
 	Renderjob *job;
 	uvlong t0, t1;
 
 	assert(c->view != nil && c->rctl != nil && c->scene != nil && s != nil);
 
+	fbctl = c->view->fbctl;
+
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
-	job->fb = c->view->fbctl->getbb(c->view->fbctl);
+	job->fb = fbctl->getbb(fbctl);
 	job->camera = emalloc(sizeof *c);
 	*job->camera = *c;
 	job->scene = dupscene(c->scene);	/* take a snapshot */	
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
-	c->view->fbctl->reset(c->view->fbctl);
+	fbctl->reset(fbctl, c->clearcolor);
 	t0 = nanosec();
 	sendp(c->rctl->c, job);
 	recvp(job->donec);
@@ -250,7 +253,7 @@ shootcamera(Camera *c, Shadertab *s)
 		delscene(job->scene);
 	}
 	t1 = nanosec();
-	c->view->fbctl->swap(c->view->fbctl);
+	fbctl->swap(fbctl);
 
 	updatestats(c, t1-t0);
 	updatetimes(c, job);

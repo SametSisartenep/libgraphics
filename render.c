@@ -42,6 +42,9 @@ pixel(Framebuf *fb, Point p, Color c, int blend)
 	if(blend){
 		dc = srgb2linear(ul2col(getpixel(fb, p)));
 		c = lerp3(dc, c, c.a);	/* SoverD */
+//		c = addpt3(mulpt3(dc, 1), mulpt3(c, 1-c.a));
+//		c = subpt3(Vec3(1,1,1), subpt3(dc, c));
+//		c = subpt3(addpt3(dc, c), Vec3(1,1,1));
 	}
 	putpixel(fb, p, col2ul(linear2srgb(c)));
 }
@@ -87,8 +90,7 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 	buf = &fb->abuf;
 	stk = &buf->stk[p.y*Dx(fb->r) + p.x];
 	stk->items = erealloc(stk->items, ++stk->size*sizeof(*stk->items));
-
-//fprint(2, "stk %#p items %#p size %lud (%d bytes)\n", stk, stk->items, stk->size, sizeof(*stk));
+	memset(&stk->items[stk->size-1], 0, sizeof(*stk->items));
 
 	for(i = 0; i < stk->size; i++)
 		if(z < stk->items[i].z)
@@ -107,7 +109,6 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 		buf->act = erealloc(buf->act, ++buf->nact*sizeof(*buf->act));
 		buf->act[buf->nact-1] = stk;
 		qunlock(buf);
-//fprint(2, "act %#p nact %lud (%d bytes)\n", buf->act, buf->nact, sizeof(*buf->act));
 	}
 }
 
