@@ -325,7 +325,7 @@ struct Camera
 	} clip;
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
-	int clearcolor;
+	ulong clearcolor;
 	int cullmode;
 	int enableblend;
 	int enabledepth;

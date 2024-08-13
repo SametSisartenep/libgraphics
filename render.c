@@ -125,7 +125,7 @@ squashAbuf(Framebuf *fb, int blend)
 		while(stk->size--)
 			pixel(fb, stk->p, stk->items[stk->size].c, blend);
 		/* write to the depth buffer as well */
-//		fb->zb[stk->p.x + stk->p.y*Dx(fb->r)] = stk->items[stk->size].z;
+		fb->zb[stk->p.x + stk->p.y*Dx(fb->r)] = stk->items[0].z;
 	}
 }
 
@@ -265,7 +265,7 @@ discard:
 
 		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 			for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
-				bc = _barycoords(t, Pt2(p.x,p.y,1));
+				bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
 				if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 					continue;
 
