@@ -38,7 +38,7 @@ getlightcolor(LightSource *l, Point3 dir)
 	double cθs, cθu, cθp, t;
 
 	/* see “Spotlights”, Real-Time Rendering 4th ed. § 5.2.2 */
-	if(l->type == LIGHT_SPOT){
+	if(l->type == LightSpot){
 		cθs = dotvec3(mulpt3(dir, -1), l->dir);
 		cθu = cos(l->θu);
 		cθp = cos(l->θp);

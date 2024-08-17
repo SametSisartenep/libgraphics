@@ -17,9 +17,9 @@ enum {
 	PTriangle,
 
 	/* light types */
-	LIGHT_POINT = 0,
-	LIGHT_DIRECTIONAL,
-	LIGHT_SPOT,
+	LightPoint = 0,
+	LightDirectional,
+	LightSpot,
 
 	/* texture formats */
 	RAWTexture = 0,	/* unmanaged */
