@@ -114,6 +114,10 @@ Cam(Rectangle vr, Renderer *r, Projection p, double fov, double n, double f)
 
 	c = newcamera();
 	c->view = mkviewport(vr);
+	if(c->view == nil){
+		werrstr("mkviewport: %r");
+		return nil;
+	}
 	c->rctl = r;
 	configcamera(c, p, fov, n, f);
 	return c;

@@ -15,13 +15,10 @@ viewport_draw(Viewport *v, Image *dst)
 
 	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
-	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
-	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
+	scale.x = max(v->bx.x, 1);
+	scale.y = max(v->by.y, 1);
 
-	if(scale.x > 1 || scale.y > 1)
-		v->fbctl->upscaledraw(v->fbctl, dst, off, scale);
-	else
-		v->fbctl->draw(v->fbctl, dst, off);
+	v->fbctl->draw(v->fbctl, dst, off, scale);
 }
 
 static void
@@ -31,13 +28,10 @@ viewport_memdraw(Viewport *v, Memimage *dst)
 
 	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
-	scale.x = max(min(v->bx.x, Dx(dst->r)/Dx(v->r)), 1);
-	scale.y = max(min(v->by.y, Dy(dst->r)/Dy(v->r)), 1);
+	scale.x = max(v->bx.x, 1);
+	scale.y = max(v->by.y, 1);
 
-	if(scale.x > 1 || scale.y > 1)
-		v->fbctl->upscalememdraw(v->fbctl, dst, off, scale);
-	else
-		v->fbctl->memdraw(v->fbctl, dst, off);
+	v->fbctl->memdraw(v->fbctl, dst, off, scale);
 }
 
 static void
@@ -77,6 +71,11 @@ Viewport *
 mkviewport(Rectangle r)
 {
 	Viewport *v;
+
+	if(badrect(r)){
+		werrstr("bad viewport rectangle");
+		return nil;
+	}
 
 	v = emalloc(sizeof *v);
 	v->p = Pt2(0,0,1);

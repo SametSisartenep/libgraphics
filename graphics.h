@@ -287,10 +287,8 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 	uint upfilter;		/* upscaling filter */
 
-	void (*draw)(Framebufctl*, Image*, Point);
-	void (*upscaledraw)(Framebufctl*, Image*, Point, Point);
-	void (*memdraw)(Framebufctl*, Memimage*, Point);
-	void (*upscalememdraw)(Framebufctl*, Memimage*, Point, Point);
+	void (*draw)(Framebufctl*, Image*, Point, Point);
+	void (*memdraw)(Framebufctl*, Memimage*, Point, Point);
 	void (*drawnormals)(Framebufctl*, Image*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*, ulong);
