@@ -136,7 +136,6 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, Point off, Point scale)
 {
 	Framebuf *fb;
 	Rectangle sr, dr;
-	ulong *cb;
 	int y;
 
 	if(scale.x > 1 || scale.y > 1){
@@ -151,12 +150,12 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, Point off, Point scale)
 	if(rectinrect(sr, dr))
 		loadimage(dst, rectaddpt(sr, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	else if(rectclip(&sr, dr)){
-		cb = emalloc(Dx(sr)*Dy(sr)*4);
-		/* TODO there must be a cleaner way to do this */
-		for(y = sr.min.y; y < sr.max.y; y++)
-			memmove(&cb[(y - sr.min.y)*Dx(sr)], &fb->cb[max(y - off.y,0)*Dx(fb->r) + max(-off.x,0)], Dx(sr)*4);
-		loadimage(dst, rectaddpt(sr, dst->r.min), (uchar*)cb, Dx(sr)*Dy(sr)*4);
-		free(cb);
+		dr = sr;
+		dr.max.y = dr.min.y + 1;
+		/* remove offset to get the actual rect within the framebuffer */
+		sr = rectsubpt(sr, off);
+		for(y = sr.min.y; y < sr.max.y; y++, dr.min.y++, dr.max.y++)
+			loadimage(dst, rectaddpt(dr, dst->r.min), (uchar*)&fb->cb[y*Dx(fb->r) + sr.min.x], Dx(dr)*4);
 	}
 	qunlock(ctl);
 }
@@ -205,7 +204,6 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, Point off, Point scale)
 {
 	Framebuf *fb;
 	Rectangle sr, dr;
-	ulong *cb;
 	int y;
 
 	if(scale.x > 1 || scale.y > 1){
@@ -220,12 +218,12 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, Point off, Point scale)
 	if(rectinrect(sr, dr))
 		loadmemimage(dst, rectaddpt(sr, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
 	else if(rectclip(&sr, dr)){
-		cb = emalloc(Dx(sr)*Dy(sr)*4);
-		/* TODO there must be a cleaner way to do this */
-		for(y = sr.min.y; y < sr.max.y; y++)
-			memmove(&cb[(y - sr.min.y)*Dx(sr)], &fb->cb[max(y - off.y,0)*Dx(fb->r) + max(-off.x,0)], Dx(sr)*4);
-		loadmemimage(dst, rectaddpt(sr, dst->r.min), (uchar*)cb, Dx(sr)*Dy(sr)*4);
-		free(cb);
+		dr = sr;
+		dr.max.y = dr.min.y + 1;
+		/* remove offset to get the actual rect within the framebuffer */
+		sr = rectsubpt(sr, off);
+		for(y = sr.min.y; y < sr.max.y; y++, dr.min.y++, dr.max.y++)
+			loadmemimage(dst, rectaddpt(dr, dst->r.min), (uchar*)&fb->cb[y*Dx(fb->r) + sr.min.x], Dx(dr)*4);
 	}
 	qunlock(ctl);
 }
