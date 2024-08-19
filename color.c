@@ -147,3 +147,74 @@ rgba2xrgb(ulong c)
 	return (c & 0xFF)<<24|(c>>24 & 0xFF)<<16|
 		(c>>16 & 0xFF)<<8|(c>>8 & 0xFF);
 }
+
+
+/* tone mapping */
+
+/*
+ * simplified ACES filmic tone mapping curve by Krzysztof Narkowicz
+ * https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+ */
+static double
+_aces(double value)
+{
+	double a = 2.51;
+	double b = 0.03;
+	double c = 2.43;
+	double d = 0.59;
+	double e = 0.14;
+	value = (value * (a * value + b)) / (value * (c * value + d) + e);
+	return fclamp(value, 0, 1);
+}
+
+Color
+aces(Color c)
+{
+	c.r = _aces(c.r);
+	c.g = _aces(c.g);
+	c.b = _aces(c.b);
+	return c;
+}
+
+static double
+RRTAndODTFit(double v)
+{
+	double a = v * (v + 0.0245786f) - 0.000090537f;
+	double b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+	return a / b;
+}
+
+/*
+ * a better ACES curve fit by Stephen Hill (@self_shadow)
+ * https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
+ */
+Color
+aces2(Color c)
+{
+	/* sRGB → XYZ → D65_2_D60 → AP1 → RRT_SAT */
+	Matrix3 ACESInputMat = {
+		0.59719, 0.35458, 0.04823, 0,
+		0.07600, 0.90834, 0.01566, 0,
+		0.02840, 0.13383, 0.83777, 0,
+		0, 0, 0, 1,
+	};
+	/* ODT_SAT → XYZ → D60_2_D65 → sRGB */
+	Matrix3 ACESOutputMat = {
+		 1.60475, -0.53108, -0.07367, 0,
+		-0.10208,  1.10813, -0.00605, 0,
+		-0.00327, -0.07276,  1.07602, 0,
+		0, 0, 0, 1,
+	};
+
+	c = xform3(c, ACESInputMat);
+	/* Apply RRT and ODT */
+	c.r = RRTAndODTFit(c.r);
+	c.g = RRTAndODTFit(c.g);
+	c.b = RRTAndODTFit(c.b);
+
+	c = xform3(c, ACESOutputMat);
+	c.r = fclamp(c.r, 0, 1);
+	c.g = fclamp(c.g, 0, 1);
+	c.b = fclamp(c.b, 0, 1);
+	return c;
+}

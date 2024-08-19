@@ -418,6 +418,8 @@ Memimage *dupmemimage(Memimage*);
 Color srgb2linear(Color);
 Color linear2srgb(Color);
 ulong rgba2xrgb(ulong);
+Color aces(Color);
+Color aces2(Color);
 
 /* shadeop */
 double sign(double);
