@@ -144,6 +144,7 @@ struct Material
 	Color specular;
 	double shininess;
 	Texture *diffusemap;
+	Texture *specularmap;
 	Texture *normalmap;
 };
 

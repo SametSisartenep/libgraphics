@@ -93,7 +93,7 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 	memset(&stk->items[stk->size-1], 0, sizeof(*stk->items));
 
 	for(i = 0; i < stk->size; i++)
-		if(z < stk->items[i].z)
+		if(z > stk->items[i].z)
 			break;
 
 	if(i < stk->size){
@@ -117,13 +117,14 @@ squashAbuf(Framebuf *fb, int blend)
 {
 	Abuf *buf;
 	Astk *stk;
-	int i;
+	int i, j;
 
 	buf = &fb->abuf;
 	for(i = 0; i < buf->nact; i++){
 		stk = buf->act[i];
-		while(stk->size--)
-			pixel(fb, stk->p, stk->items[stk->size].c, blend);
+		j = stk->size;
+		while(j--)
+			pixel(fb, stk->p, stk->items[j].c, blend);
 		/* write to the depth buffer as well */
 		fb->zb[stk->p.x + stk->p.y*Dx(fb->r)] = stk->items[0].z;
 	}
@@ -156,7 +157,7 @@ rasterize(Rastertask *task)
 	Point3 bc;
 	Color c;
 	double dplen, perc;
-	float z;
+	float z, pcz;
 	int steep = 0, Δe, e, Δy;
 
 	params = task->params;
@@ -225,11 +226,11 @@ rasterize(Rastertask *task)
 			}
 
 			/* interpolate z⁻¹ and get actual z */
-			z = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
-			z = 1.0/(z < 1e-5? 1e-5: z);
+			pcz = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
+			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
 
 			/* perspective-correct attribute interpolation  */
-			perc *= prim.v[0].p.w * z;
+			perc *= prim.v[0].p.w * pcz;
 			lerpvertex(&fsp.v, &prim.v[0], &prim.v[1], perc);
 
 			fsp.p = p;
@@ -277,11 +278,13 @@ discard:
 				}
 
 				/* interpolate z⁻¹ and get actual z */
-				z = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
-				z = 1.0/(z < 1e-5? 1e-5: z);
+				pcz = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
+				pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
 
 				/* perspective-correct attribute interpolation  */
-				bc = modulapt3(bc, Vec3(prim.v[0].p.w*z,prim.v[1].p.w*z,prim.v[2].p.w*z));
+				bc = modulapt3(bc, Vec3(prim.v[0].p.w*pcz,
+							prim.v[1].p.w*pcz,
+							prim.v[2].p.w*pcz));
 				berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
 
 				fsp.p = p;
@@ -643,7 +646,7 @@ renderer(void *arg)
 		}
 
 		/* initialize the A-buffer */
-		if(job->camera->enableAbuff){
+		if(job->camera->enableAbuff && job->fb->abuf.stk == nil){
 			job->fb->abuf.stk = emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 			memset(job->fb->abuf.stk, 0, Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 		}
