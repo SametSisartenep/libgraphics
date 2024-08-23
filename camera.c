@@ -68,9 +68,8 @@ mkskyboxmodel(void)
 				if(i > 0)
 					t[j].v[k].p = qrotate(t[j].v[k].p, axes[i%3], PI/2);
 
-		m->prims = erealloc(m->prims, (m->nprims += 2)*sizeof(*m->prims));
-		m->prims[m->nprims-2] = t[0];
-		m->prims[m->nprims-1] = t[1];
+		m->addprim(m, t[0]);
+		m->addprim(m, t[1]);
 	}
 	return m;
 }

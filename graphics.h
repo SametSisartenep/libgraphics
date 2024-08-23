@@ -164,6 +164,9 @@ struct Model
 	ulong nmaterials;
 
 	Texture *tex;		/* texture map (TODO get rid of it, use materials) */
+
+	int (*addprim)(Model*, Primitive);
+	int (*addmaterial)(Model*, Material);
 };
 
 struct Entity

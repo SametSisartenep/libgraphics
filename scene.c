@@ -8,6 +8,22 @@
 #include "graphics.h"
 #include "internal.h"
 
+static int
+model_addprim(Model *m, Primitive p)
+{
+	m->prims = erealloc(m->prims, ++m->nprims*sizeof(*m->prims));
+	m->prims[m->nprims-1] = p;
+	return 0;
+}
+
+static int
+model_addmaterial(Model *m, Material mtl)
+{
+	m->materials = erealloc(m->materials, ++m->nmaterials*sizeof(*m->materials));
+	m->materials[m->nmaterials-1] = mtl;
+	return 0;
+}
+
 Model *
 newmodel(void)
 {
@@ -15,6 +31,8 @@ newmodel(void)
 
 	m = emalloc(sizeof *m);
 	memset(m, 0, sizeof *m);
+	m->addprim = model_addprim;
+	m->addmaterial = model_addmaterial;
 	return m;
 }
 
@@ -35,6 +53,7 @@ dupmodel(Model *m)
 		for(i = 0; i < m->nmaterials; i++){
 			nm->materials[i] = m->materials[i];
 			nm->materials[i].diffusemap = duptexture(m->materials[i].diffusemap);
+			nm->materials[i].specularmap = duptexture(m->materials[i].specularmap);
 			nm->materials[i].normalmap = duptexture(m->materials[i].normalmap);
 			nm->materials[i].name = strdup(m->materials[i].name);
 			if(nm->materials[i].name == nil)
@@ -62,6 +81,7 @@ delmodel(Model *m)
 	freetexture(m->tex);
 	while(m->nmaterials--){
 		freetexture(m->materials[m->nmaterials].diffusemap);
+		freetexture(m->materials[m->nmaterials].specularmap);
 		freetexture(m->materials[m->nmaterials].normalmap);
 		free(m->materials[m->nmaterials].name);
 	}
