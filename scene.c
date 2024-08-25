@@ -153,6 +153,17 @@ scene_delent(Scene *s, Entity *e)
 	s->nents--;
 }
 
+static Entity *
+scene_getent(Scene *s, char *name)
+{
+	Entity *e;
+
+	for(e = s->ents.next; e != &s->ents; e = e->next)
+		if(strcmp(e->name, name) == 0)
+			return e;
+	return nil;
+}
+
 Scene *
 newscene(char *name)
 {
@@ -165,6 +176,7 @@ newscene(char *name)
 	s->skybox = nil;
 	s->addent = scene_addent;
 	s->delent = scene_delent;
+	s->getent = scene_getent;
 	return s;
 }
 

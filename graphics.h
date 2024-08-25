@@ -187,6 +187,7 @@ struct Scene
 
 	void (*addent)(Scene*, Entity*);
 	void (*delent)(Scene*, Entity*);
+	Entity *(*getent)(Scene*, char*);
 };
 
 /* shader params */
