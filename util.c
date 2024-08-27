@@ -8,30 +8,6 @@
 #include "graphics.h"
 #include "internal.h"
 
-int
-min(int a, int b)
-{
-	return a < b? a: b;
-}
-
-int
-max(int a, int b)
-{
-	return a > b? a: b;
-}
-
-double
-fmin(double a, double b)
-{
-	return a < b? a: b;
-}
-
-double
-fmax(double a, double b)
-{
-	return a > b? a: b;
-}
-
 Point2
 modulapt2(Point2 a, Point2 b)
 {

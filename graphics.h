@@ -1,4 +1,6 @@
 #define HZ2MS(hz)	(1000/(hz))
+#define min(a, b)	((a)<(b)?(a):(b))
+#define max(a, b)	((a)>(b)?(a):(b))
 
 typedef enum {
 	ORTHOGRAPHIC,
@@ -412,8 +414,6 @@ void freecubemap(Cubemap*);
 Color samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
 /* util */
-double fmin(double, double);
-double fmax(double, double);
 Point2 modulapt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
 Memimage *rgb(ulong);

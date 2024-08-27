@@ -55,8 +55,6 @@ int clipprimitive(Primitive*, Primitive*);
 int rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
 
 /* util */
-int min(int, int);
-int max(int, int);
 void memsetf(void*, float, usize);
 void memsetl(void*, ulong, usize);
 
