@@ -14,7 +14,7 @@
  * see https://www.scale2x.it/algorithm
  */
 static void
-scale2x_filter(ulong *dst, Framebuf *fb, Point sp)
+scale2x_filter(ulong *dst, Raster *fb, Point sp)
 {
 	ulong B, D, E, F, H;
 
@@ -34,7 +34,7 @@ scale2x_filter(ulong *dst, Framebuf *fb, Point sp)
 }
 
 static void
-scale3x_filter(ulong *dst, Framebuf *fb, Point sp)
+scale3x_filter(ulong *dst, Raster *fb, Point sp)
 {
 	ulong A, B, C, D, E, F, G, H, I;
 
@@ -93,149 +93,183 @@ scale3x_filter(ulong *dst, Framebuf *fb, Point sp)
 //}
 
 static void
-upscaledraw(Framebufctl *ctl, Image *dst, Point off, Point scale)
+fb_createraster(Framebuf *fb, char *name, ulong chan)
 {
-	void (*filter)(ulong*, Framebuf*, Point);
-	Framebuf *fb;
+	Raster *r;
+
+	assert(name != nil);
+
+	/*
+	 * TODO might be better to keep a tail so it's O(1)
+	 *
+	 * in practice though, most users won't ever create
+	 * more than ten extra rasters.
+	 */
+	r = fb->rasters;
+	while(r->next != nil)
+		r = r->next;
+	r->next = allocraster(name, fb->r, chan);
+}
+
+static Raster *
+fb_fetchraster(Framebuf *fb, char *name)
+{
+	Raster *r;
+
+	r = fb->rasters;
+	if(name == nil)
+		return r;
+
+	while((r = r->next) != nil)
+		if(strcmp(name, r->name) == 0)
+			return r;
+	return nil;
+
+}
+
+static void
+upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
+{
+	void (*filterfn)(ulong*, Raster*, Point);
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
 
-	filter = nil;
+	filterfn = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
 
-	qlock(ctl);
-	fb = ctl->getfb(ctl);
-
-	switch(ctl->upfilter){
+	switch(filter){
 	case UFScale2x:
 		if(scale.x == scale.y && scale.y == 2)
-			filter = scale2x_filter;
+			filterfn = scale2x_filter;
 		break;
 	case UFScale3x:
 		if(scale.x == scale.y && scale.y == 3)
-			filter = scale3x_filter;
+			filterfn = scale3x_filter;
 		break;
 	}
 
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		if(filter != nil)
-			filter(blk, fb, sp);
+		if(filterfn != nil)
+			filterfn(blk, fb, sp);
 		else
 			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 		loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
-	qunlock(ctl);
 	free(blk);
 }
 
 static void
-framebufctl_draw(Framebufctl *ctl, Image *dst, Point off, Point scale)
+framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale)
 {
 	Framebuf *fb;
+	Raster *r;
 	Rectangle sr, dr;
-	int y;
-
-	if(scale.x > 1 || scale.y > 1){
-		upscaledraw(ctl, dst, off, scale);
-		return;
-	}
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
+
+	r = fb->rasters;
+	if(name != nil)
+		do r = r->next; while(r != nil && strcmp(name, r->name) != 0);
+	if(r == nil){
+		qunlock(ctl);
+		return;
+	}
+
+	if(scale.x > 1 || scale.y > 1){
+		upscaledraw(r, dst, off, scale, ctl->upfilter);
+		qunlock(ctl);
+		return;
+	}
+
 	sr = rectaddpt(fb->r, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectinrect(sr, dr))
-		loadimage(dst, rectaddpt(sr, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+		loadimage(dst, rectaddpt(sr, dst->r.min), (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
 	else if(rectclip(&sr, dr)){
 		dr = sr;
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
-		for(y = sr.min.y; y < sr.max.y; y++, dr.min.y++, dr.max.y++)
-			loadimage(dst, rectaddpt(dr, dst->r.min), (uchar*)&fb->cb[y*Dx(fb->r) + sr.min.x], Dx(dr)*4);
+		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
+			loadimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
 	}
 	qunlock(ctl);
 }
 
 static void
-upscalememdraw(Framebufctl *ctl, Memimage *dst, Point off, Point scale)
+upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 {
-	void (*filter)(ulong*, Framebuf*, Point);
-	Framebuf *fb;
+	void (*filterfn)(ulong*, Raster*, Point);
 	Rectangle blkr;
 	Point sp, dp;
 	ulong *blk;
 
-	filter = nil;
+	filterfn = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
 
-	qlock(ctl);
-	fb = ctl->getfb(ctl);
-
-	switch(ctl->upfilter){
+	switch(filter){
 	case UFScale2x:
 		if(scale.x == scale.y && scale.y == 2)
-			filter = scale2x_filter;
+			filterfn = scale2x_filter;
 		break;
 	case UFScale3x:
 		if(scale.x == scale.y && scale.y == 3)
-			filter = scale3x_filter;
+			filterfn = scale3x_filter;
 		break;
 	}
 
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		if(filter != nil)
-			filter(blk, fb, sp);
+		if(filterfn != nil)
+			filterfn(blk, fb, sp);
 		else
 			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
 		loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
-	qunlock(ctl);
 	free(blk);
 }
 
 static void
-framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, Point off, Point scale)
+framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Point scale)
 {
 	Framebuf *fb;
+	Raster *r;
 	Rectangle sr, dr;
-	int y;
-
-	if(scale.x > 1 || scale.y > 1){
-		upscalememdraw(ctl, dst, off, scale);
-		return;
-	}
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
+
+	r = fb->rasters;
+	if(name != nil)
+		do r = r->next; while(r != nil && strcmp(name, r->name) != 0);
+	if(r == nil){
+		qunlock(ctl);
+		return;
+	}
+
+	if(scale.x > 1 || scale.y > 1){
+		upscalememdraw(r, dst, off, scale, ctl->upfilter);
+		qunlock(ctl);
+		return;
+	}
+
 	sr = rectaddpt(fb->r, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectinrect(sr, dr))
-		loadmemimage(dst, rectaddpt(sr, dst->r.min), (uchar*)fb->cb, Dx(fb->r)*Dy(fb->r)*4);
+		loadmemimage(dst, rectaddpt(sr, dst->r.min), (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
 	else if(rectclip(&sr, dr)){
 		dr = sr;
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
-		for(y = sr.min.y; y < sr.max.y; y++, dr.min.y++, dr.max.y++)
-			loadmemimage(dst, rectaddpt(dr, dst->r.min), (uchar*)&fb->cb[y*Dx(fb->r) + sr.min.x], Dx(dr)*4);
+		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
+			loadmemimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
 	}
-	qunlock(ctl);
-}
-
-static void
-framebufctl_drawnormals(Framebufctl *ctl, Image *dst)
-{
-	Framebuf *fb;
-
-	qlock(ctl);
-	fb = ctl->getfb(ctl);
-	loadimage(dst, rectaddpt(fb->r, dst->r.min), (uchar*)fb->nb, Dx(fb->r)*Dy(fb->r)*4);
 	qunlock(ctl);
 }
 
@@ -261,13 +295,18 @@ static void
 framebufctl_reset(Framebufctl *ctl, ulong clr)
 {
 	Framebuf *fb;
+	Raster *r;
 
 	/* address the back buffer—resetting the front buffer is VERBOTEN */
 	fb = ctl->getbb(ctl);
 	resetAbuf(&fb->abuf);
-	memsetl(fb->nb, 0, Dx(fb->r)*Dy(fb->r));
-	memsetf(fb->zb, Inf(-1), Dx(fb->r)*Dy(fb->r));
-	memsetl(fb->cb, rgba2xrgb(clr), Dx(fb->r)*Dy(fb->r));
+
+	r = fb->rasters;		/* color buffer */
+	clearraster(r, rgba2xrgb(clr));
+	r = r->next;			/* z-buffer */
+	fclearraster(r, Inf(-1));
+	while((r = r->next) != nil)
+		clearraster(r, 0);	/* every other raster */
 }
 
 static Framebuf *
@@ -282,6 +321,126 @@ framebufctl_getbb(Framebufctl *ctl)
 	return ctl->fb[ctl->idx^1];	/* back buffer */
 }
 
+static void
+framebufctl_createraster(Framebufctl *ctl, char *name, ulong chan)
+{
+	Framebuf *fb;
+	int i;
+
+	for(i = 0; i < 2; i++){
+		fb = ctl->fb[i];
+		fb->createraster(fb, name, chan);
+	}
+}
+
+static Raster *
+framebufctl_fetchraster(Framebufctl *ctl, char *name)
+{
+	Framebuf *fb;
+
+	fb = ctl->getfb(ctl);
+	return fb->fetchraster(fb, name);
+}
+
+Raster *
+allocraster(char *name, Rectangle rr, ulong chan)
+{
+	Raster *r;
+
+	assert(chan <= FLOAT32);
+
+	r = emalloc(sizeof *r);
+	memset(r, 0, sizeof *r);
+	if(name != nil && (r->name = strdup(name)) == nil)
+		sysfatal("strdup: %r");
+	r->chan = chan;
+	r->r = rr;
+	r->data = emalloc(Dx(rr)*Dy(rr)*sizeof(*r->data));
+	return r;
+}
+
+void
+clearraster(Raster *r, ulong v)
+{
+	memsetl(r->data, v, Dx(r->r)*Dy(r->r));
+}
+
+void
+fclearraster(Raster *r, float v)
+{
+	memsetf(r->data, v, Dx(r->r)*Dy(r->r));
+}
+
+uchar *
+rasterbyteaddr(Raster *r, Point p)
+{
+	return (uchar*)&r->data[p.y*Dx(r->r) + p.x];
+}
+
+void
+rasterput(Raster *r, Point p, void *v)
+{
+	switch(r->chan){
+	case COLOR32:
+		*(ulong*)rasterbyteaddr(r, p) = *(ulong*)v;
+		break;
+	case FLOAT32:
+		*(float*)rasterbyteaddr(r, p) = *(float*)v;
+		break;
+	}
+}
+
+void
+rasterget(Raster *r, Point p, void *v)
+{
+	switch(r->chan){
+	case COLOR32:
+		*(ulong*)v = *(ulong*)rasterbyteaddr(r, p);
+		break;
+	case FLOAT32:
+		*(float*)v = *(float*)rasterbyteaddr(r, p);
+		break;
+	}
+}
+
+void
+rasterputcolor(Raster *r, Point p, ulong c)
+{
+	rasterput(r, p, &c);
+}
+
+ulong
+rastergetcolor(Raster *r, Point p)
+{
+	ulong c;
+
+	rasterget(r, p, &c);
+	return c;
+}
+
+void
+rasterputfloat(Raster *r, Point p, float v)
+{
+	rasterput(r, p, &v);
+}
+
+float
+rastergetfloat(Raster *r, Point p)
+{
+	float v;
+
+	rasterget(r, p, &v);
+	return v;
+}
+
+void
+freeraster(Raster *r)
+{
+	free(r->data);
+	free(r->name);
+	free(r);
+}
+
 Framebuf *
 mkfb(Rectangle r)
 {
@@ -289,20 +448,23 @@ mkfb(Rectangle r)
 
 	fb = emalloc(sizeof *fb);
 	memset(fb, 0, sizeof *fb);
-	fb->cb = emalloc(Dx(r)*Dy(r)*4);
-	fb->zb = emalloc(Dx(r)*Dy(r)*sizeof(*fb->zb));
-	memsetf(fb->zb, Inf(-1), Dx(r)*Dy(r));
-	fb->nb = emalloc(Dx(r)*Dy(r)*4);
+	fb->rasters = allocraster(nil, r, COLOR32);
+	fb->rasters->next = allocraster("z-buffer", r, FLOAT32);
 	fb->r = r;
+	fb->createraster = fb_createraster;
+	fb->fetchraster = fb_fetchraster;
 	return fb;
 }
 
 void
 rmfb(Framebuf *fb)
 {
-	free(fb->nb);
-	free(fb->zb);
-	free(fb->cb);
+	Raster *r, *nr;
+
+	for(r = fb->rasters; r != nil; r = nr){
+		nr = r->next;
+		freeraster(r);
+	}
 	free(fb);
 }
 
@@ -317,9 +479,10 @@ mkfbctl(Rectangle r)
 	fc->fb[1] = mkfb(r);
 	fc->draw = framebufctl_draw;
 	fc->memdraw = framebufctl_memdraw;
-	fc->drawnormals = framebufctl_drawnormals;
 	fc->swap = framebufctl_swap;
 	fc->reset = framebufctl_reset;
+	fc->createraster = framebufctl_createraster;
+	fc->fetchraster = framebufctl_fetchraster;
 	fc->getfb = framebufctl_getfb;
 	fc->getbb = framebufctl_getbb;
 	return fc;

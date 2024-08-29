@@ -23,6 +23,10 @@ enum {
 	LightDirectional,
 	LightSpot,
 
+	/* raster formats */
+	COLOR32 = 0,
+	FLOAT32,
+
 	/* texture formats */
 	RAWTexture = 0,	/* unmanaged */
 	sRGBTexture,
@@ -50,6 +54,7 @@ typedef struct Model Model;
 typedef struct Entity Entity;
 typedef struct Scene Scene;
 typedef struct VSparams VSparams;
+typedef struct FSoutput FSoutput;
 typedef struct FSparams FSparams;
 typedef struct SUparams SUparams;
 typedef struct Shadertab Shadertab;
@@ -59,6 +64,7 @@ typedef struct Renderjob Renderjob;
 typedef struct Fragment Fragment;
 typedef struct Astk Astk;
 typedef struct Abuf Abuf;
+typedef struct Raster Raster;
 typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
 typedef struct Viewport Viewport;
@@ -205,6 +211,8 @@ struct FSparams
 	SUparams *su;
 	Point p;
 	Vertex v;		/* only for the attributes (varyings) */
+
+	void (*toraster)(FSparams*, char*, void*);
 };
 
 /* shader unit params */
@@ -278,13 +286,24 @@ struct Abuf
 	ulong nact;
 };
 
+struct Raster
+{
+	Rectangle r;
+	char *name;
+	ulong chan;
+	ulong *data;
+
+	Raster *next;
+};
+
 struct Framebuf
 {
-	ulong *cb;	/* color buffer */
-	float *zb;	/* z/depth buffer */
-	ulong *nb;	/* normals buffer (DBG only) */
-	Abuf abuf;	/* A-buffer */
 	Rectangle r;
+	Raster *rasters;	/* [0] color, [1] depth, [n] user-defined */
+	Abuf abuf;		/* A-buffer */
+
+	void (*createraster)(Framebuf*, char*, ulong);
+	Raster *(*fetchraster)(Framebuf*, char*);
 };
 
 struct Framebufctl
@@ -294,11 +313,12 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 	uint upfilter;		/* upscaling filter */
 
-	void (*draw)(Framebufctl*, Image*, Point, Point);
-	void (*memdraw)(Framebufctl*, Memimage*, Point, Point);
-	void (*drawnormals)(Framebufctl*, Image*);
+	void (*draw)(Framebufctl*, Image*, char*, Point, Point);
+	void (*memdraw)(Framebufctl*, Memimage*, char*, Point, Point);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*, ulong);
+	void (*createraster)(Framebufctl*, char*, ulong);
+	Raster *(*fetchraster)(Framebufctl*, char*);
 	Framebuf *(*getfb)(Framebufctl*);
 	Framebuf *(*getbb)(Framebufctl*);
 };
@@ -309,13 +329,15 @@ struct Viewport
 	Framebufctl *fbctl;
 	Rectangle r;
 
-	void (*draw)(Viewport*, Image*);
-	void (*memdraw)(Viewport*, Memimage*);
+	void (*draw)(Viewport*, Image*, char*);
+	void (*memdraw)(Viewport*, Memimage*, char*);
 	void (*setscale)(Viewport*, double, double);
 	void (*setscalefilter)(Viewport*, int);
 	Framebuf *(*getfb)(Viewport*);
 	int (*getwidth)(Viewport*);
 	int (*getheight)(Viewport*);
+	void (*createraster)(Viewport*, char*, ulong);
+	Raster *(*fetchraster)(Viewport*, char*);
 };
 
 struct Camera

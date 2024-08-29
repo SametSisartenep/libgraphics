@@ -35,7 +35,7 @@ ul2col(ulong l)
 }
 
 static void
-pixel(Framebuf *fb, Point p, Color c, int blend)
+pixel(Raster *fb, Point p, Color c, int blend)
 {
 	Color dc;
 
@@ -50,13 +50,31 @@ pixel(Framebuf *fb, Point p, Color c, int blend)
 }
 
 static void
-pixeln(Framebuf *fb, Point p, Color c)
+fsparams_toraster(FSparams *sp, char *rname, void *v)
 {
-	ulong *dst;
+	Framebuf *fb;
+	Raster *r;
+	ulong c, z;
 
-	dst = fb->nb;
-	c.a = 1;
-	dst[Dx(fb->r)*p.y + p.x] = col2ul(c);
+	/* keep the user away from the color buffer */
+	if(rname == nil || v == nil)
+		return;
+
+	fb = sp->su->fb;
+	r = fb->fetchraster(fb, rname);
+	if(r == nil)
+		return;
+
+	switch(r->chan){
+	case COLOR32:
+		c = col2ul(*(Color*)v);
+		rasterput(r, sp->p, &c);
+		break;
+	case FLOAT32:
+		z = *(float*)v;
+		rasterput(r, sp->p, &z);
+		break;
+	}
 }
 
 static int
@@ -117,16 +135,19 @@ squashAbuf(Framebuf *fb, int blend)
 {
 	Abuf *buf;
 	Astk *stk;
+	Raster *cr, *zr;
 	int i, j;
 
 	buf = &fb->abuf;
+	cr = fb->rasters;
+	zr = cr->next;
 	for(i = 0; i < buf->nact; i++){
 		stk = buf->act[i];
 		j = stk->size;
 		while(j--)
-			pixel(fb, stk->p, stk->items[j].c, blend);
+			pixel(cr, stk->p, stk->items[j].c, blend);
 		/* write to the depth buffer as well */
-		fb->zb[stk->p.x + stk->p.y*Dx(fb->r)] = stk->items[0].z;
+		putdepth(zr, stk->p, stk->items[0].z);
 	}
 }
 
@@ -149,6 +170,7 @@ static void
 rasterize(Rastertask *task)
 {
 	SUparams *params;
+	Raster *cr, *zr;
 	Primitive prim;
 	FSparams fsp;
 	Triangle2 t;
@@ -164,6 +186,10 @@ rasterize(Rastertask *task)
 	prim = task->p;
 	fsp.su = params;
 	memset(&fsp.v, 0, sizeof fsp.v);
+	fsp.toraster = fsparams_toraster;
+
+	cr = params->fb->rasters;
+	zr = cr->next;
 
 	switch(prim.type){
 	case PPoint:
@@ -171,9 +197,9 @@ rasterize(Rastertask *task)
 
 		z = fclamp(prim.v[0].p.z, 0, 1);
 		if(params->camera->enabledepth){
-			if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+			if(z <= getdepth(zr, p))
 				break;
-			params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+			putdepth(zr, p, z);
 		}
 
 		fsp.v = dupvertex(&prim.v[0]);
@@ -182,7 +208,7 @@ rasterize(Rastertask *task)
 		if(params->camera->enableAbuff)
 			pushtoAbuf(params->fb, p, c, z);
 		else
-			pixel(params->fb, p, c, params->camera->enableblend);
+			pixel(cr, p, c, params->camera->enableblend);
 		delvattrs(&fsp.v);
 		break;
 	case PLine:
@@ -220,9 +246,9 @@ rasterize(Rastertask *task)
 			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
 			if(params->camera->enabledepth){
-				if(!ptinrect(p, params->fb->r) || z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+				if(!ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
 					goto discard;
-				params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+				putdepth(zr, p, z);
 			}
 
 			/* interpolate z⁻¹ and get actual z */
@@ -238,7 +264,7 @@ rasterize(Rastertask *task)
 			if(params->camera->enableAbuff)
 				pushtoAbuf(params->fb, p, c, z);
 			else
-				pixel(params->fb, p, c, params->camera->enableblend);
+				pixel(cr, p, c, params->camera->enableblend);
 			delvattrs(&fsp.v);
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
@@ -272,9 +298,9 @@ discard:
 
 				z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
 				if(params->camera->enabledepth){
-					if(z <= params->fb->zb[p.x + p.y*Dx(params->fb->r)])
+					if(z <= getdepth(zr, p))
 						continue;
-					params->fb->zb[p.x + p.y*Dx(params->fb->r)] = z;
+					putdepth(zr, p, z);
 				}
 
 				/* interpolate z⁻¹ and get actual z */
@@ -292,8 +318,7 @@ discard:
 				if(params->camera->enableAbuff)
 					pushtoAbuf(params->fb, p, c, z);
 				else
-					pixel(params->fb, p, c, params->camera->enableblend);
-				pixeln(params->fb, p, fsp.v.n);
+					pixel(cr, p, c, params->camera->enableblend);
 				delvattrs(&fsp.v);
 			}
 		break;

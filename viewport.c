@@ -9,7 +9,7 @@
 #include "internal.h"
 
 static void
-viewport_draw(Viewport *v, Image *dst)
+viewport_draw(Viewport *v, Image *dst, char *rname)
 {
 	Point off, scale;
 
@@ -18,11 +18,11 @@ viewport_draw(Viewport *v, Image *dst)
 	scale.x = max(v->bx.x, 1);
 	scale.y = max(v->by.y, 1);
 
-	v->fbctl->draw(v->fbctl, dst, off, scale);
+	v->fbctl->draw(v->fbctl, dst, rname, off, scale);
 }
 
 static void
-viewport_memdraw(Viewport *v, Memimage *dst)
+viewport_memdraw(Viewport *v, Memimage *dst, char *rname)
 {
 	Point off, scale;
 
@@ -31,7 +31,7 @@ viewport_memdraw(Viewport *v, Memimage *dst)
 	scale.x = max(v->bx.x, 1);
 	scale.y = max(v->by.y, 1);
 
-	v->fbctl->memdraw(v->fbctl, dst, off, scale);
+	v->fbctl->memdraw(v->fbctl, dst, rname, off, scale);
 }
 
 static void
@@ -67,6 +67,18 @@ viewport_getheight(Viewport *v)
 	return Dy(v->r)*v->by.y;
 }
 
+static void
+viewport_createraster(Viewport *v, char *name, ulong chan)
+{
+	v->fbctl->createraster(v->fbctl, name, chan);
+}
+
+static Raster *
+viewport_fetchraster(Viewport *v, char *name)
+{
+	return v->fbctl->fetchraster(v->fbctl, name);
+}
+
 Viewport *
 mkviewport(Rectangle r)
 {
@@ -90,6 +102,8 @@ mkviewport(Rectangle r)
 	v->getfb = viewport_getfb;
 	v->getwidth = viewport_getwidth;
 	v->getheight = viewport_getheight;
+	v->createraster = viewport_createraster;
+	v->fetchraster = viewport_fetchraster;
 	return v;
 }
 

@@ -23,19 +23,21 @@ modulapt3(Point3 a, Point3 b)
 void
 memsetf(void *dp, float v, usize len)
 {
-	float *p, *ep;
+	float *p;
 
-	for(p = dp, ep = p+len; p < ep; p++)
-		*p = v;
+	p = dp;
+	while(len--)
+		*p++ = v;
 }
 
 void
 memsetl(void *dp, ulong v, usize len)
 {
-	ulong *p, *ep;
+	ulong *p;
 
-	for(p = dp, ep = p+len; p < ep; p++)
-		*p = v;
+	p = dp;
+	while(len--)
+		*p++ = v;
 }
 
 Memimage *
