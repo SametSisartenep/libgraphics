@@ -471,32 +471,33 @@ tilerdurden(void *arg)
 					p = cp;
 				}
 
-				for(; np--; p++){
-					p->v[0].p = clip2ndc(p->v[0].p);
-					p->v[1].p = clip2ndc(p->v[1].p);
-					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
-					p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
+				if(np < 1)
+					break;
 
-					bbox.min.x = min(p->v[0].p.x, p->v[1].p.x);
-					bbox.min.y = min(p->v[0].p.y, p->v[1].p.y);
-					bbox.max.x = max(p->v[0].p.x, p->v[1].p.x)+1;
-					bbox.max.y = max(p->v[0].p.y, p->v[1].p.y)+1;
+				p->v[0].p = clip2ndc(p->v[0].p);
+				p->v[1].p = clip2ndc(p->v[1].p);
+				p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
+				p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
 
-					for(i = 0; i < nproc; i++)
-						if(rectXrect(bbox,wr[i])){
-							newparams = emalloc(sizeof *newparams);
-							*newparams = *params;
-							task = emalloc(sizeof *task);
-							task->params = newparams;
-							task->wr = wr[i];
-							task->p = *p;
-							task->p.v[0] = dupvertex(&p->v[0]);
-							task->p.v[1] = dupvertex(&p->v[1]);
-							sendp(taskchans[i], task);
-						}
-					delvattrs(&p->v[0]);
-					delvattrs(&p->v[1]);
-				}
+				bbox.min.x = min(p->v[0].p.x, p->v[1].p.x);
+				bbox.min.y = min(p->v[0].p.y, p->v[1].p.y);
+				bbox.max.x = max(p->v[0].p.x, p->v[1].p.x)+1;
+				bbox.max.y = max(p->v[0].p.y, p->v[1].p.y)+1;
+
+				for(i = 0; i < nproc; i++)
+					if(rectXrect(bbox,wr[i])){
+						newparams = emalloc(sizeof *newparams);
+						*newparams = *params;
+						task = emalloc(sizeof *task);
+						task->params = newparams;
+						task->wr = wr[i];
+						task->p = *p;
+						task->p.v[0] = dupvertex(&p->v[0]);
+						task->p.v[1] = dupvertex(&p->v[1]);
+						sendp(taskchans[i], task);
+					}
+				delvattrs(&p->v[0]);
+				delvattrs(&p->v[1]);
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
