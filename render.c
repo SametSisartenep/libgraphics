@@ -54,7 +54,7 @@ fsparams_toraster(FSparams *sp, char *rname, void *v)
 {
 	Framebuf *fb;
 	Raster *r;
-	ulong c, z;
+	ulong c;
 
 	/* keep the user away from the color buffer */
 	if(rname == nil || v == nil)
@@ -71,8 +71,7 @@ fsparams_toraster(FSparams *sp, char *rname, void *v)
 		rasterput(r, sp->p, &c);
 		break;
 	case FLOAT32:
-		z = *(float*)v;
-		rasterput(r, sp->p, &z);
+		rasterput(r, sp->p, v);
 		break;
 	}
 }
