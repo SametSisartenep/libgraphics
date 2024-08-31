@@ -76,21 +76,23 @@ scale3x_filter(ulong *dst, Raster *fb, Point sp)
 //
 //}
 
-//static void
-//framebufctl_draw⁻¹(Framebufctl *ctl, Image *dst)
-//{
-//	Framebuf *fb;
-//	Rectangle lr;
-//	Point sp, dp;
-//
-//	qlock(ctl);
-//	fb = ctl->getfb(ctl);
-//	lr = Rect(0,0,Dx(fb->r),1);
-//	sp.x = dp.x = 0;
-//	for(sp.y = fb->r.max.y, dp.y = dst->r.min.y; sp.y >= fb->r.min.y; sp.y--, dp.y++)
-//		loadimage(dst, rectaddpt(lr, dp), (uchar*)(fb->cb + sp.y*Dx(lr)), Dx(lr)*4);
-//	qunlock(ctl);
-//}
+/* convert a float raster to a greyscale color one */
+static void
+rasterconvF2C(Raster *dst, Raster *src)
+{
+	ulong *c, len;
+	float *f;
+	uchar b;
+
+	c = dst->data;
+	f = (float*)src->data;
+	len = Dx(dst->r)*Dy(dst->r);
+
+	while(len--){
+		b = fclamp(*f++, 0, 1)*0xFF;
+		*c++ = 0xFF<<24 | b<<16 | b<<8 | b;
+	}
+}
 
 static void
 fb_createraster(Framebuf *fb, char *name, ulong chan)
@@ -165,23 +167,29 @@ static void
 framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale)
 {
 	Framebuf *fb;
-	Raster *r;
+	Raster *r, *r2;
 	Rectangle sr, dr;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 
-	r = fb->rasters;
-	if(name != nil)
-		do r = r->next; while(r != nil && strcmp(name, r->name) != 0);
+	r = fb->fetchraster(fb, name);
 	if(r == nil){
 		qunlock(ctl);
 		return;
 	}
 
+	r2 = nil;
+	if(r->chan == FLOAT32){
+		r2 = allocraster(nil, r->r, COLOR32);
+		rasterconvF2C(r2, r);
+		r = r2;
+	}
+
 	if(scale.x > 1 || scale.y > 1){
 		upscaledraw(r, dst, off, scale, ctl->upfilter);
 		qunlock(ctl);
+		if(r2 != nil) freeraster(r2);
 		return;
 	}
 
@@ -198,6 +206,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 			loadimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
 	}
 	qunlock(ctl);
+	if(r2 != nil) freeraster(r2);
 }
 
 static void
@@ -238,23 +247,29 @@ static void
 framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Point scale)
 {
 	Framebuf *fb;
-	Raster *r;
+	Raster *r, *r2;
 	Rectangle sr, dr;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 
-	r = fb->rasters;
-	if(name != nil)
-		do r = r->next; while(r != nil && strcmp(name, r->name) != 0);
+	r = fb->fetchraster(fb, name);
 	if(r == nil){
 		qunlock(ctl);
 		return;
 	}
 
+	r2 = nil;
+	if(r->chan == FLOAT32){
+		r2 = allocraster(nil, r->r, COLOR32);
+		rasterconvF2C(r2, r);
+		r = r2;
+	}
+
 	if(scale.x > 1 || scale.y > 1){
 		upscalememdraw(r, dst, off, scale, ctl->upfilter);
 		qunlock(ctl);
+		if(r2 != nil) freeraster(r2);
 		return;
 	}
 
@@ -271,6 +286,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 			loadmemimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
 	}
 	qunlock(ctl);
+	if(r2 != nil) freeraster(r2);
 }
 
 static void
