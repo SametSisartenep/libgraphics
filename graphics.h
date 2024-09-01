@@ -53,9 +53,7 @@ typedef struct Primitive Primitive;
 typedef struct Model Model;
 typedef struct Entity Entity;
 typedef struct Scene Scene;
-typedef struct VSparams VSparams;
-typedef struct FSoutput FSoutput;
-typedef struct FSparams FSparams;
+typedef struct Shaderparams Shaderparams;
 typedef struct SUparams SUparams;
 typedef struct Shadertab Shadertab;
 typedef struct Renderer Renderer;
@@ -198,21 +196,17 @@ struct Scene
 	Entity *(*getent)(Scene*, char*);
 };
 
-/* shader params */
-struct VSparams
+struct Shaderparams
 {
 	SUparams *su;
 	Vertex *v;
-	uint idx;
-};
+	Point p;	/* fragment position (fshader-only) */
+	uint idx;	/* vertex index (vshader-only) */
 
-struct FSparams
-{
-	SUparams *su;
-	Point p;
-	Vertex v;		/* only for the attributes (varyings) */
-
-	void (*toraster)(FSparams*, char*, void*);
+	Vertexattr *(*getuniform)(Shaderparams*, char*);
+	Vertexattr *(*getattr)(Shaderparams*, char*);
+	void (*setattr)(Shaderparams*, char*, int, void*);
+	void (*toraster)(Shaderparams*, char*, void*);
 };
 
 /* shader unit params */
@@ -226,15 +220,15 @@ struct SUparams
 
 	uvlong uni_time;
 
-	Point3 (*vshader)(VSparams*);
-	Color (*fshader)(FSparams*);
+	Point3 (*vshader)(Shaderparams*);
+	Color (*fshader)(Shaderparams*);
 };
 
 struct Shadertab
 {
 	char *name;
-	Point3 (*vshader)(VSparams*);	/* vertex shader */
-	Color (*fshader)(FSparams*);	/* fragment shader */
+	Point3 (*vshader)(Shaderparams*);	/* vertex shader */
+	Color (*fshader)(Shaderparams*);	/* fragment shader */
 };
 
 struct Renderer

@@ -10,6 +10,54 @@
 
 Rectangle UR = {0,0,1,1};
 
+static ulong col2ul(Color);
+
+static Vertexattr *
+sparams_getuniform(Shaderparams *sp, char *id)
+{
+	USED(sp, id);
+	return nil;
+}
+
+static Vertexattr *
+sparams_getattr(Shaderparams *sp, char *id)
+{
+	return getvattr(sp->v, id);
+}
+
+static void
+sparams_setattr(Shaderparams *sp, char *id, int type, void *val)
+{
+	addvattr(sp->v, id, type, val);
+}
+
+static void
+sparams_toraster(Shaderparams *sp, char *rname, void *v)
+{
+	Framebuf *fb;
+	Raster *r;
+	ulong c;
+
+	/* keep the user away from the color buffer */
+	if(rname == nil || v == nil)
+		return;
+
+	fb = sp->su->fb;
+	r = fb->fetchraster(fb, rname);
+	if(r == nil)
+		return;
+
+	switch(r->chan){
+	case COLOR32:
+		c = col2ul(*(Color*)v);
+		rasterput(r, sp->p, &c);
+		break;
+	case FLOAT32:
+		rasterput(r, sp->p, v);
+		break;
+	}
+}
+
 static ulong
 col2ul(Color c)
 {
@@ -47,33 +95,6 @@ pixel(Raster *fb, Point p, Color c, int blend)
 //		c = subpt3(addpt3(dc, c), Vec3(1,1,1));
 	}
 	putpixel(fb, p, col2ul(linear2srgb(c)));
-}
-
-static void
-fsparams_toraster(FSparams *sp, char *rname, void *v)
-{
-	Framebuf *fb;
-	Raster *r;
-	ulong c;
-
-	/* keep the user away from the color buffer */
-	if(rname == nil || v == nil)
-		return;
-
-	fb = sp->su->fb;
-	r = fb->fetchraster(fb, rname);
-	if(r == nil)
-		return;
-
-	switch(r->chan){
-	case COLOR32:
-		c = col2ul(*(Color*)v);
-		rasterput(r, sp->p, &c);
-		break;
-	case FLOAT32:
-		rasterput(r, sp->p, v);
-		break;
-	}
 }
 
 static int
@@ -171,7 +192,8 @@ rasterize(Rastertask *task)
 	SUparams *params;
 	Raster *cr, *zr;
 	Primitive prim;
-	FSparams fsp;
+	Shaderparams fsp;
+	Vertex v;
 	Triangle2 t;
 	Rectangle bbox;
 	Point p, dp, Δp, p0, p1;
@@ -183,9 +205,13 @@ rasterize(Rastertask *task)
 
 	params = task->params;
 	prim = task->p;
+	memset(&fsp, 0, sizeof fsp);
 	fsp.su = params;
-	memset(&fsp.v, 0, sizeof fsp.v);
-	fsp.toraster = fsparams_toraster;
+	fsp.v = &v;
+	fsp.getuniform = sparams_getuniform;
+	fsp.getattr = sparams_getattr;
+	fsp.setattr = nil;
+	fsp.toraster = sparams_toraster;
 
 	cr = params->fb->rasters;
 	zr = cr->next;
@@ -201,14 +227,14 @@ rasterize(Rastertask *task)
 			putdepth(zr, p, z);
 		}
 
-		fsp.v = dupvertex(&prim.v[0]);
+		*fsp.v = dupvertex(&prim.v[0]);
 		fsp.p = p;
 		c = params->fshader(&fsp);
 		if(params->camera->enableAbuff)
 			pushtoAbuf(params->fb, p, c, z);
 		else
 			pixel(cr, p, c, params->camera->enableblend);
-		delvattrs(&fsp.v);
+		delvattrs(fsp.v);
 		break;
 	case PLine:
 		p0 = Pt(prim.v[0].p.x, prim.v[0].p.y);
@@ -256,7 +282,7 @@ rasterize(Rastertask *task)
 
 			/* perspective-correct attribute interpolation  */
 			perc *= prim.v[0].p.w * pcz;
-			lerpvertex(&fsp.v, &prim.v[0], &prim.v[1], perc);
+			lerpvertex(fsp.v, &prim.v[0], &prim.v[1], perc);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -264,7 +290,7 @@ rasterize(Rastertask *task)
 				pushtoAbuf(params->fb, p, c, z);
 			else
 				pixel(cr, p, c, params->camera->enableblend);
-			delvattrs(&fsp.v);
+			delvattrs(fsp.v);
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
 
@@ -310,7 +336,7 @@ discard:
 				bc = modulapt3(bc, Vec3(prim.v[0].p.w*pcz,
 							prim.v[1].p.w*pcz,
 							prim.v[2].p.w*pcz));
-				berpvertex(&fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
+				berpvertex(fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
 
 				fsp.p = p;
 				c = params->fshader(&fsp);
@@ -318,7 +344,7 @@ discard:
 					pushtoAbuf(params->fb, p, c, z);
 				else
 					pixel(cr, p, c, params->camera->enableblend);
-				delvattrs(&fsp.v);
+				delvattrs(fsp.v);
 			}
 		break;
 	default: sysfatal("alien primitive detected");
@@ -368,12 +394,12 @@ rasterizer(void *arg)
 }
 
 static void
-tilerdurden(void *arg)
+tiler(void *arg)
 {
 	Tilerparam *tp;
 	SUparams *params, *newparams;
 	Rastertask *task;
-	VSparams vsp;
+	Shaderparams vsp;
 	Primitive *ep, *cp, *p;		/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
@@ -387,7 +413,13 @@ tilerdurden(void *arg)
 	nproc = tp->nproc;
 	wr = emalloc(nproc*sizeof(Rectangle));
 
-	threadsetname("tilerdurden %d", tp->id);
+	memset(&vsp, 0, sizeof vsp);
+	vsp.getuniform = sparams_getuniform;
+	vsp.getattr = sparams_getattr;
+	vsp.setattr = sparams_setattr;
+	vsp.toraster = nil;
+
+	threadsetname("tiler %d", tp->id);
 
 	while((params = recvp(tp->paramsc)) != nil){
 		t0 = nanosec();
@@ -595,7 +627,7 @@ entityproc(void *arg)
 		tp->paramsc = paramsout[i];
 		tp->taskchans = taskchans;
 		tp->nproc = nproc;
-		proccreate(tilerdurden, tp, mainstacksize);
+		proccreate(tiler, tp, mainstacksize);
 	}
 	for(i = 0; i < nproc; i++){
 		rp = emalloc(sizeof *rp);

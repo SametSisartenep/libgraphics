@@ -13,7 +13,7 @@
  * 	- https://learnopengl.com/Advanced-OpenGL/Cubemaps
  */
 static Point3
-skyboxvs(VSparams *sp)
+skyboxvs(Shaderparams *sp)
 {
 	Point3 p;
 
@@ -28,12 +28,12 @@ skyboxvs(VSparams *sp)
 }
 
 static Color
-skyboxfs(FSparams *sp)
+skyboxfs(Shaderparams *sp)
 {
 	Vertexattr *va;
 	Color c;
 
-	va = getvattr(&sp->v, "dir");
+	va = getvattr(sp->v, "dir");
 	c = samplecubemap(sp->su->camera->scene->skybox, va->p, neartexsampler);
 	return c;
 }

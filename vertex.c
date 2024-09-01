@@ -13,6 +13,8 @@ _addvattr(Vertex *v, Vertexattr *va)
 {
 	int i;
 
+	assert(va->id != nil);
+
 	for(i = 0; i < v->nattrs; i++)
 		if(strcmp(v->attrs[i].id, va->id) == 0){
 			v->attrs[i] = *va;
@@ -118,7 +120,7 @@ getvattr(Vertex *v, char *id)
 	int i;
 
 	for(i = 0; i < v->nattrs; i++)
-		if(strcmp(v->attrs[i].id, id) == 0)
+		if(id != nil && strcmp(v->attrs[i].id, id) == 0)
 			return &v->attrs[i];
 	return nil;
 }
