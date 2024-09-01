@@ -192,8 +192,8 @@ rasterize(Rastertask *task)
 	SUparams *params;
 	Raster *cr, *zr;
 	Primitive prim;
-	Shaderparams fsp;
 	Vertex v;
+	Shaderparams fsp;
 	Triangle2 t;
 	Rectangle bbox;
 	Point p, dp, Δp, p0, p1;
@@ -316,36 +316,36 @@ discard:
 		bbox.max.y = min(bbox.max.y, task->wr.max.y);
 
 		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
-			for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
-				bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
-				if(bc.x < 0 || bc.y < 0 || bc.z < 0)
+		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
+			bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
+			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
+				continue;
+
+			z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
+			if(params->camera->enabledepth){
+				if(z <= getdepth(zr, p))
 					continue;
-
-				z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
-				if(params->camera->enabledepth){
-					if(z <= getdepth(zr, p))
-						continue;
-					putdepth(zr, p, z);
-				}
-
-				/* interpolate z⁻¹ and get actual z */
-				pcz = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
-				pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
-
-				/* perspective-correct attribute interpolation  */
-				bc = modulapt3(bc, Vec3(prim.v[0].p.w*pcz,
-							prim.v[1].p.w*pcz,
-							prim.v[2].p.w*pcz));
-				berpvertex(fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
-
-				fsp.p = p;
-				c = params->fshader(&fsp);
-				if(params->camera->enableAbuff)
-					pushtoAbuf(params->fb, p, c, z);
-				else
-					pixel(cr, p, c, params->camera->enableblend);
-				delvattrs(fsp.v);
+				putdepth(zr, p, z);
 			}
+
+			/* interpolate z⁻¹ and get actual z */
+			pcz = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
+			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
+
+			/* perspective-correct attribute interpolation  */
+			bc = modulapt3(bc, Vec3(prim.v[0].p.w*pcz,
+						prim.v[1].p.w*pcz,
+						prim.v[2].p.w*pcz));
+			berpvertex(fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
+
+			fsp.p = p;
+			c = params->fshader(&fsp);
+			if(params->camera->enableAbuff)
+				pushtoAbuf(params->fb, p, c, z);
+			else
+				pixel(cr, p, c, params->camera->enableblend);
+			delvattrs(fsp.v);
+		}
 		break;
 	default: sysfatal("alien primitive detected");
 	}
@@ -373,6 +373,7 @@ rasterizer(void *arg)
 			if(decref(params->job) < 1){
 				if(params->job->camera->enableAbuff)
 					squashAbuf(params->job->fb, params->job->camera->enableblend);
+				params->job->times.Rn.t1 = nanosec();
 				nbsend(params->job->donec, nil);
 				free(params);
 			}
@@ -387,7 +388,6 @@ rasterizer(void *arg)
 
 		for(i = 0; i < task->p.type+1; i++)
 			delvattrs(&task->p.v[i]);
-		params->job->times.Rn.t1 = nanosec();
 		free(params);
 		free(task);
 	}
@@ -436,6 +436,7 @@ tiler(void *arg)
 					task->params = params;
 					sendp(taskchans[i], task);
 				}
+				params->job->times.Tn.t1 = nanosec();
 			}
 			continue;
 		}
@@ -590,7 +591,6 @@ skiptri:
 			default: sysfatal("alien primitive detected");
 			}
 		}
-		params->job->times.Tn.t1 = nanosec();
 		free(params);
 	}
 }
@@ -646,6 +646,7 @@ entityproc(void *arg)
 			params->job->ref = nproc;
 			for(i = 0; i < nproc; i++)
 				sendp(paramsout[i], params);
+			params->job->times.E.t1 = nanosec();
 			continue;
 		}
 
@@ -668,7 +669,6 @@ entityproc(void *arg)
 			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
 			sendp(paramsout[i], newparams);
 		}
-		params->job->times.E.t1 = nanosec();
 		free(params);
 	}
 }
