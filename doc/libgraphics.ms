@@ -159,7 +159,9 @@ seen in
 spawned with a call to
 .CW initgraphics ,
 each representing a stage of the pipeline:
-.IP "S1:"
+.NH 2
+renderer
+.PP
 The
 .B renderer
 process, the root of the tree, waits on a
@@ -220,25 +222,29 @@ arrow from Tiler.T1 to Raster.Rn chop
 .PE
 .FI "The rendering graph for a \fB2n\fR processor machine."
 .KE
-.IP "S2:"
+.NH 2
+entityproc
+.PP
 The
 .B entityproc
 receives an entity and splits its geometry equitatively among the
 tilers, sending a batch for each of them to process.
-.IP "S3:"
+.NH 2
+tilers
+.PP
 Next, each
 .B tiler
-gets to work on their subset of the geometry (potentially in
-parallel)—see
+gets to work on their subset of the geometry, potentially in
+parallel—see
 .B "Figure 3" .
 They walk the list of primitives, then for each of them
 apply the
 .B "vertex shader"
 to its vertices (which expects clip space coordinates in return),
 perform frustum culling and clipping, back-face culling, and then
-project them into the viewport (screen space).  Following this step,
-they build a bounding box, used to allocate each primitive into a
-rasterization bucket, or
+project them into the viewport to obtain their screen space
+coordinates.  Following this step, they build a bounding box, used to
+allocate each primitive into a rasterization bucket, or
 .B tile ,
 managed by one of the rasterizers; as illustrated in
 .B "Figure 4" .
@@ -277,7 +283,9 @@ line from Tiles.Tn.e to Raster.Rn.w
 .PE
 .FI "Per tile rasterizers."
 .KE
-.IP "S4:"
+.NH 2
+rasterizers
+.PP
 Finally, the
 .B rasterizers
 receive the primitive in screen space, slice it to fit their tile, and
