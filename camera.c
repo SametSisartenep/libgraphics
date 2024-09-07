@@ -87,17 +87,6 @@ updatestats(Camera *c, uvlong v)
 }
 
 static void
-updatetimes(Camera *c, Renderjob *j)
-{
-	c->times.R[c->times.cur] = j->times.R;
-	c->times.E[c->times.cur] = j->times.E;
-	c->times.Tn[c->times.cur] = j->times.Tn;
-	c->times.Rn[c->times.cur] = j->times.Rn;
-	c->times.last = c->times.cur;
-	c->times.cur = ++c->times.cur % nelem(c->times.R);
-}
-
-static void
 verifycfg(Camera *c)
 {
 	assert(c->view != nil);
@@ -208,6 +197,26 @@ aimcamera(Camera *c, Point3 focus)
 	c->by = crossvec3(c->bz, c->bx);
 }
 
+static void
+printtimings(Renderjob *job)
+{
+	int i;
+
+	if(!job->rctl->doprof)
+		return;
+
+	fprint(2, "R %llud %llud\nE %llud %llud\n",
+		job->times.R.t0, job->times.R.t1,
+		job->times.E.t0, job->times.E.t1);
+	for(i = 0; i < job->rctl->nprocs/2; i++)
+		fprint(2, "T%d %llud %llud\n", i,
+			job->times.Tn[i].t0, job->times.Tn[i].t1);
+	for(i = 0; i < job->rctl->nprocs/2; i++)
+		fprint(2, "r%d %llud %llud\n", i,
+			job->times.Rn[i].t0, job->times.Rn[i].t1);
+	fprint(2, "\n");
+}
+
 void
 shootcamera(Camera *c, Shadertab *s)
 {
@@ -224,6 +233,7 @@ shootcamera(Camera *c, Shadertab *s)
 
 	job = emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
+	job->rctl = c->rctl;
 	job->fb = fbctl->getbb(fbctl);
 	job->camera = emalloc(sizeof *c);
 	*job->camera = *c;
@@ -233,7 +243,7 @@ shootcamera(Camera *c, Shadertab *s)
 
 	fbctl->reset(fbctl, c->clearcolor);
 	t0 = nanosec();
-	sendp(c->rctl->c, job);
+	sendp(c->rctl->jobq, job);
 	recvp(job->donec);
 	delscene(job->scene);			/* destroy the snapshot */
 	/*
@@ -251,7 +261,7 @@ shootcamera(Camera *c, Shadertab *s)
 		reloadcamera(job->camera);
 		job->scene = dupscene(skyboxscene);
 		job->shaders = &skyboxshader;
-		sendp(c->rctl->c, job);
+		sendp(c->rctl->jobq, job);
 		recvp(job->donec);
 		delscene(job->scene);
 	}
@@ -259,7 +269,9 @@ shootcamera(Camera *c, Shadertab *s)
 	fbctl->swap(fbctl);
 
 	updatestats(c, t1-t0);
-	updatetimes(c, job);
+	printtimings(job);
+//	free(job->times.Tn);
+//	free(job->times.Rn);
 
 	chanfree(job->donec);
 	free(job->camera);

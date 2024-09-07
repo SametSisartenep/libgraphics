@@ -56,8 +56,8 @@ typedef struct Scene Scene;
 typedef struct Shaderparams Shaderparams;
 typedef struct SUparams SUparams;
 typedef struct Shadertab Shadertab;
-typedef struct Renderer Renderer;
 typedef struct Rendertime Rendertime;
+typedef struct Renderer Renderer;
 typedef struct Renderjob Renderjob;
 typedef struct Fragment Fragment;
 typedef struct Astk Astk;
@@ -231,20 +231,23 @@ struct Shadertab
 	Color (*fshader)(Shaderparams*);	/* fragment shader */
 };
 
-struct Renderer
-{
-	Channel *c;
-};
-
 struct Rendertime
 {
 	uvlong t0, t1;
+};
+
+struct Renderer
+{
+	Channel *jobq;
+	ulong nprocs;
+	int doprof;	/* enable profiling */
 };
 
 struct Renderjob
 {
 	Ref;
 	uvlong id;
+	Renderer *rctl;
 	Framebuf *fb;
 	Camera *camera;
 	Scene *scene;
@@ -252,7 +255,8 @@ struct Renderjob
 	Channel *donec;
 
 	struct {
-		Rendertime R, E, Tn, Rn;	/* renderer, entityproc, tilers, rasterizers */
+		/* renderer, entityproc, tilers, rasterizers */
+		Rendertime R, E, Tn[20], Rn[20];
 	} times;
 
 	Renderjob *next;
@@ -356,10 +360,6 @@ struct Camera
 		uvlong min, avg, max, acc, n, v;
 		uvlong nframes;
 	} stats;
-	struct {
-		Rendertime R[10], E[10], Tn[10], Rn[10];
-		int last, cur;
-	} times;
 };
 
 /* camera */

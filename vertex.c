@@ -59,8 +59,6 @@ lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 	v->c = lerp3(v0->c, v1->c, t);
 	v->uv = lerp2(v0->uv, v1->uv, t);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl;
-	v->attrs = nil;
-	v->nattrs = 0;
 	for(i = 0; i < v0->nattrs; i++){
 		va.id = v0->attrs[i].id;
 		va.type = v0->attrs[i].type;
@@ -86,8 +84,6 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 	v->c = berp3(v0->c, v1->c, v2->c, bc);
 	v->uv = berp2(v0->uv, v1->uv, v2->uv, bc);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl != nil? v1->mtl: v2->mtl;
-	v->attrs = nil;
-	v->nattrs = 0;
 	for(i = 0; i < v0->nattrs; i++){
 		va.id = v0->attrs[i].id;
 		va.type = v0->attrs[i].type;

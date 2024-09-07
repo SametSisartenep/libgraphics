@@ -191,7 +191,7 @@ rasterize(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
-	Primitive prim;
+	Primitive *prim;
 	Vertex v;
 	Shaderparams fsp;
 	Triangle2 t;
@@ -204,8 +204,9 @@ rasterize(Rastertask *task)
 	int steep = 0, Δe, e, Δy;
 
 	params = task->params;
-	prim = task->p;
+	prim = &task->p;
 	memset(&fsp, 0, sizeof fsp);
+	memset(&v, 0, sizeof v);
 	fsp.su = params;
 	fsp.v = &v;
 	fsp.getuniform = sparams_getuniform;
@@ -216,18 +217,18 @@ rasterize(Rastertask *task)
 	cr = params->fb->rasters;
 	zr = cr->next;
 
-	switch(prim.type){
+	switch(prim->type){
 	case PPoint:
-		p = Pt(prim.v[0].p.x, prim.v[0].p.y);
+		p = Pt(prim->v[0].p.x, prim->v[0].p.y);
 
-		z = fclamp(prim.v[0].p.z, 0, 1);
+		z = fclamp(prim->v[0].p.z, 0, 1);
 		if(params->camera->enabledepth){
 			if(z <= getdepth(zr, p))
 				break;
 			putdepth(zr, p, z);
 		}
 
-		*fsp.v = dupvertex(&prim.v[0]);
+		fsp.v = &prim->v[0];
 		fsp.p = p;
 		c = params->fshader(&fsp);
 		if(params->camera->enableAbuff)
@@ -237,10 +238,10 @@ rasterize(Rastertask *task)
 		delvattrs(fsp.v);
 		break;
 	case PLine:
-		p0 = Pt(prim.v[0].p.x, prim.v[0].p.y);
-		p1 = Pt(prim.v[1].p.x, prim.v[1].p.y);
+		p0 = Pt(prim->v[0].p.x, prim->v[0].p.y);
+		p1 = Pt(prim->v[1].p.x, prim->v[1].p.y);
 		/* clip it against our wr */
-		if(rectclipline(task->wr, &p0, &p1, &prim.v[0], &prim.v[1]) < 0)
+		if(rectclipline(task->wr, &p0, &p1, &prim->v[0], &prim->v[1]) < 0)
 			break;
 
 		/* transpose the points */
@@ -253,7 +254,7 @@ rasterize(Rastertask *task)
 		/* make them left-to-right */
 		if(p0.x > p1.x){
 			SWAP(Point, &p0, &p1);
-			SWAP(Vertex, &prim.v[0], &prim.v[1]);
+			SWAP(Vertex, &prim->v[0], &prim->v[1]);
 		}
 
 		dp = subpt(p1, p0);
@@ -268,7 +269,7 @@ rasterize(Rastertask *task)
 
 			if(steep) SWAP(int, &p.x, &p.y);
 
-			z = flerp(prim.v[0].p.z, prim.v[1].p.z, perc);
+			z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
 			if(params->camera->enabledepth){
 				if(!ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
@@ -277,12 +278,12 @@ rasterize(Rastertask *task)
 			}
 
 			/* interpolate z⁻¹ and get actual z */
-			pcz = flerp(prim.v[0].p.w, prim.v[1].p.w, perc);
+			pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
 			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
 
 			/* perspective-correct attribute interpolation  */
-			perc *= prim.v[0].p.w * pcz;
-			lerpvertex(fsp.v, &prim.v[0], &prim.v[1], perc);
+			perc *= prim->v[0].p.w * pcz;
+			lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -290,7 +291,6 @@ rasterize(Rastertask *task)
 				pushtoAbuf(params->fb, p, c, z);
 			else
 				pixel(cr, p, c, params->camera->enableblend);
-			delvattrs(fsp.v);
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
 
@@ -300,20 +300,18 @@ discard:
 				e -= 2*dp.x;
 			}
 		}
+		delvattrs(fsp.v);
 		break;
 	case PTriangle:
-		t.p0 = Pt2(prim.v[0].p.x, prim.v[0].p.y, 1);
-		t.p1 = Pt2(prim.v[1].p.x, prim.v[1].p.y, 1);
-		t.p2 = Pt2(prim.v[2].p.x, prim.v[2].p.y, 1);
+		t.p0 = Pt2(prim->v[0].p.x, prim->v[0].p.y, 1);
+		t.p1 = Pt2(prim->v[1].p.x, prim->v[1].p.y, 1);
+		t.p2 = Pt2(prim->v[2].p.x, prim->v[2].p.y, 1);
 		/* find the triangle's bbox and clip it against our wr */
 		bbox.min.x = min(min(t.p0.x, t.p1.x), t.p2.x);
 		bbox.min.y = min(min(t.p0.y, t.p1.y), t.p2.y);
 		bbox.max.x = max(max(t.p0.x, t.p1.x), t.p2.x)+1;
 		bbox.max.y = max(max(t.p0.y, t.p1.y), t.p2.y)+1;
-		bbox.min.x = max(bbox.min.x, task->wr.min.x);
-		bbox.min.y = max(bbox.min.y, task->wr.min.y);
-		bbox.max.x = min(bbox.max.x, task->wr.max.x);
-		bbox.max.y = min(bbox.max.y, task->wr.max.y);
+		rectclip(&bbox, task->wr);
 
 		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
 		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
@@ -321,7 +319,7 @@ discard:
 			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 				continue;
 
-			z = fberp(prim.v[0].p.z, prim.v[1].p.z, prim.v[2].p.z, bc);
+			z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
 			if(params->camera->enabledepth){
 				if(z <= getdepth(zr, p))
 					continue;
@@ -329,14 +327,14 @@ discard:
 			}
 
 			/* interpolate z⁻¹ and get actual z */
-			pcz = fberp(prim.v[0].p.w, prim.v[1].p.w, prim.v[2].p.w, bc);
+			pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
 			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
 
 			/* perspective-correct attribute interpolation  */
-			bc = modulapt3(bc, Vec3(prim.v[0].p.w*pcz,
-						prim.v[1].p.w*pcz,
-						prim.v[2].p.w*pcz));
-			berpvertex(fsp.v, &prim.v[0], &prim.v[1], &prim.v[2], bc);
+			bc = modulapt3(bc, Vec3(prim->v[0].p.w*pcz,
+						prim->v[1].p.w*pcz,
+						prim->v[2].p.w*pcz));
+			berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
@@ -344,8 +342,8 @@ discard:
 				pushtoAbuf(params->fb, p, c, z);
 			else
 				pixel(cr, p, c, params->camera->enableblend);
-			delvattrs(fsp.v);
 		}
+		delvattrs(fsp.v);
 		break;
 	default: sysfatal("alien primitive detected");
 	}
@@ -357,6 +355,7 @@ rasterizer(void *arg)
 	Rasterparam *rp;
 	Rastertask *task;
 	SUparams *params;
+	Renderjob *job;
 	uvlong t0;
 	int i;
 
@@ -368,21 +367,22 @@ rasterizer(void *arg)
 		t0 = nanosec();
 
 		params = task->params;
+		job = params->job;
+		if(job->times.Rn[rp->id].t0 == 0)
+			job->times.Rn[rp->id].t0 = t0;
+
 		/* end of job */
 		if(params->entity == nil){
-			if(decref(params->job) < 1){
-				if(params->job->camera->enableAbuff)
-					squashAbuf(params->job->fb, params->job->camera->enableblend);
-				params->job->times.Rn.t1 = nanosec();
-				nbsend(params->job->donec, nil);
+			if(decref(job) < 1){
+				if(job->camera->enableAbuff)
+					squashAbuf(job->fb, job->camera->enableblend);
+				nbsend(job->donec, nil);
 				free(params);
 			}
+			job->times.Rn[rp->id].t1 = nanosec();
 			free(task);
 			continue;
 		}
-
-		if(params->job->times.Rn.t0 == 0)
-			params->job->times.Rn.t0 = t0;
 
 		rasterize(task);
 
@@ -423,11 +423,12 @@ tiler(void *arg)
 
 	while((params = recvp(tp->paramsc)) != nil){
 		t0 = nanosec();
-		if(params->job->times.Tn.t0 == 0)
-			params->job->times.Tn.t0 = t0;
+		if(params->job->times.Tn[tp->id].t0 == 0)
+			params->job->times.Tn[tp->id].t0 = t0;
 
 		/* end of job */
 		if(params->entity == nil){
+			params->job->times.Tn[tp->id].t1 = nanosec();
 			if(decref(params->job) < 1){
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
@@ -436,7 +437,6 @@ tiler(void *arg)
 					task->params = params;
 					sendp(taskchans[i], task);
 				}
-				params->job->times.Tn.t1 = nanosec();
 			}
 			continue;
 		}
@@ -476,7 +476,7 @@ tiler(void *arg)
 				bbox.max.y = p->v[0].p.y+1;
 
 				for(i = 0; i < nproc; i++)
-					if(rectXrect(bbox,wr[i])){
+					if(rectXrect(bbox, wr[i])){
 						newparams = emalloc(sizeof *newparams);
 						*newparams = *params;
 						task = emalloc(sizeof *task);
@@ -485,6 +485,7 @@ tiler(void *arg)
 						task->p = *p;
 						task->p.v[0] = dupvertex(&p->v[0]);
 						sendp(taskchans[i], task);
+						break;
 					}
 				delvattrs(&p->v[0]);
 				break;
@@ -518,7 +519,7 @@ tiler(void *arg)
 				bbox.max.y = max(p->v[0].p.y, p->v[1].p.y)+1;
 
 				for(i = 0; i < nproc; i++)
-					if(rectXrect(bbox,wr[i])){
+					if(rectXrect(bbox, wr[i])){
 						newparams = emalloc(sizeof *newparams);
 						*newparams = *params;
 						task = emalloc(sizeof *task);
@@ -570,7 +571,7 @@ tiler(void *arg)
 					bbox.max.y = max(max(p->v[0].p.y, p->v[1].p.y), p->v[2].p.y)+1;
 
 					for(i = 0; i < nproc; i++)
-						if(rectXrect(bbox,wr[i])){
+						if(rectXrect(bbox, wr[i])){
 							newparams = emalloc(sizeof *newparams);
 							*newparams = *params;
 							task = emalloc(sizeof *task);
@@ -598,25 +599,24 @@ skiptri:
 static void
 entityproc(void *arg)
 {
+	Entityparam *ep;
 	Channel *paramsin, **paramsout, **taskchans;
 	Tilerparam *tp;
 	Rasterparam *rp;
 	SUparams *params, *newparams;
 	Primitive *eb, *ee;
-	char *nprocs;
 	ulong stride, nprims, nproc, nworkers;
 	int i;
 	uvlong t0;
 
 	threadsetname("entityproc");
 
-	paramsin = arg;
-	nprocs = getenv("NPROC");
-	if(nprocs == nil || (nproc = strtoul(nprocs, nil, 10)) < 2)
-		nproc = 1;
-	else
+	ep = arg;
+	paramsin = ep->paramsc;
+
+	nproc = ep->rctl->nprocs;
+	if(nproc > 2)
 		nproc /= 2;
-	free(nprocs);
 
 	paramsout = emalloc(nproc*sizeof(*paramsout));
 	taskchans = emalloc(nproc*sizeof(*taskchans));
@@ -640,6 +640,14 @@ entityproc(void *arg)
 		t0 = nanosec();
 		if(params->job->times.E.t0 == 0)
 			params->job->times.E.t0 = t0;
+
+		/* prof: initialize timing slots for the next stages */
+//		if(params->job->times.Tn == nil){
+//			params->job->times.Tn = emalloc(nproc*sizeof(Rendertime));
+//			params->job->times.Rn = emalloc(nproc*sizeof(Rendertime));
+//			memset(params->job->times.Tn, 0, nproc*sizeof(Rendertime));
+//			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
+//		}
 
 		/* end of job */
 		if(params->entity == nil){
@@ -676,23 +684,25 @@ entityproc(void *arg)
 static void
 renderer(void *arg)
 {
-	Channel *jobc;
+	Renderer *rctl;
 	Renderjob *job;
 	Scene *sc;
 	Entity *ent;
 	SUparams *params;
-	Channel *paramsc;
+	Entityparam *ep;
 	uvlong time, lastid;
 
 	threadsetname("renderer");
 
-	jobc = arg;
+	rctl = arg;
 	lastid = 0;
-	paramsc = chancreate(sizeof(SUparams*), 8);
 
-	proccreate(entityproc, paramsc, mainstacksize);
+	ep = emalloc(sizeof *ep);
+	ep->rctl = rctl;
+	ep->paramsc = chancreate(sizeof(SUparams*), 8);
+	proccreate(entityproc, ep, mainstacksize);
 
-	while((job = recvp(jobc)) != nil){
+	while((job = recvp(rctl->jobq)) != nil){
 		time = nanosec();
 		job->times.R.t0 = time;
 		job->id = lastid++;
@@ -718,13 +728,13 @@ renderer(void *arg)
 			params->uni_time = time;
 			params->vshader = job->shaders->vshader;
 			params->fshader = job->shaders->fshader;
-			sendp(paramsc, params);
+			sendp(ep->paramsc, params);
 		}
 		/* mark end of job */
 		params = emalloc(sizeof *params);
 		memset(params, 0, sizeof *params);
 		params->job = job;
-		sendp(paramsc, params);
+		sendp(ep->paramsc, params);
 
 		job->times.R.t1 = nanosec();
 	}
@@ -734,9 +744,17 @@ Renderer *
 initgraphics(void)
 {
 	Renderer *r;
+	char *nprocs;
+	ulong nproc;
+
+	nprocs = getenv("NPROC");
+	if(nprocs == nil || (nproc = strtoul(nprocs, nil, 10)) < 2)
+		nproc = 1;
+	free(nprocs);
 
 	r = emalloc(sizeof *r);
-	r->c = chancreate(sizeof(Renderjob*), 8);
-	proccreate(renderer, r->c, mainstacksize);
+	r->jobq = chancreate(sizeof(Renderjob*), 8);
+	r->nprocs = nproc;
+	proccreate(renderer, r, mainstacksize);
 	return r;
 }

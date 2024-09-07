@@ -108,6 +108,7 @@ clipprimitive(Primitive *p, Primitive *cp)
 			d1 = (j&1) == 0? sd1[j]: -sd1[j];
 			perc = d0/(d0 - d1);
 
+			memset(&v, 0, sizeof v);
 			lerpvertex(&v, v0, v1, perc);
 			addvert(Vout, v);
 
@@ -191,6 +192,8 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 	Point3 dp;
 	Point Δp;
 	double len, perc;
+
+	memset(v, 0, sizeof v);
 
 	dp = subpt3(v1->p, v0->p);
 	len = hypot(dp.x, dp.y);

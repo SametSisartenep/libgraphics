@@ -1,4 +1,5 @@
 typedef struct Polygon Polygon;
+typedef struct Entityparam Entityparam;
 typedef struct Tilerparam Tilerparam;
 typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
@@ -8,6 +9,12 @@ struct Polygon
 	Vertex *v;
 	ulong n;
 	ulong cap;
+};
+
+struct Entityparam
+{
+	Renderer *rctl;
+	Channel *paramsc;
 };
 
 struct Tilerparam
