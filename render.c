@@ -360,7 +360,6 @@ rasterizer(void *arg)
 	int i;
 
 	rp = arg;
-
 	threadsetname("rasterizer %d", rp->id);
 
 	while((task = recvp(rp->taskc)) != nil){
@@ -368,7 +367,7 @@ rasterizer(void *arg)
 
 		params = task->params;
 		job = params->job;
-		if(job->times.Rn[rp->id].t0 == 0)
+		if(job->rctl->doprof && job->times.Rn[rp->id].t0 == 0)
 			job->times.Rn[rp->id].t0 = t0;
 
 		/* end of job */
@@ -379,7 +378,8 @@ rasterizer(void *arg)
 				nbsend(job->donec, nil);
 				free(params);
 			}
-			job->times.Rn[rp->id].t1 = nanosec();
+			if(job->rctl->doprof)
+				job->times.Rn[rp->id].t1 = nanosec();
 			free(task);
 			continue;
 		}
@@ -408,6 +408,8 @@ tiler(void *arg)
 	uvlong t0;
 
 	tp = arg;
+	threadsetname("tiler %d", tp->id);
+
 	cp = emalloc(sizeof(*cp)*16);
 	taskchans = tp->taskchans;
 	nproc = tp->nproc;
@@ -419,16 +421,16 @@ tiler(void *arg)
 	vsp.setattr = sparams_setattr;
 	vsp.toraster = nil;
 
-	threadsetname("tiler %d", tp->id);
-
 	while((params = recvp(tp->paramsc)) != nil){
 		t0 = nanosec();
-		if(params->job->times.Tn[tp->id].t0 == 0)
+		if(params->job->rctl->doprof &&
+		   params->job->times.Tn[tp->id].t0 == 0)
 			params->job->times.Tn[tp->id].t0 = t0;
 
 		/* end of job */
 		if(params->entity == nil){
-			params->job->times.Tn[tp->id].t1 = nanosec();
+			if(params->job->rctl->doprof)
+				params->job->times.Tn[tp->id].t1 = nanosec();
 			if(decref(params->job) < 1){
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
@@ -638,11 +640,11 @@ entityproc(void *arg)
 
 	while((params = recvp(paramsin)) != nil){
 		t0 = nanosec();
-		if(params->job->times.E.t0 == 0)
+		if(params->job->rctl->doprof && params->job->times.E.t0 == 0)
 			params->job->times.E.t0 = t0;
 
 		/* prof: initialize timing slots for the next stages */
-		if(params->job->times.Tn == nil){
+		if(params->job->rctl->doprof && params->job->times.Tn == nil){
 			assert(params->job->times.Rn == nil);
 			params->job->times.Tn = emalloc(nproc*sizeof(Rendertime));
 			params->job->times.Rn = emalloc(nproc*sizeof(Rendertime));
@@ -655,7 +657,8 @@ entityproc(void *arg)
 			params->job->ref = nproc;
 			for(i = 0; i < nproc; i++)
 				sendp(paramsout[i], params);
-			params->job->times.E.t1 = nanosec();
+			if(params->job->rctl->doprof)
+				params->job->times.E.t1 = nanosec();
 			continue;
 		}
 
@@ -705,7 +708,7 @@ renderer(void *arg)
 
 	while((job = recvp(rctl->jobq)) != nil){
 		time = nanosec();
-		job->times.R.t0 = time;
+		if(job->rctl->doprof) job->times.R.t0 = time;
 		job->id = lastid++;
 		sc = job->scene;
 		if(sc->nents < 1){
@@ -737,7 +740,7 @@ renderer(void *arg)
 		params->job = job;
 		sendp(ep->paramsc, params);
 
-		job->times.R.t1 = nanosec();
+		if(job->rctl->doprof) job->times.R.t1 = nanosec();
 	}
 }
 
@@ -754,6 +757,7 @@ initgraphics(void)
 	free(nprocs);
 
 	r = emalloc(sizeof *r);
+	memset(r, 0, sizeof *r);
 	r->jobq = chancreate(sizeof(Renderjob*), 8);
 	r->nprocs = nproc;
 	proccreate(renderer, r, mainstacksize);
