@@ -195,7 +195,6 @@ rasterize(Rastertask *task)
 	Vertex v;
 	Shaderparams fsp;
 	Triangle2 t;
-	Rectangle bbox;
 	Point p, dp, Δp, p0, p1;
 	Point3 bc;
 	Color c;
@@ -306,15 +305,9 @@ discard:
 		t.p0 = Pt2(prim->v[0].p.x, prim->v[0].p.y, 1);
 		t.p1 = Pt2(prim->v[1].p.x, prim->v[1].p.y, 1);
 		t.p2 = Pt2(prim->v[2].p.x, prim->v[2].p.y, 1);
-		/* find the triangle's bbox and clip it against our wr */
-		bbox.min.x = min(min(t.p0.x, t.p1.x), t.p2.x);
-		bbox.min.y = min(min(t.p0.y, t.p1.y), t.p2.y);
-		bbox.max.x = max(max(t.p0.x, t.p1.x), t.p2.x)+1;
-		bbox.max.y = max(max(t.p0.y, t.p1.y), t.p2.y)+1;
-		rectclip(&bbox, task->wr);
 
-		for(p.y = bbox.min.y; p.y < bbox.max.y; p.y++)
-		for(p.x = bbox.min.x; p.x < bbox.max.x; p.x++){
+		for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++)
+		for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
 			bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
 			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 				continue;
@@ -483,7 +476,6 @@ tiler(void *arg)
 						*newparams = *params;
 						task = emalloc(sizeof *task);
 						task->params = newparams;
-						task->wr = wr[i];
 						task->p = *p;
 						task->p.v[0] = dupvertex(&p->v[0]);
 						sendp(taskchans[i], task);
@@ -578,7 +570,8 @@ tiler(void *arg)
 							*newparams = *params;
 							task = emalloc(sizeof *task);
 							task->params = newparams;
-							task->wr = wr[i];
+							task->wr = bbox;
+							rectclip(&task->wr, wr[i]);
 							task->p = *p;
 							task->p.v[0] = dupvertex(&p->v[0]);
 							task->p.v[1] = dupvertex(&p->v[1]);
