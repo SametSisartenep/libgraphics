@@ -642,12 +642,13 @@ entityproc(void *arg)
 			params->job->times.E.t0 = t0;
 
 		/* prof: initialize timing slots for the next stages */
-//		if(params->job->times.Tn == nil){
-//			params->job->times.Tn = emalloc(nproc*sizeof(Rendertime));
-//			params->job->times.Rn = emalloc(nproc*sizeof(Rendertime));
-//			memset(params->job->times.Tn, 0, nproc*sizeof(Rendertime));
-//			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
-//		}
+		if(params->job->times.Tn == nil){
+			assert(params->job->times.Rn == nil);
+			params->job->times.Tn = emalloc(nproc*sizeof(Rendertime));
+			params->job->times.Rn = emalloc(nproc*sizeof(Rendertime));
+			memset(params->job->times.Tn, 0, nproc*sizeof(Rendertime));
+			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
+		}
 
 		/* end of job */
 		if(params->entity == nil){

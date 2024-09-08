@@ -256,7 +256,7 @@ struct Renderjob
 
 	struct {
 		/* renderer, entityproc, tilers, rasterizers */
-		Rendertime R, E, Tn[20], Rn[20];
+		Rendertime R, E, *Tn, *Rn;
 	} times;
 
 	Renderjob *next;

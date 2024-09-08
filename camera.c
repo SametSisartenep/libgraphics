@@ -270,8 +270,8 @@ shootcamera(Camera *c, Shadertab *s)
 
 	updatestats(c, t1-t0);
 	printtimings(job);
-//	free(job->times.Tn);
-//	free(job->times.Rn);
+	free(job->times.Tn);
+	free(job->times.Rn);
 
 	chanfree(job->donec);
 	free(job->camera);
