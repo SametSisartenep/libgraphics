@@ -616,7 +616,7 @@ entityproc(void *arg)
 	paramsout = emalloc(nproc*sizeof(*paramsout));
 	taskchans = emalloc(nproc*sizeof(*taskchans));
 	for(i = 0; i < nproc; i++){
-		paramsout[i] = chancreate(sizeof(SUparams*), 8);
+		paramsout[i] = chancreate(sizeof(SUparams*), 256);
 		tp = emalloc(sizeof *tp);
 		tp->id = i;
 		tp->paramsc = paramsout[i];
@@ -627,7 +627,7 @@ entityproc(void *arg)
 	for(i = 0; i < nproc; i++){
 		rp = emalloc(sizeof *rp);
 		rp->id = i;
-		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask*), 32);
+		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask*), 512);
 		proccreate(rasterizer, rp, mainstacksize);
 	}
 
@@ -696,7 +696,7 @@ renderer(void *arg)
 
 	ep = emalloc(sizeof *ep);
 	ep->rctl = rctl;
-	ep->paramsc = chancreate(sizeof(SUparams*), 8);
+	ep->paramsc = chancreate(sizeof(SUparams*), 256);
 	proccreate(entityproc, ep, mainstacksize);
 
 	while((job = recvp(rctl->jobq)) != nil){
