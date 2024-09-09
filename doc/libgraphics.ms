@@ -53,7 +53,7 @@ series of meshes, which in turn are made out of geometric primitives
 .I lines
 and
 .I triangles
-are supported). Each model also stores a list of materials.
+are supported.) Each model also stores a list of materials.
 .PP
 .KS
 .PS
@@ -139,7 +139,26 @@ struct Material
 .NH
 Cameras
 .PP
-
+.P1
+struct Camera
+{
+	RFrame3;		/* VCS */
+	Viewport *view;
+	Scene *scene;
+	Renderer *rctl;
+	double fov;		/* vertical FOV */
+	struct {
+		double n, f;	/* near and far clipping planes */
+	} clip;
+	Matrix3 proj;		/* VCS to clip space xform */
+	Projection projtype;
+	ulong clearcolor;
+	int cullmode;
+	int enableblend;
+	int enabledepth;
+	int enableAbuff;
+};
+.P2
 .NH
 The renderer
 .LP
@@ -148,31 +167,19 @@ The
 is the core of the library. It follows a
 .B "retained mode"
 model, which means that the user won't get a picture until the entire
-scene has been rendered.  Thanks to this we can also clear and swap
-the framebuffers without their intervention, they only need to concern
-themselves with shooting and “developing” a camera.
+scene has been rendered.  Thanks to this we can apply optimizations to
+make better use of the pipeline, clear and swap the framebuffers,
+and—in the future—run distributed rendering jobs, all without their
+intervention; they only need to concern themselves with shooting and
+“developing” a camera.
 .LP
-It's implemented as a tree of concurrent processes connected by
+It's implemented as a tree of concurrent processes connected by buffered
 .CW Channel s—as
 seen in
 .B "Figure 2" —,
 spawned with a call to
 .CW initgraphics ,
 each representing a stage of the pipeline:
-.NH 2
-renderer
-.PP
-The
-.B renderer
-process, the root of the tree, waits on a
-.CW channel
-for a
-.CW Renderjob
-sent by another user process, specifying a framebuffer, a scene, a
-camera and a shader table.  It walks the scene and sends each
-.CW Entity
-individually to the
-entityproc.
 .KS
 .PS
 .ps 7
@@ -222,6 +229,20 @@ arrow from Tiler.T1 to Raster.Rn chop
 .PE
 .FI "The rendering graph for a \fB2n\fR processor machine."
 .KE
+.NH 2
+renderer
+.PP
+The
+.B renderer
+process, the root of the tree, waits on a
+.CW channel
+for a
+.CW Renderjob
+sent by another user process, specifying a framebuffer, a scene, a
+camera and a shader table.  It walks the scene and sends each
+.CW Entity
+individually to the
+entityproc.
 .NH 2
 entityproc
 .PP
@@ -289,11 +310,25 @@ rasterizers
 Finally, the
 .B rasterizers
 receive the primitive in screen space, slice it to fit their tile, and
-apply a rasterization routine based on its type. For each of the pixels, a
+apply a rasterization routine based on its type.  For each of the
+pixels, a
 .B "depth test"
 is performed, discarding fragments that are further away. Then a
 .B "fragment shader"
 is applied and the result written to the framebuffer after blending.
+.QP
+Depth testing and blending can be disabled by clearing the camera's
+.CW enabledepth
+and
+.CW enableblend
+parameters, respectively.  An experimental A-buffer implementation is
+also included for order-independent rendering of transparent
+primitives (OIT).  If enabled, by setting the camera's
+.CW enableAbuff
+parameter, fragments will be pushed to a depth-sorted stack, waiting
+to be blended back-to-front and written to the framebuffer at the end
+of the job.
+.QE
 .PP
 .KS
 .PS
@@ -372,7 +407,7 @@ includes user-defined filters for specific ratios, such as the family
 of pixel art filters
 .I Scale[234]x ,
 used for 2x2, 3x3 and 4x4 scaling
-.I [REF01] . respectively
+.I [SCALE2x] . respectively
 Users control it with calls to the viewport's
 .CW setscale
 and
@@ -400,5 +435,59 @@ View: [
 .SH
 References
 .PP
-.IP [REF01]
+.IP [1]
 https://www.scale2x.it/
+.IP [2]
+Thomas W. Crockett,
+“Design Considerations for Parallel Graphics Libraries”,
+.I
+NASA Langley Research Center, Contract Nos. NAS1-18605 and NAS1-19480, June 1994
+.IP [3]
+Thomas W. Crockett,
+“Parallel Rendering”,
+.I
+NASA Langley Research Center, Contract No. NAS1-19480, April 1995
+.IP [4]
+Thomas W. Crockett,
+“Beyond the Renderer: Software Architecture for Parallel Graphics and Visualization”,
+.I
+NASA Langley Research Center, Contract No. NAS1-19480, December 1996
+.IP [5]
+Tomas Akenine-Möller et al,
+“Real-Time Rendering”,
+.I
+4th edition, Taylor & Francis, CRC Press, 2018
+.IP [6]
+James F. Blinn, Martin E. Newell,
+“Clipping Using Homogeneous Coordinates”,
+.I
+SIGGRAPH '78: Proceedings, August 1978, pp. 245-251
+.IP [7]
+“GPU Gems” series
+.IP [8]
+“Graphics Gems” series
+.IP [9]
+Ian Stephenson,
+“Production Rendering: Design and Implementation”,
+.I
+Springer, 2005
+.IP [10]
+Paul S. Heckbert,
+“Survey of Texture Mapping”,
+.I
+IEEE Computer Graphics and Applications, Nov. 1986, pp. 56-67
+.IP [11]
+Paul S. Heckbert,
+“Fundamentals of Texture Mapping and Image Warping”,
+.I
+University of California, Berkeley, Technical Report No. UCB/CSD-89-516, June 1989
+.IP [12]
+Robert L. Cook, Loren Carpenter, Edwin Catmull
+“The REYES Image Rendering Architecture”,
+.I
+ACM Transactions on Computer Graphics, Vol. 21, No. 4, July 1987
+.IP [13]
+Bruce J. Lindbloom,
+“Accurate Color Reproduction for Computer Graphics Applications”,
+.I
+ACM Transactions on Computer Graphics, Vol. 23, No. 3, July 1989
