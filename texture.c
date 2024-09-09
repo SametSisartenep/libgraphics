@@ -24,7 +24,8 @@ enum {
 static Point
 uv2tp(Point2 uv, Texture *t)
 {
-	assert(uv.x >= 0 && uv.x <= 1 && uv.y >= 0 && uv.y <= 1);
+	uv.x = fclamp(uv.x, 0, 1);
+	uv.y = fclamp(uv.y, 0, 1);
 	return Pt(uv.x*Dx(t->image->r), (1 - uv.y)*Dy(t->image->r));
 }
 
