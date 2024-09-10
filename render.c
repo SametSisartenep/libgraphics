@@ -9,6 +9,7 @@
 #include "internal.h"
 
 Rectangle UR = {0,0,1,1};
+//Procpool *turbodrawingpool;
 
 static ulong col2ul(Color);
 
@@ -368,10 +369,11 @@ rasterizer(void *arg)
 			if(decref(job) < 1){
 				if(job->camera->enableAbuff)
 					squashAbuf(job->fb, job->camera->enableblend);
+				if(job->rctl->doprof)
+					job->times.Rn[rp->id].t1 = nanosec();
 				nbsend(job->donec, nil);
 				free(params);
-			}
-			if(job->rctl->doprof)
+			}else if(job->rctl->doprof)
 				job->times.Rn[rp->id].t1 = nanosec();
 			free(task);
 			continue;
@@ -748,6 +750,8 @@ initgraphics(void)
 	if(nprocs == nil || (nproc = strtoul(nprocs, nil, 10)) < 2)
 		nproc = 1;
 	free(nprocs);
+
+//	turbodrawingpool = mkprocpool(nproc);
 
 	r = emalloc(sizeof *r);
 	memset(r, 0, sizeof *r);

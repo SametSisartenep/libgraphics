@@ -39,6 +39,27 @@ struct Rastertask
 	Primitive p;
 };
 
+typedef struct Proctask Proctask;
+typedef struct Procpool Procpool;
+
+struct Proctask
+{
+	void (*fn)(void*);
+	void *arg;
+};
+
+struct Procpool
+{
+	ulong nprocs;
+	Ref issued;
+	Ref complete;
+
+	Channel *subq;	/* task submission queue */
+	Channel *done;	/* task completion signal */
+};
+
+extern Procpool *turbodrawingpool;
+
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);
@@ -78,6 +99,12 @@ void memsetl(void*, ulong, usize);
 
 /* nanosec */
 uvlong nanosec(void);
+
+/* procpool */
+Procpool *mkprocpool(ulong);
+void procpoolexec(Procpool*, void(*)(void*), void*);
+void procpoolwait(Procpool*);
+void rmprocpool(Procpool*);
 
 #define getpixel(fb, p)		rastergetcolor(fb, p)
 #define putpixel(fb, p, c)	rasterputcolor(fb, p, c)
