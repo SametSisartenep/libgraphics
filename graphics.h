@@ -24,8 +24,8 @@ enum {
 	LightSpot,
 
 	/* raster formats */
-	COLOR32 = 0,
-	FLOAT32,
+	COLOR32 = 0,	/* RGBA32 */
+	FLOAT32,	/* F32 */
 
 	/* texture formats */
 	RAWTexture = 0,	/* unmanaged */
@@ -314,7 +314,7 @@ struct Framebufctl
 	void (*draw)(Framebufctl*, Image*, char*, Point, Point);
 	void (*memdraw)(Framebufctl*, Memimage*, char*, Point, Point);
 	void (*swap)(Framebufctl*);
-	void (*reset)(Framebufctl*, ulong);
+	void (*reset)(Framebufctl*);
 	void (*createraster)(Framebufctl*, char*, ulong);
 	Raster *(*fetchraster)(Framebufctl*, char*);
 	Framebuf *(*getfb)(Framebufctl*);
@@ -350,7 +350,6 @@ struct Camera
 	} clip;
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
-	ulong clearcolor;
 	int cullmode;
 	int enableblend;
 	int enabledepth;
@@ -431,14 +430,20 @@ Color samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
 /* util */
 Point2 modulapt2(Point2, Point2);
+Point2 minpt2(Point2, Point2);
+Point2 maxpt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
+Point3 minpt3(Point3, Point3);
+Point3 maxpt3(Point3, Point3);
 Memimage *rgb(ulong);
 Memimage *dupmemimage(Memimage*);
 
 /* color */
+ulong col2ul(Color);
+Color ul2col(ulong);
+int hasalpha(ulong);
 Color srgb2linear(Color);
 Color linear2srgb(Color);
-ulong rgba2xrgb(ulong);
 Color aces(Color);
 Color aces2(Color);
 

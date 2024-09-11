@@ -95,6 +95,23 @@ rasterconvF2C(Raster *dst, Raster *src)
 }
 
 static void
+premulalpha(Raster *r)
+{
+	Color c;
+	ulong *p, len;
+
+	len = Dx(r->r)*Dy(r->r);
+	p = r->data;
+	while(len--){
+		c = ul2col(*p);
+		c.r *= c.a;
+		c.g *= c.a;
+		c.b *= c.a;
+		*p++ = col2ul(c);
+	}
+}
+
+static void
 fb_createraster(Framebuf *fb, char *name, ulong chan)
 {
 	Raster *r;
@@ -135,11 +152,15 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	void (*filterfn)(ulong*, Raster*, Point);
 	Rectangle blkr;
 	Point sp, dp;
+	Image *tmp;
 	ulong *blk;
 
 	filterfn = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
+	tmp = allocimage(display, dst->r, RGBA32, 0, DNofill);
+	if(tmp == nil)
+		sysfatal("allocimage: %r");
 
 	switch(filter){
 	case UFScale2x:
@@ -158,8 +179,10 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 			filterfn(blk, fb, sp);
 		else
 			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
-		loadimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
+	draw(dst, dst->r, tmp, nil, tmp->r.min);
+	freeimage(tmp);
 	free(blk);
 }
 
@@ -186,6 +209,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 	Framebuf *fb;
 	Raster *r, *r2;
 	Rectangle sr, dr;
+	Image *tmp;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -203,10 +227,18 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 		r = r2;
 	}
 
+	/* this means the raster is a color one, so duplicate it */
+	if(r2 == nil){
+		r2 = allocraster(nil, r->r, COLOR32);
+		memmove(r2->data, r->data, Dx(r->r)*Dy(r->r)*4);
+		r = r2;
+	}
+	premulalpha(r);
+
 	if(scale.x > 1 || scale.y > 1){
 		upscaledraw(r, dst, off, scale, ctl->upfilter);
 		qunlock(ctl);
-		if(r2 != nil) freeraster(r2);
+		freeraster(r2);
 		return;
 	}
 
@@ -259,17 +291,30 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 //		}
 //		procpoolwait(turbodrawingpool);
 //		free(tasks);
-		loadimage(dst, rectaddpt(sr, dst->r.min), (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
+
+		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
+		if(tmp == nil)
+			sysfatal("allocimage: %r");
+
+		loadimage(tmp, sr, (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
+		draw(dst, rectaddpt(sr, dst->r.min), tmp, nil, ZP);
+		freeimage(tmp);
 	}else if(rectclip(&sr, dr)){
+		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
+		if(tmp == nil)
+			sysfatal("allocimage: %r");
+
 		dr = sr;
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
 		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
+			loadimage(tmp, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
+		draw(dst, rectaddpt(tmp->r, dst->r.min), tmp, nil, tmp->r.min);
+		freeimage(tmp);
 	}
 	qunlock(ctl);
-	if(r2 != nil) freeraster(r2);
+	freeraster(r2);
 }
 
 static void
@@ -278,11 +323,15 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 	void (*filterfn)(ulong*, Raster*, Point);
 	Rectangle blkr;
 	Point sp, dp;
+	Memimage *tmp;
 	ulong *blk;
 
 	filterfn = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
+	tmp = allocmemimage(dst->r, RGBA32);
+	if(tmp == nil)
+		sysfatal("allocmemimage: %r");
 
 	switch(filter){
 	case UFScale2x:
@@ -301,8 +350,10 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 			filterfn(blk, fb, sp);
 		else
 			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
-		loadmemimage(dst, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+		loadmemimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
+	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, S);
+	freememimage(tmp);
 	free(blk);
 }
 
@@ -312,6 +363,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 	Framebuf *fb;
 	Raster *r, *r2;
 	Rectangle sr, dr;
+	Memimage *tmp;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -329,27 +381,47 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 		r = r2;
 	}
 
+	/* this means the raster is a color one, so duplicate it */
+	if(r2 == nil){
+		r2 = allocraster(nil, r->r, COLOR32);
+		memmove(r2->data, r->data, Dx(r->r)*Dy(r->r)*4);
+		r = r2;
+	}
+	premulalpha(r);
+
 	if(scale.x > 1 || scale.y > 1){
 		upscalememdraw(r, dst, off, scale, ctl->upfilter);
 		qunlock(ctl);
-		if(r2 != nil) freeraster(r2);
+		freeraster(r2);
 		return;
 	}
 
 	sr = rectaddpt(fb->r, off);
 	dr = rectsubpt(dst->r, dst->r.min);
-	if(rectinrect(sr, dr))
-		loadmemimage(dst, rectaddpt(sr, dst->r.min), (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
-	else if(rectclip(&sr, dr)){
+	if(rectinrect(sr, dr)){
+		tmp = allocmemimage(sr, RGBA32);
+		if(tmp == nil)
+			sysfatal("allocmemimage: %r");
+
+		loadmemimage(tmp, sr, (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
+		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, S);
+		freememimage(tmp);
+	}else if(rectclip(&sr, dr)){
+		tmp = allocmemimage(sr, RGBA32);
+		if(tmp == nil)
+			sysfatal("allocmemimage: %r");
+
 		dr = sr;
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
 		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadmemimage(dst, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
+			loadmemimage(tmp, rectaddpt(dr, dst->r.min), rasterbyteaddr(r, sr.min), Dx(dr)*4);
+		memimagedraw(dst, rectaddpt(tmp->r, dst->r.min), tmp, tmp->r.min, nil, ZP, S);
+		freememimage(tmp);
 	}
 	qunlock(ctl);
-	if(r2 != nil) freeraster(r2);
+	freeraster(r2);
 }
 
 static void
@@ -371,7 +443,7 @@ resetAbuf(Abuf *buf)
 }
 
 static void
-framebufctl_reset(Framebufctl *ctl, ulong clr)
+framebufctl_reset(Framebufctl *ctl)
 {
 	Framebuf *fb;
 	Raster *r;
@@ -381,7 +453,7 @@ framebufctl_reset(Framebufctl *ctl, ulong clr)
 	resetAbuf(&fb->abuf);
 
 	r = fb->rasters;		/* color buffer */
-	clearraster(r, rgba2xrgb(clr));
+	clearraster(r, 0);
 	r = r->next;			/* z-buffer */
 	fclearraster(r, Inf(-1));
 	while((r = r->next) != nil)
@@ -515,6 +587,8 @@ rastergetfloat(Raster *r, Point p)
 void
 freeraster(Raster *r)
 {
+	if(r == nil)
+		return;
 	free(r->data);
 	free(r->name);
 	free(r);

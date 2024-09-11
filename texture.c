@@ -48,6 +48,7 @@ _memreadcolor(Texture *t, Point sp)
 	uchar cbuf[4];
 
 	switch(t->image->chan){
+	default: sysfatal("unsupported texture format");
 	case RGB24:
 		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf+1, sizeof cbuf - 1);
 		cbuf[0] = 0xFF;
@@ -63,6 +64,12 @@ _memreadcolor(Texture *t, Point sp)
 	}
 
 	c = cbuf2col(cbuf);
+	/* remove pre-multiplied alpha */
+	if(hasalpha(t->image->chan) && c.a > 0 && c.a < 1){
+		c.r /= c.a;
+		c.g /= c.a;
+		c.b /= c.a;
+	}
 	switch(t->type){
 	case sRGBTexture: c = srgb2linear(c); break;
 	}

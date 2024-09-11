@@ -11,8 +11,6 @@
 Rectangle UR = {0,0,1,1};
 //Procpool *turbodrawingpool;
 
-static ulong col2ul(Color);
-
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
@@ -57,30 +55,6 @@ sparams_toraster(Shaderparams *sp, char *rname, void *v)
 		rasterput(r, sp->p, v);
 		break;
 	}
-}
-
-static ulong
-col2ul(Color c)
-{
-	uchar cbuf[4];
-
-	cbuf[0] = fclamp(c.b, 0, 1)*0xFF;
-	cbuf[1] = fclamp(c.g, 0, 1)*0xFF;
-	cbuf[2] = fclamp(c.r, 0, 1)*0xFF;
-	cbuf[3] = fclamp(c.a, 0, 1)*0xFF;
-	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
-}
-
-static Color
-ul2col(ulong l)
-{
-	Color c;
-
-	c.b = (l     & 0xff)/255.0;
-	c.g = (l>>8  & 0xff)/255.0;
-	c.r = (l>>16 & 0xff)/255.0;
-	c.a = (l>>24 & 0xff)/255.0;
-	return c;
 }
 
 static void

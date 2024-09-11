@@ -241,7 +241,7 @@ shootcamera(Camera *c, Shadertab *s)
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
-	fbctl->reset(fbctl, c->clearcolor);
+	fbctl->reset(fbctl);
 	t0 = nanosec();
 	sendp(c->rctl->jobq, job);
 	recvp(job->donec);

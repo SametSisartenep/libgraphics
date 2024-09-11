@@ -8,6 +8,39 @@
 #include "graphics.h"
 #include "internal.h"
 
+ulong
+col2ul(Color c)
+{
+	uchar cbuf[4];
+
+	cbuf[0] = fclamp(c.a, 0, 1)*0xFF;
+	cbuf[1] = fclamp(c.b, 0, 1)*0xFF;
+	cbuf[2] = fclamp(c.g, 0, 1)*0xFF;
+	cbuf[3] = fclamp(c.r, 0, 1)*0xFF;
+	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
+}
+
+Color
+ul2col(ulong l)
+{
+	Color c;
+
+	c.a = (l     & 0xff)/255.0;
+	c.b = (l>>8  & 0xff)/255.0;
+	c.g = (l>>16 & 0xff)/255.0;
+	c.r = (l>>24 & 0xff)/255.0;
+	return c;
+}
+
+int
+hasalpha(ulong chan)
+{
+	for(; chan; chan >>= 8)
+		if(TYPE(chan) == CAlpha)
+			return 1;
+	return 0;
+}
+
 /*
  * see also “The Importance of Being Linear”, Gritz and d'Eon, GPU Gems 3, Ch. 24, December 2007
  */
@@ -139,13 +172,6 @@ linear2srgb(Color c)
 	c.g = _linear2srgb(c.g);
 	c.b = _linear2srgb(c.b);
 	return c;
-}
-
-ulong
-rgba2xrgb(ulong c)
-{
-	return (c & 0xFF)<<24|(c>>24 & 0xFF)<<16|
-		(c>>16 & 0xFF)<<8|(c>>8 & 0xFF);
 }
 
 
