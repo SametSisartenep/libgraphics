@@ -364,6 +364,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 	Raster *r, *r2;
 	Rectangle sr, dr;
 	Memimage *tmp;
+	uchar *bdata0;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -403,8 +404,10 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 		if(tmp == nil)
 			sysfatal("allocmemimage: %r");
 
-		loadmemimage(tmp, sr, (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
+		bdata0 = tmp->data->bdata;
+		tmp->data->bdata = (void*)r->data;
 		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, S);
+		tmp->data->bdata = bdata0;
 		freememimage(tmp);
 	}else if(rectclip(&sr, dr)){
 		tmp = allocmemimage(sr, RGBA32);
