@@ -118,7 +118,7 @@ newcamera(void)
 
 	c = emalloc(sizeof *c);
 	memset(c, 0, sizeof *c);
-	c->enabledepth = 1;
+	c->rendopts = RODepth;
 	return c;
 }
 

@@ -13,6 +13,11 @@ enum {
 	CullFront,
 	CullBack,
 
+	/* render options */
+	ROBlend	= 0x01,
+	RODepth	= 0x02,
+	ROAbuff	= 0x04,
+
 	/* primitive types */
 	PPoint = 0,
 	PLine,
@@ -27,7 +32,7 @@ enum {
 	COLOR32 = 0,	/* RGBA32 */
 	FLOAT32,	/* F32 */
 
-	/* texture formats */
+	/* texture types */
 	RAWTexture = 0,	/* unmanaged */
 	sRGBTexture,
 
@@ -351,9 +356,7 @@ struct Camera
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
 	int cullmode;
-	int enableblend;
-	int enabledepth;
-	int enableAbuff;
+	uint rendopts;
 
 	struct {
 		uvlong min, avg, max, acc, n, v;

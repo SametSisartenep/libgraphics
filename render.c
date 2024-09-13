@@ -175,6 +175,7 @@ rasterize(Rastertask *task)
 	Color c;
 	double dplen, perc;
 	float z, pcz;
+	uint ropts;
 	int steep = 0, Δe, e, Δy;
 
 	params = task->params;
@@ -191,12 +192,14 @@ rasterize(Rastertask *task)
 	cr = params->fb->rasters;
 	zr = cr->next;
 
+	ropts = params->camera->rendopts;
+
 	switch(prim->type){
 	case PPoint:
 		p = Pt(prim->v[0].p.x, prim->v[0].p.y);
 
 		z = fclamp(prim->v[0].p.z, 0, 1);
-		if(params->camera->enabledepth && z <= getdepth(zr, p))
+		if((ropts & RODepth) && z <= getdepth(zr, p))
 			break;
 
 		fsp.v = &prim->v[0];
@@ -204,12 +207,12 @@ rasterize(Rastertask *task)
 		c = params->fshader(&fsp);
 		if(c.a == 0)			/* discard non-colors */
 			break;
-		if(params->camera->enabledepth)
+		if(ropts & RODepth)
 			putdepth(zr, p, z);
-		if(params->camera->enableAbuff)
+		if(ropts & ROAbuff)
 			pushtoAbuf(params->fb, p, c, z);
 		else
-			pixel(cr, p, c, params->camera->enableblend);
+			pixel(cr, p, c, ropts & ROBlend);
 		delvattrs(fsp.v);
 		break;
 	case PLine:
@@ -246,7 +249,7 @@ rasterize(Rastertask *task)
 
 			z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if(params->camera->enabledepth &&
+			if((ropts & RODepth) &&
 			   !ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
 				goto discard;
 
@@ -262,12 +265,12 @@ rasterize(Rastertask *task)
 			c = params->fshader(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				goto discard;
-			if(params->camera->enabledepth)
+			if(ropts & RODepth)
 				putdepth(zr, p, z);
-			if(params->camera->enableAbuff)
+			if(ropts & ROAbuff)
 				pushtoAbuf(params->fb, p, c, z);
 			else
-				pixel(cr, p, c, params->camera->enableblend);
+				pixel(cr, p, c, ropts & ROBlend);
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
 
@@ -291,7 +294,7 @@ discard:
 				continue;
 
 			z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
-			if(params->camera->enabledepth && z <= getdepth(zr, p))
+			if((ropts & RODepth) && z <= getdepth(zr, p))
 				continue;
 
 			/* interpolate z⁻¹ and get actual z */
@@ -308,12 +311,12 @@ discard:
 			c = params->fshader(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				continue;
-			if(params->camera->enabledepth)
+			if(ropts & RODepth)
 				putdepth(zr, p, z);
-			if(params->camera->enableAbuff)
+			if(ropts & ROAbuff)
 				pushtoAbuf(params->fb, p, c, z);
 			else
-				pixel(cr, p, c, params->camera->enableblend);
+				pixel(cr, p, c, ropts & ROBlend);
 		}
 		delvattrs(fsp.v);
 		break;
@@ -345,8 +348,8 @@ rasterizer(void *arg)
 		/* end of job */
 		if(params->entity == nil){
 			if(decref(job) < 1){
-				if(job->camera->enableAbuff)
-					squashAbuf(job->fb, job->camera->enableblend);
+				if(job->camera->rendopts & ROAbuff)
+					squashAbuf(job->fb, job->camera->rendopts & ROBlend);
 				if(job->rctl->doprof)
 					job->times.Rn[rp->id].t1 = nanosec();
 				nbsend(job->donec, nil);
@@ -690,7 +693,7 @@ renderer(void *arg)
 		}
 
 		/* initialize the A-buffer */
-		if(job->camera->enableAbuff && job->fb->abuf.stk == nil){
+		if((job->camera->rendopts & ROAbuff) && job->fb->abuf.stk == nil){
 			job->fb->abuf.stk = emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 			memset(job->fb->abuf.stk, 0, Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 		}
