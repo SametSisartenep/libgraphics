@@ -196,15 +196,16 @@ rasterize(Rastertask *task)
 		p = Pt(prim->v[0].p.x, prim->v[0].p.y);
 
 		z = fclamp(prim->v[0].p.z, 0, 1);
-		if(params->camera->enabledepth){
-			if(z <= getdepth(zr, p))
-				break;
-			putdepth(zr, p, z);
-		}
+		if(params->camera->enabledepth && z <= getdepth(zr, p))
+			break;
 
 		fsp.v = &prim->v[0];
 		fsp.p = p;
 		c = params->fshader(&fsp);
+		if(c.a == 0)			/* discard non-colors */
+			break;
+		if(params->camera->enabledepth)
+			putdepth(zr, p, z);
 		if(params->camera->enableAbuff)
 			pushtoAbuf(params->fb, p, c, z);
 		else
@@ -245,11 +246,9 @@ rasterize(Rastertask *task)
 
 			z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if(params->camera->enabledepth){
-				if(!ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
-					goto discard;
-				putdepth(zr, p, z);
-			}
+			if(params->camera->enabledepth &&
+			   !ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
+				goto discard;
 
 			/* interpolate z⁻¹ and get actual z */
 			pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
@@ -261,6 +260,10 @@ rasterize(Rastertask *task)
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
+			if(c.a == 0)			/* discard non-colors */
+				goto discard;
+			if(params->camera->enabledepth)
+				putdepth(zr, p, z);
 			if(params->camera->enableAbuff)
 				pushtoAbuf(params->fb, p, c, z);
 			else
@@ -288,11 +291,8 @@ discard:
 				continue;
 
 			z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
-			if(params->camera->enabledepth){
-				if(z <= getdepth(zr, p))
-					continue;
-				putdepth(zr, p, z);
-			}
+			if(params->camera->enabledepth && z <= getdepth(zr, p))
+				continue;
 
 			/* interpolate z⁻¹ and get actual z */
 			pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
@@ -306,6 +306,10 @@ discard:
 
 			fsp.p = p;
 			c = params->fshader(&fsp);
+			if(c.a == 0)			/* discard non-colors */
+				continue;
+			if(params->camera->enabledepth)
+				putdepth(zr, p, z);
 			if(params->camera->enableAbuff)
 				pushtoAbuf(params->fb, p, c, z);
 			else
