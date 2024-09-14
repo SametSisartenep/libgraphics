@@ -81,16 +81,35 @@ static void
 rasterconvF2C(Raster *dst, Raster *src)
 {
 	ulong *c, len;
-	float *f;
+	float *f, min, max;
 	uchar b;
 
+	/* first run: get the domain */
+	f = (float*)src->data;
+	len = Dx(dst->r)*Dy(dst->r);
+	for(min = 0, max = 0; len--; f++){
+		if(isInf(*f, -1))	/* -∞ is the DNotacolor of the z-buffer */
+			continue;
+		min = min(*f, min);
+		max = max(*f, max);
+	}
+	/* center it at zero: [min, max] → [0, max-min]*/
+	max -= min;
+	if(max == 0)
+		max = 1;
+
+	/* second run: average the values */
 	c = dst->data;
 	f = (float*)src->data;
 	len = Dx(dst->r)*Dy(dst->r);
-
 	while(len--){
-		b = fclamp(*f++, 0, 1)*0xFF;
-		*c++ = 0xFF<<24 | b<<16 | b<<8 | b;
+		if(isInf(*f, -1)){	/* -∞ is the DNotacolor of the z-buffer */
+			*c++ = 0x00;
+			f++;
+			continue;
+		}
+		b = (*f++ - min)/max * 0xFF;
+		*c++ = (b * 0x00010101)<<8 | 0xFF;
 	}
 }
 
