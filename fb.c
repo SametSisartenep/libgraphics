@@ -212,6 +212,7 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 //	Rectangle dr;
 //	uchar *src;
 //	ulong len;
+//	Channel *done;	/* task completion signal */
 //};
 //static void
 //ldimgtask(void *arg)
@@ -220,6 +221,7 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 //
 //	t = arg;
 //	loadimage(t->dst, t->dr, t->src, t->len);
+//	nbsend(t->done, nil);
 //}
 
 static void
@@ -306,9 +308,10 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 //				tasks[i].dr.max.y = dr.max.y;
 //				tasks[i].len = len - i*stride;
 //			}
-//			procpoolexec(turbodrawingpool, ldimgtask, &tasks[i]);
+//			turbopoolexec(turbodrawingpool, ldimgtask, &tasks[i]);
 //		}
-//		procpoolwait(turbodrawingpool);
+//		for(i = 0; i < turbodrawingpool->nprocs; i++)
+//			recvp(tasks[i].done);
 //		free(tasks);
 
 		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
