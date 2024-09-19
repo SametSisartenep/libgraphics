@@ -9,7 +9,6 @@
 #include "internal.h"
 
 Rectangle UR = {0,0,1,1};
-//Turbopool *turbopool;
 
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
@@ -731,8 +730,6 @@ initgraphics(void)
 	if(nprocs == nil || (nproc = strtoul(nprocs, nil, 10)) < 2)
 		nproc = 1;
 	free(nprocs);
-
-//	turbopool = mkturbopool(nproc);
 
 	r = emalloc(sizeof *r);
 	memset(r, 0, sizeof *r);

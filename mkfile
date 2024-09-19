@@ -17,7 +17,6 @@ OFILES=\
 	color.$O\
 	util.$O\
 	nanosec.$O\
-	turbopool.$O\
 
 HFILES=\
 	graphics.h\

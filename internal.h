@@ -39,23 +39,6 @@ struct Rastertask
 	Primitive p;
 };
 
-typedef struct Turbotask Turbotask;
-typedef struct Turbopool Turbopool;
-
-struct Turbotask
-{
-	void (*fn)(void*);
-	void *arg;
-};
-
-struct Turbopool
-{
-	ulong nprocs;
-	Channel *subq;	/* task submission queue */
-};
-
-extern Turbopool *turbopool;
-
 /* alloc */
 void *emalloc(ulong);
 void *erealloc(void*, ulong);
@@ -95,11 +78,6 @@ void memsetl(void*, ulong, usize);
 
 /* nanosec */
 uvlong nanosec(void);
-
-/* turbopool */
-Turbopool *mkturbopool(ulong);
-void turbopoolexec(Turbopool*, void(*)(void*), void*);
-void rmturbopool(Turbopool*);
 
 #define getpixel(fb, p)		rastergetcolor(fb, p)
 #define putpixel(fb, p, c)	rasterputcolor(fb, p, c)

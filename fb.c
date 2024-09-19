@@ -205,25 +205,6 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	free(blk);
 }
 
-//typedef struct Ldimgtask Ldimgtask;
-//struct Ldimgtask
-//{
-//	Image *dst;
-//	Rectangle dr;
-//	uchar *src;
-//	ulong len;
-//	Channel *done;	/* task completion signal */
-//};
-//static void
-//ldimgtask(void *arg)
-//{
-//	Ldimgtask *t;
-//
-//	t = arg;
-//	loadimage(t->dst, t->dr, t->src, t->len);
-//	nbsend(t->done, nil);
-//}
-
 static void
 framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale)
 {
@@ -266,54 +247,6 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 	sr = rectaddpt(fb->r, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectinrect(sr, dr)){
-//		Ldimgtask *tasks;
-//		Rectangle blkr;
-//		ulong len, stride;
-//		int Δy, i;
-//		static Display **disps;
-//		static Image **imgs;
-//		static int loaded;
-//
-//		assert(turbodrawingpool != nil);
-//
-//		if(!loaded){
-//			disps = emalloc(turbodrawingpool->nprocs * sizeof(*disps));
-//			imgs = emalloc(turbodrawingpool->nprocs * sizeof(*imgs));
-//			for(i = 0; i < turbodrawingpool->nprocs; i++){
-//				disps[i] = initdisplay(nil, nil, nil);
-//				if(disps[i] == nil)
-//					sysfatal("initdisplay: %r");
-//				imgs[i] = namedimage(disps[i], "screenb");
-//				if(imgs[i] == nil)
-//					sysfatal("namedimage: %r");
-////fprint(2, "d %#p i %#p → %#p\n", disps[i], imgs[i], imgs[i]->display);
-//			}
-//			loaded++;
-//		}
-//
-//		len = Dx(r->r)*Dy(r->r)*4;
-//		Δy = Dy(sr)/turbodrawingpool->nprocs;
-//		dr = rectaddpt(sr, dst->r.min);
-//		blkr = dr;
-//		blkr.max.y = blkr.min.y + Δy;
-//		stride = Dx(blkr)*Dy(blkr)*4;
-//		tasks = emalloc(turbodrawingpool->nprocs * sizeof(*tasks));
-//
-//		for(i = 0; i < turbodrawingpool->nprocs; i++){
-//			tasks[i].dst = imgs[i];
-//			tasks[i].dr = rectaddpt(blkr, Pt(0, i*Δy));
-//			tasks[i].src = (uchar*)r->data + i*stride;
-//			tasks[i].len = stride;
-//			if(i == turbodrawingpool->nprocs-1){
-//				tasks[i].dr.max.y = dr.max.y;
-//				tasks[i].len = len - i*stride;
-//			}
-//			turbopoolexec(turbodrawingpool, ldimgtask, &tasks[i]);
-//		}
-//		for(i = 0; i < turbodrawingpool->nprocs; i++)
-//			recvp(tasks[i].done);
-//		free(tasks);
-
 		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
 		if(tmp == nil)
 			sysfatal("allocimage: %r");
