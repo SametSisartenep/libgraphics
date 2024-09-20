@@ -14,7 +14,7 @@
  * see https://www.scale2x.it/algorithm
  */
 static void
-scale2x_filter(ulong *dst, Raster *fb, Point sp)
+scale2x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 {
 	ulong B, D, E, F, H;
 
@@ -34,7 +34,7 @@ scale2x_filter(ulong *dst, Raster *fb, Point sp)
 }
 
 static void
-scale3x_filter(ulong *dst, Raster *fb, Point sp)
+scale3x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 {
 	ulong A, B, C, D, E, F, G, H, I;
 
@@ -71,10 +71,16 @@ scale3x_filter(ulong *dst, Raster *fb, Point sp)
 }
 
 //static void
-//scale4x_filter(ulong *dst, Framebuf *fb, Point sp)
+//scale4x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 //{
 //
 //}
+
+static void
+ident_filter(ulong *dst, Raster *fb, Point sp, ulong len)
+{
+	memsetl(dst, getpixel(fb, sp), len);
+}
 
 /* convert a float raster to a greyscale color one */
 static void
@@ -168,7 +174,7 @@ fb_fetchraster(Framebuf *fb, char *name)
 static void
 upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 {
-	void (*filterfn)(ulong*, Raster*, Point);
+	void (*filterfn)(ulong*, Raster*, Point, ulong);
 	Rectangle blkr;
 	Point sp, dp;
 	Image *tmp;
@@ -177,7 +183,7 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	filterfn = nil;
 	blk = emalloc(scale.x*scale.y*4);
 	blkr = Rect(0,0,scale.x,scale.y);
-	tmp = allocimage(display, dst->r, RGBA32, 0, DNofill);
+	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
 	if(tmp == nil)
 		sysfatal("allocimage: %r");
 
@@ -190,14 +196,12 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 		if(scale.x == scale.y && scale.y == 3)
 			filterfn = scale3x_filter;
 		break;
+	default: filterfn = ident_filter;
 	}
 
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		if(filterfn != nil)
-			filterfn(blk, fb, sp);
-		else
-			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		filterfn(blk, fb, sp, scale.x*scale.y);
 		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	draw(dst, dst->r, tmp, nil, tmp->r.min);
@@ -244,17 +248,10 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 		return;
 	}
 
-	sr = rectaddpt(fb->r, off);
+	/* TODO use the clipr in upscaledraw too */
+	sr = rectaddpt(fb->clipr, off);
 	dr = rectsubpt(dst->r, dst->r.min);
-	if(rectinrect(sr, dr)){
-		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
-		if(tmp == nil)
-			sysfatal("allocimage: %r");
-
-		loadimage(tmp, sr, (uchar*)r->data, Dx(fb->r)*Dy(r->r)*4);
-		draw(dst, rectaddpt(sr, dst->r.min), tmp, nil, ZP);
-		freeimage(tmp);
-	}else if(rectclip(&sr, dr)){
+	if(rectclip(&sr, dr)){
 		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
 		if(tmp == nil)
 			sysfatal("allocimage: %r");
@@ -275,7 +272,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 static void
 upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 {
-	void (*filterfn)(ulong*, Raster*, Point);
+	void (*filterfn)(ulong*, Raster*, Point, ulong);
 	Rectangle blkr;
 	Point sp, dp;
 	Memimage *tmp;
@@ -297,14 +294,12 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 		if(scale.x == scale.y && scale.y == 3)
 			filterfn = scale3x_filter;
 		break;
+	default: filterfn = ident_filter;
 	}
 
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		if(filterfn != nil)
-			filterfn(blk, fb, sp);
-		else
-			memsetl(blk, getpixel(fb, sp), scale.x*scale.y);
+		filterfn(blk, fb, sp, scale.x*scale.y);
 		loadmemimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, S);

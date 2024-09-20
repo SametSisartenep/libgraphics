@@ -258,6 +258,8 @@ struct Renderjob
 	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
+	Rectangle *cliprects;	/* one per rasterizer */
+	int ncliprects;
 
 	struct {
 		/* renderer, entityproc, tilers, rasterizers */
@@ -302,6 +304,7 @@ struct Raster
 struct Framebuf
 {
 	Rectangle r;
+	Rectangle clipr;
 	Raster *rasters;	/* [0] color, [1] depth, [n] user-defined */
 	Abuf abuf;		/* A-buffer */
 
@@ -432,6 +435,8 @@ void freecubemap(Cubemap*);
 Color samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
 /* util */
+Point minpt(Point, Point);
+Point maxpt(Point, Point);
 Point2 modulapt2(Point2, Point2);
 Point2 minpt2(Point2, Point2);
 Point2 maxpt2(Point2, Point2);

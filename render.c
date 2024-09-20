@@ -212,6 +212,14 @@ rasterize(Rastertask *task)
 			pushtoAbuf(params->fb, p, c, z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
+
+		if(task->clipr->min.x < 0){
+			task->clipr->min = p;
+			task->clipr->max = addpt(p, Pt(1,1));
+		}else{
+			task->clipr->min = minpt(task->clipr->min, p);
+			task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
+		}
 		delvattrs(fsp.v);
 		break;
 	case PLine:
@@ -270,6 +278,14 @@ rasterize(Rastertask *task)
 				pushtoAbuf(params->fb, p, c, z);
 			else
 				pixel(cr, p, c, ropts & ROBlend);
+
+			if(task->clipr->min.x < 0){
+				task->clipr->min = p;
+				task->clipr->max = addpt(p, Pt(1,1));
+			}else{
+				task->clipr->min = minpt(task->clipr->min, p);
+				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
+			}
 discard:
 			if(steep) SWAP(int, &p.x, &p.y);
 
@@ -316,6 +332,14 @@ discard:
 				pushtoAbuf(params->fb, p, c, z);
 			else
 				pixel(cr, p, c, ropts & ROBlend);
+
+			if(task->clipr->min.x < 0){
+				task->clipr->min = p;
+				task->clipr->max = addpt(p, Pt(1,1));
+			}else{
+				task->clipr->min = minpt(task->clipr->min, p);
+				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
+			}
 		}
 		delvattrs(fsp.v);
 		break;
@@ -349,8 +373,23 @@ rasterizer(void *arg)
 			if(decref(job) < 1){
 				if(job->camera->rendopts & ROAbuff)
 					squashAbuf(job->fb, job->camera->rendopts & ROBlend);
+
+				/* set the clipr to the union of bboxes from the rasterizers */
+				for(i = 1; i < job->ncliprects; i++){
+					if(job->cliprects[i].min.x < 0)
+						continue;
+					job->cliprects[0].min = job->cliprects[0].min.x < 0?
+						job->cliprects[i].min:
+						minpt(job->cliprects[0].min, job->cliprects[i].min);
+					job->cliprects[0].max = job->cliprects[0].max.x < 0?
+						job->cliprects[i].max:
+						maxpt(job->cliprects[0].max, job->cliprects[i].max);
+				}
+				job->fb->clipr = job->cliprects[0];
+
 				if(job->rctl->doprof)
 					job->times.Rn[rp->id].t1 = nanosec();
+
 				nbsend(job->donec, nil);
 				free(params);
 			}else if(job->rctl->doprof)
@@ -458,6 +497,7 @@ tiler(void *arg)
 						*newparams = *params;
 						task = emalloc(sizeof *task);
 						task->params = newparams;
+						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
 						task->p.v[0] = dupvertex(&p->v[0]);
 						sendp(taskchans[i], task);
@@ -501,6 +541,7 @@ tiler(void *arg)
 						task = emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
+						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
 						task->p.v[0] = dupvertex(&p->v[0]);
 						task->p.v[1] = dupvertex(&p->v[1]);
@@ -554,6 +595,7 @@ tiler(void *arg)
 							task->params = newparams;
 							task->wr = bbox;
 							rectclip(&task->wr, wr[i]);
+							task->clipr = &params->job->cliprects[i];
 							task->p = *p;
 							task->p.v[0] = dupvertex(&p->v[0]);
 							task->p.v[1] = dupvertex(&p->v[1]);
@@ -635,6 +677,15 @@ entityproc(void *arg)
 			if(params->job->rctl->doprof)
 				params->job->times.E.t1 = nanosec();
 			continue;
+		}
+
+		if(params->job->cliprects == nil){
+			params->job->cliprects = emalloc(nproc*sizeof(Rectangle));
+			params->job->ncliprects = nproc;
+			for(i = 0; i < nproc; i++){
+				params->job->cliprects[i].min = Pt(-1,-1);
+				params->job->cliprects[i].max = Pt(-1,-1);
+			}
 		}
 
 		eb = params->entity->mdl->prims;

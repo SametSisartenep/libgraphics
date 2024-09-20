@@ -36,6 +36,7 @@ struct Rastertask
 {
 	SUparams *params;
 	Rectangle wr;		/* working rect */
+	Rectangle *clipr;
 	Primitive p;
 };
 

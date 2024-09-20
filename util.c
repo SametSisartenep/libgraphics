@@ -8,6 +8,24 @@
 #include "graphics.h"
 #include "internal.h"
 
+Point
+minpt(Point a, Point b)
+{
+	return (Point){
+		min(a.x, b.x),
+		min(a.y, b.y)
+	};
+}
+
+Point
+maxpt(Point a, Point b)
+{
+	return (Point){
+		max(a.x, b.x),
+		max(a.y, b.y)
+	};
+}
+
 Point2
 modulapt2(Point2 a, Point2 b)
 {
