@@ -368,6 +368,7 @@ struct Camera
 };
 
 /* camera */
+Camera *Camv(Viewport*, Renderer*, Projection, double, double, double);
 Camera *Cam(Rectangle, Renderer*, Projection, double, double, double);
 Camera *newcamera(void);
 void delcamera(Camera*);
@@ -443,7 +444,7 @@ Point2 maxpt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
 Point3 minpt3(Point3, Point3);
 Point3 maxpt3(Point3, Point3);
-Memimage *rgb(ulong);
+Memimage *rgba(ulong);
 Memimage *dupmemimage(Memimage*);
 
 /* color */

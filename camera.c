@@ -96,19 +96,31 @@ verifycfg(Camera *c)
 }
 
 Camera *
-Cam(Rectangle vr, Renderer *r, Projection p, double fov, double n, double f)
+Camv(Viewport *v, Renderer *r, Projection p, double fov, double n, double f)
 {
 	Camera *c;
 
-	c = newcamera();
-	c->view = mkviewport(vr);
-	if(c->view == nil){
-		werrstr("mkviewport: %r");
+	if(v == nil || r == nil)
 		return nil;
-	}
+
+	c = newcamera();
+	c->view = v;
 	c->rctl = r;
 	configcamera(c, p, fov, n, f);
 	return c;
+}
+
+Camera *
+Cam(Rectangle vr, Renderer *r, Projection p, double fov, double n, double f)
+{
+	Viewport *v;
+
+	v = mkviewport(vr);
+	if(v == nil){
+		werrstr("mkviewport: %r");
+		return nil;
+	}
+	return Camv(v, r, p, fov, n, f);
 }
 
 Camera *

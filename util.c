@@ -101,7 +101,7 @@ memsetl(void *dp, ulong v, usize len)
 }
 
 Memimage *
-rgb(ulong c)
+rgba(ulong c)
 {
 	Memimage *i;
 
