@@ -7,7 +7,6 @@ OFILES=\
 	render.$O\
 	clip.$O\
 	xform.$O\
-	obj.$O\
 	scene.$O\
 	vertex.$O\
 	texture.$O\
@@ -17,11 +16,11 @@ OFILES=\
 	color.$O\
 	util.$O\
 	nanosec.$O\
+	marshal.$O\
 
 HFILES=\
 	graphics.h\
 	internal.h\
-	libobj/obj.h
 
 UPDATE=\
 	mkfile\
@@ -29,16 +28,3 @@ UPDATE=\
 	${OFILES:%.$O=%.c}\
 
 </sys/src/cmd/mklib
-
-libobj/libobj.a$O:
-	cd libobj
-	mk install
-
-pulldeps:VQ:
-	git/clone git://antares-labs.eu/libobj || \
-	git/clone git://shithub.us/rodri/libobj || \
-	git/clone https://github.com/sametsisartenep/libobj
-
-clean nuke:V:
-	rm -f *.[$OS] $LIB
-	@{cd libobj; mk $target}

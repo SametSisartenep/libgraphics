@@ -4,7 +4,6 @@
 #include <draw.h>
 #include <memdraw.h>
 #include <geometry.h>
-#include "libobj/obj.h"
 #include "graphics.h"
 #include "internal.h"
 
@@ -13,7 +12,7 @@ model_addprim(Model *m, Primitive p)
 {
 	m->prims = erealloc(m->prims, ++m->nprims*sizeof(*m->prims));
 	m->prims[m->nprims-1] = p;
-	return 0;
+	return m->nprims-1;
 }
 
 static int
@@ -21,7 +20,7 @@ model_addmaterial(Model *m, Material mtl)
 {
 	m->materials = erealloc(m->materials, ++m->nmaterials*sizeof(*m->materials));
 	m->materials[m->nmaterials-1] = mtl;
-	return 0;
+	return m->nmaterials-1;
 }
 
 Model *

@@ -403,9 +403,9 @@ Point3 world2model(Entity*, Point3);
 void perspective(Matrix3, double, double, double, double);
 void orthographic(Matrix3, double, double, double, double, double, double);
 
-/* obj */
-int loadobjmodel(Model*, OBJ*);
-Model *readobjmodel(char*);
+/* marshal */
+Model *readmodel(int);
+usize writemodel(int, Model*);
 
 /* scene */
 Model *newmodel(void);
@@ -441,9 +441,11 @@ Point maxpt(Point, Point);
 Point2 modulapt2(Point2, Point2);
 Point2 minpt2(Point2, Point2);
 Point2 maxpt2(Point2, Point2);
+int eqpt2(Point2, Point2);
 Point3 modulapt3(Point3, Point3);
 Point3 minpt3(Point3, Point3);
 Point3 maxpt3(Point3, Point3);
+int eqpt3(Point3, Point3);
 Memimage *rgba(ulong);
 Memimage *dupmemimage(Memimage*);
 

@@ -4,7 +4,6 @@
 #include <draw.h>
 #include <memdraw.h>
 #include <geometry.h>
-#include "libobj/obj.h"
 #include "graphics.h"
 #include "internal.h"
 
@@ -50,12 +49,6 @@ fprintpoly(int fd, Polygon *p)
 
 	for(i = 0; i < p->n; i++)
 		fprint(fd, "%d/%lud p %V\n", i, p->n, p->v[i].p);
-}
-
-static int
-eqpt3(Point3 a, Point3 b)
-{
-	return vec3len(subpt3(a, b)) < 1e-6;
 }
 
 /*

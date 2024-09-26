@@ -4,7 +4,6 @@
 #include <draw.h>
 #include <memdraw.h>
 #include <geometry.h>
-#include "libobj/obj.h"
 #include "graphics.h"
 #include "internal.h"
 

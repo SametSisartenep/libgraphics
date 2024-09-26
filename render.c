@@ -4,7 +4,6 @@
 #include <draw.h>
 #include <memdraw.h>
 #include <geometry.h>
-#include "libobj/obj.h"
 #include "graphics.h"
 #include "internal.h"
 
@@ -155,7 +154,7 @@ _barycoords(Triangle2 t, Point2 p)
 	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
 
 	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
-	if(fabs(v.z) < 1e-5)
+	if(fabs(v.z) < ε1)
 		return Pt3(-1,-1,-1,1);
 	return Pt3(1 - (v.x + v.y)/v.z, v.y/v.z, v.x/v.z, 1);
 }
@@ -262,7 +261,7 @@ rasterize(Rastertask *task)
 
 			/* interpolate z⁻¹ and get actual z */
 			pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
-			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
+			pcz = 1.0/(pcz < ε1? ε1: pcz);
 
 			/* perspective-correct attribute interpolation  */
 			perc *= prim->v[0].p.w * pcz;
@@ -314,7 +313,7 @@ discard:
 
 			/* interpolate z⁻¹ and get actual z */
 			pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
-			pcz = 1.0/(pcz < 1e-5? 1e-5: pcz);
+			pcz = 1.0/(pcz < ε1? ε1: pcz);
 
 			/* perspective-correct attribute interpolation  */
 			bc = modulapt3(bc, Vec3(prim->v[0].p.w*pcz,

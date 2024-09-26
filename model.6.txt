@@ -1,0 +1,18 @@
+p x y z [w]
+n x y z
+t u v
+c r g b [a]
+v pᵢ [nᵢ|-] [tᵢ|-] [cᵢ|-]
+
+T x y z
+prim nverts vᵢ... [Tᵢ|-] [mtlname]
+
+mtl name {
+	ambient: r g b [a]
+	diffuse: r g b [a]
+	specular: r g b [a]
+	shininess: n
+	diffusemap: path
+	specularmap: path
+	normals: path
+}

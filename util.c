@@ -4,7 +4,6 @@
 #include <draw.h>
 #include <memdraw.h>
 #include <geometry.h>
-#include "libobj/obj.h"
 #include "graphics.h"
 #include "internal.h"
 
@@ -52,6 +51,12 @@ maxpt2(Point2 a, Point2 b)
 	};
 }
 
+int
+eqpt2(Point2 a, Point2 b)
+{
+	return vec2len(subpt2(a, b)) < ε2;
+}
+
 Point3
 modulapt3(Point3 a, Point3 b)
 {
@@ -78,6 +83,12 @@ maxpt3(Point3 a, Point3 b)
 		max(a.z, b.z),
 		max(a.w, b.w)
 	};
+}
+
+int
+eqpt3(Point3 a, Point3 b)
+{
+	return vec3len(subpt3(a, b)) < ε2;
 }
 
 void

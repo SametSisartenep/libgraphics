@@ -1,3 +1,8 @@
+enum {
+	ε1 = 1e-5,
+	ε2 = 1e-6,
+};
+
 typedef struct Polygon Polygon;
 typedef struct Entityparam Entityparam;
 typedef struct Tilerparam Tilerparam;
