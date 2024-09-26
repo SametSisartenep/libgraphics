@@ -290,7 +290,7 @@ readmodel(int fd)
 	if((s = strrchr(curline.file, '/')) != nil){
 		*s = 0;
 		snprint(assets, sizeof assets, "%s", curline.file);
-		memmove(curline.file, s+1, strlen(s));
+		memmove(curline.file, s+1, strlen(s+1) + 1);
 	}else{
 		assets[0] = '.';
 		assets[1] = 0;
