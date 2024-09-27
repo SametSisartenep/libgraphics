@@ -124,6 +124,7 @@ alloctexture(int type, Memimage *i)
 	Texture *t;
 
 	t = emalloc(sizeof *t);
+	memset(t, 0, sizeof *t);
 	t->image = i;
 	t->type = type;
 	return t;

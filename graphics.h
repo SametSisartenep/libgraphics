@@ -82,6 +82,7 @@ struct Texture
 {
 	Memimage *image;
 	int type;
+	char *file;
 };
 
 struct Cubemap
@@ -406,6 +407,7 @@ void orthographic(Matrix3, double, double, double, double, double, double);
 /* marshal */
 Model *readmodel(int);
 usize writemodel(int, Model*);
+int exportmodel(char*, Model*);
 
 /* scene */
 Model *newmodel(void);

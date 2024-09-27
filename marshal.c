@@ -56,9 +56,19 @@ struct Mtlentry
 struct Mtltab
 {
 	Mtlentry *mtls[MTLHTSIZ];
-	ulong nmtls;
 	int loaded;			/* was the table loaded into a model already? */
 };
+
+static char *
+estrdup(char *s)
+{
+	char *t;
+
+	if((t = strdup(s)) == nil)
+		sysfatal("strdup: %r");
+	setmalloctag(t, getcallerpc(&s));
+	return t;
+}
 
 static void
 error(Curline *l, char *fmt, ...)
@@ -178,11 +188,9 @@ mtltabadd(Mtltab *t, Material *m)
 		}
 	if(prev == nil){
 		t->mtls[h] = nm;
-		t->nmtls++;
 		return nm;
 	}
 	prev->next = nm;
-	t->nmtls++;
 	return nm;
 }
 
@@ -623,9 +631,7 @@ notenough:
 			}
 			memset(&mtl, 0, sizeof mtl);
 
-			mtl.name = strdup(f[1]);
-			if(mtl.name == nil)
-				sysfatal("strdup: %r");
+			mtl.name = estrdup(f[1]);
 			inamaterial++;
 		}else{
 			error(&curline, "syntax error");
@@ -825,18 +831,14 @@ Bprintmtl(Biobuf *b, Material *m)
 		n += Bprint(b, "%g\n", m->shininess);
 	}
 
-//	if(m->diffusemap != nil){
-//		n += Bprint("\tdiffusemap: ");
-//		n += Bprint(b, "%s\n", m
-//	}
+	if(m->diffusemap != nil && m->diffusemap->file != nil)
+		n += Bprint(b, "\tdiffusemap: %s\n", m->diffusemap->file);
 
-//	if(m->specularmap != nil){
-//		n += Bprint(b, "\tspecularmap: ");
-//		n += Bprint(b, "%s\n", m
-//	}
+	if(m->specularmap != nil && m->specularmap->file != nil)
+		n += Bprint(b, "\tspecularmap: %s\n", m->specularmap->file);
 
-//	if(m->normalmap != nil)
-//		n += Bprint(b, "\tnormals: ");
+	if(m->normalmap != nil && m->normalmap->file != nil)
+		n += Bprint(b, "\tnormals: %s\n", m->normalmap->file);
 
 	n += Bprint(b, "}\n");
 	return n;
@@ -918,4 +920,115 @@ writemodel(int fd, Model *m)
 	rmitemarray(prima);
 	Bterm(out);
 	return n;
+}
+
+static int
+exporttexture(char *path, Texture *t)
+{
+	int fd;
+
+	fd = create(path, OWRITE|OEXCL, 0644);
+	if(fd < 0){
+		werrstr("create: %r");
+		return -1;
+	}
+	if(writememimage(fd, t->image) < 0){
+		close(fd);
+		werrstr("could not write '%s'", path);
+		return -1;
+	}
+	close(fd);
+	return 0;
+}
+
+int
+exportmodel(char *path, Model *m)
+{
+	static char Esmallbuf[] = "buf too small to hold path";
+	Material *mtl;
+	char buf[256], *pe, *me;
+	int fd, idx;
+
+	idx = 0;
+
+	if((pe = seprint(buf, buf + sizeof buf, "%s", path)) == nil)
+		sysfatal(Esmallbuf);
+
+	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++, idx++){
+		if(mtl->name == nil){
+			fprint(2, "warning: material #%d has no name. skipping...\n", idx);
+			continue;
+		}
+
+		if((me = seprint(pe, buf + sizeof buf, "/%s", mtl->name)) == nil)
+			sysfatal(Esmallbuf);
+
+		if(mtl->diffusemap != nil){
+			if(seprint(me, buf + sizeof buf, "_diffuse.pic") == nil)
+				sysfatal(Esmallbuf);
+
+			if(exporttexture(buf, mtl->diffusemap) < 0)
+				return -1;
+
+//			if(mtl->diffusemap->file == nil)
+				mtl->diffusemap->file = estrdup(strrchr(buf, '/')+1);
+		}
+
+		if(mtl->specularmap != nil){
+			if(seprint(me, buf + sizeof buf, "_specular.pic") == nil)
+				sysfatal(Esmallbuf);
+
+			if(exporttexture(buf, mtl->specularmap) < 0)
+				return -1;
+
+//			if(mtl->specularmap->file == nil)
+				mtl->specularmap->file = estrdup(strrchr(buf, '/')+1);
+		}
+
+		if(mtl->normalmap != nil){
+			if(seprint(me, buf + sizeof buf, "_normals.pic") == nil)
+				sysfatal(Esmallbuf);
+
+			if(exporttexture(buf, mtl->normalmap) < 0)
+				return -1;
+
+//			if(mtl->normalmap->file == nil)
+				mtl->normalmap->file = estrdup(strrchr(buf, '/')+1);
+		}
+	}
+
+	if(seprint(pe, buf + sizeof buf, "/main.mdl") == nil)
+		sysfatal(Esmallbuf);
+
+	fd = create(buf, OWRITE|OEXCL, 0644);
+	if(fd < 0){
+		werrstr("create: %r");
+		return -1;
+	}
+	if(writemodel(fd, m) == 0){
+		close(fd);
+		werrstr("writemodel: %r");
+		return -1;
+	}
+	close(fd);
+
+	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++){
+		if(mtl->name == nil)
+			continue;
+
+		if(mtl->diffusemap != nil){
+			free(mtl->diffusemap->file);
+			mtl->diffusemap->file = nil;
+		}
+		if(mtl->specularmap != nil){
+			free(mtl->specularmap->file);
+			mtl->specularmap->file = nil;
+		}
+		if(mtl->normalmap != nil){
+			free(mtl->normalmap->file);
+			mtl->normalmap->file = nil;
+		}
+	}
+
+	return 0;
 }
