@@ -227,24 +227,6 @@ rmmtltab(Mtltab *t)
 		}
 }
 
-/*
- * TODO if materials are inserted between primitive declarations
- * references to those materials from early primitives can cause
- * out-of-bounds accesses. find a solution.
- *
- * example:
- *
- *	mtl A {
- *		diffuse: 1 0 0
- *	}
- *	prim ... A
- *	mtl B {
- *		diffuse: 1 0 0
- *	}
- *	prim ... B
- *
- * now the reference to A is probably wrong because of realloc.
- */
 Model *
 readmodel(int fd)
 {
