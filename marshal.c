@@ -789,7 +789,6 @@ Bprintprim(Biobuf *b, Wireprim *p)
 	return n;
 }
 
-/* TODO how do we deal with textures? embedded? keep a path? */
 static int
 Bprintmtl(Biobuf *b, Material *m)
 {
@@ -968,7 +967,7 @@ exportmodel(char *path, Model *m)
 				sysfatal(Esmallbuf);
 
 			if(exporttexture(buf, mtl->diffusemap) < 0)
-				return -1;
+				fprint(2, "warning: %r\n");
 
 //			if(mtl->diffusemap->file == nil)
 				mtl->diffusemap->file = estrdup(strrchr(buf, '/')+1);
@@ -979,7 +978,7 @@ exportmodel(char *path, Model *m)
 				sysfatal(Esmallbuf);
 
 			if(exporttexture(buf, mtl->specularmap) < 0)
-				return -1;
+				fprint(2, "warning: %r\n");
 
 //			if(mtl->specularmap->file == nil)
 				mtl->specularmap->file = estrdup(strrchr(buf, '/')+1);
@@ -990,7 +989,7 @@ exportmodel(char *path, Model *m)
 				sysfatal(Esmallbuf);
 
 			if(exporttexture(buf, mtl->normalmap) < 0)
-				return -1;
+				fprint(2, "warning: %r\n");
 
 //			if(mtl->normalmap->file == nil)
 				mtl->normalmap->file = estrdup(strrchr(buf, '/')+1);
