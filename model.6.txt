@@ -5,7 +5,7 @@ c r g b [a]
 v pᵢ [nᵢ|-] [tᵢ|-] [cᵢ|-]
 
 T x y z
-prim nverts vᵢ... [Tᵢ|-] [mtlname]
+P nverts vᵢ... [Tᵢ|-] [mtlname]
 
 mtl name {
 	ambient: r g b [a]
@@ -16,3 +16,20 @@ mtl name {
 	specularmap: path
 	normals: path
 }
+
+
+p	position
+	* if w is not specified it defaults to 1
+n	normal
+t	texture coordinates
+c	color
+	* if a is not specified it defaults to 1
+v	vertex
+T	tangent
+P	primitive
+mtl	material definition
+	* ambient, diffuse and specular parameters take colors in linear RGB space
+	* diffusemap assumes the image colors are gamma-corrected (sRGBTexture)
+	* specularmap and normals both assume image contents are linear (RAWTexture)
+
+indices (ᵢ) are zero-based

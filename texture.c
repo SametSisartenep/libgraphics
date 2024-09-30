@@ -60,6 +60,11 @@ _memreadcolor(Texture *t, Point sp)
 		memmove(cbuf+1, cbuf, 3);
 		cbuf[0] = 0xFF;
 		break;
+	case GREY8:
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf+1, 1);
+		memset(cbuf+2, cbuf[1], 2);
+		cbuf[0] = 0xFF;
+		break;
 	}
 
 	c = cbuf2col(cbuf);
@@ -69,9 +74,9 @@ _memreadcolor(Texture *t, Point sp)
 		c.g /= c.a;
 		c.b /= c.a;
 	}
-	switch(t->type){
-	case sRGBTexture: c = srgb2linear(c); break;
-	}
+	if(t->type == sRGBTexture)
+		c = srgb2linear(c);
+
 	return c;
 }
 

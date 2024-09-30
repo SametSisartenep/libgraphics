@@ -239,14 +239,14 @@ Model *
 readmodel(int fd)
 {
 	Curline curline;
-	IArray *pa, *na, *ta, *ca, *Ta, *va, *prima;
+	IArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
 	Mtltab *mtltab;
 	Mtlentry *me;
 	Point3 p, n, T;
 	Point2 t;
 	Color c;
 	Vertex v;
-	Primitive prim;
+	Primitive P;
 	Material mtl;
 	Model *m;
 	Memimage *mi;
@@ -271,7 +271,7 @@ readmodel(int fd)
 	ca = mkitemarray(sizeof(c));
 	Ta = mkitemarray(sizeof(T));
 	va = mkitemarray(sizeof(v));
-	prima = mkitemarray(sizeof(prim));
+	Pa = mkitemarray(sizeof(P));
 	mtltab = mkmtltab();
 
 	memset(&curline, 0, sizeof curline);
@@ -510,17 +510,17 @@ notexture:
 			}
 
 			itemarrayadd(va, &v, 0);
-		}else if(strcmp(f[0], "prim") == 0){
+		}else if(strcmp(f[0], "P") == 0){
 			if(nf < 3 || nf > 7){
 				error(&curline, "syntax error");
 				goto getout;
 			}
-			memset(&prim, 0, sizeof prim);
+			memset(&P, 0, sizeof P);
 
 			nv = strtoul(f[1], nil, 10);
 			switch(nv-1){
 			case PPoint:
-				prim.type = PPoint;
+				P.type = PPoint;
 
 				idx = strtoul(f[2], nil, 10);
 				vp = itemarrayget(va, idx);
@@ -529,26 +529,26 @@ novertex:
 					error(&curline, "no vertex at idx %llud", idx);
 					goto getout;
 				}
-				prim.v[0] = *(Vertex*)vp;
+				P.v[0] = *(Vertex*)vp;
 
 				/* ignore 4th field (nf == 4) */
 
 				if(nf == 5){
-					prim.mtl = mtltabget(mtltab, f[4]);
-					if(prim.mtl == nil){
+					P.mtl = mtltabget(mtltab, f[4]);
+					if(P.mtl == nil){
 						error(&curline, "material '%s' not found", f[4]);
 						goto getout;
 					}
 				}
 				break;
 			case PLine:
-				prim.type = PLine;
+				P.type = PLine;
 
 				idx = strtoul(f[2], nil, 10);
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				prim.v[0] = *(Vertex*)vp;
+				P.v[0] = *(Vertex*)vp;
 
 				if(nf < 4){
 notenough:
@@ -559,26 +559,26 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				prim.v[1] = *(Vertex*)vp;
+				P.v[1] = *(Vertex*)vp;
 
 				/* ignore 5th field (nf == 5) */
 
 				if(nf == 6){
-					prim.mtl = mtltabget(mtltab, f[5]);
-					if(prim.mtl == nil){
+					P.mtl = mtltabget(mtltab, f[5]);
+					if(P.mtl == nil){
 						error(&curline, "material '%s' not found", f[5]);
 						goto getout;
 					}
 				}
 				break;
 			case PTriangle:
-				prim.type = PTriangle;
+				P.type = PTriangle;
 
 				idx = strtoul(f[2], nil, 10);
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				prim.v[0] = *(Vertex*)vp;
+				P.v[0] = *(Vertex*)vp;
 
 				if(nf < 4)
 					goto notenough;
@@ -586,7 +586,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				prim.v[1] = *(Vertex*)vp;
+				P.v[1] = *(Vertex*)vp;
 
 				if(nf < 5)
 					goto notenough;
@@ -594,7 +594,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				prim.v[2] = *(Vertex*)vp;
+				P.v[2] = *(Vertex*)vp;
 
 				if(nf < 6){
 					error(&curline, "missing triangle tangent field");
@@ -607,12 +607,12 @@ notenough:
 						error(&curline, "no tangent at idx %llud", idx);
 						goto getout;
 					}
-					prim.tangent = *(Point3*)vp;
+					P.tangent = *(Point3*)vp;
 				}
 
 				if(nf == 7){
-					prim.mtl = mtltabget(mtltab, f[6]);
-					if(prim.mtl == nil){
+					P.mtl = mtltabget(mtltab, f[6]);
+					if(P.mtl == nil){
 						error(&curline, "material '%s' not found", f[6]);
 						goto getout;
 					}
@@ -623,7 +623,7 @@ notenough:
 				goto getout;
 			}
 
-			itemarrayadd(prima, &prim, 0);
+			itemarrayadd(Pa, &P, 0);
 		}else if(strcmp(f[0], "mtl") == 0){
 			if(nf != 3 || strcmp(f[2], "{") != 0){
 				error(&curline, "syntax error");
@@ -639,15 +639,15 @@ notenough:
 		}
 	}
 
-	if(prima->nitems < 1){
+	if(Pa->nitems < 1){
 		werrstr("no primitives no model");
 		goto getout;
 	}
 
 	m = newmodel();
 	mtltabloadmodel(m, mtltab);
-	for(i = 0; i < prima->nitems; i++){
-		primidx = m->addprim(m, *(Primitive*)itemarrayget(prima, i));
+	for(i = 0; i < Pa->nitems; i++){
+		primidx = m->addprim(m, *(Primitive*)itemarrayget(Pa, i));
 		if(m->prims[primidx].mtl != nil){
 			me = mtltabget(mtltab, m->prims[primidx].mtl->name);
 			m->prims[primidx].mtl = &m->materials[me->idx];
@@ -661,7 +661,7 @@ getout:
 	rmitemarray(ca);
 	rmitemarray(Ta);
 	rmitemarray(va);
-	rmitemarray(prima);
+	rmitemarray(Pa);
 	rmmtltab(mtltab);
 	Bterm(bin);
 	return m;
@@ -769,12 +769,12 @@ Bprintv(Biobuf *b, Wirevert *v)
 }
 
 static int
-Bprintprim(Biobuf *b, Wireprim *p)
+BprintP(Biobuf *b, Wireprim *p)
 {
 	char *s;
 	int n, i;
 
-	n = Bprint(b, "prim %d", p->nv);
+	n = Bprint(b, "P %d", p->nv);
 	for(i = 0; i < p->nv; i++)
 		n += Bprintidx(b, p->v[i]);
 	n += Bprintidx(b, p->T);
@@ -846,9 +846,9 @@ Bprintmtl(Biobuf *b, Material *m)
 usize
 writemodel(int fd, Model *m)
 {
-	IArray *pa, *na, *ta, *ca, *Ta, *va, *prima;
+	IArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
 	Wirevert v;
-	Wireprim prim;
+	Wireprim P;
 	Primitive *p, *ep;
 	Biobuf *out;
 	usize n;
@@ -864,17 +864,17 @@ writemodel(int fd, Model *m)
 	ca = mkitemarray(sizeof(Color));
 	Ta = mkitemarray(sizeof(Point3));
 	va = mkitemarray(sizeof(Wirevert));
-	prima = mkitemarray(sizeof(Wireprim));
+	Pa = mkitemarray(sizeof(Wireprim));
 
 	n = 0;
 	p = m->prims;
 	ep = p + m->nprims;
 
 	while(p < ep){
-		memset(&prim, 0, sizeof prim);
+		memset(&P, 0, sizeof P);
 
-		prim.nv = p->type+1;
-		for(i = 0; i < prim.nv; i++){
+		P.nv = p->type+1;
+		for(i = 0; i < P.nv; i++){
 			v.p = itemarrayadd(pa, &p->v[i].p, 1);
 			v.n = eqpt3(p->v[i].n, Vec3(0,0,0))?
 				NaI: itemarrayadd(na, &p->v[i].n, 1);
@@ -882,13 +882,13 @@ writemodel(int fd, Model *m)
 				NaI: itemarrayadd(ta, &p->v[i].uv, 1);
 			v.c = p->v[i].c.a == 0?
 				NaI: itemarrayadd(ca, &p->v[i].c, 1);
-			prim.v[i] = itemarrayadd(va, &v, 1);
+			P.v[i] = itemarrayadd(va, &v, 1);
 		}
-		prim.T = eqpt3(p->tangent, Vec3(0,0,0))?
+		P.T = eqpt3(p->tangent, Vec3(0,0,0))?
 			NaI: itemarrayadd(Ta, &p->tangent, 1);
-		prim.mtlname = p->mtl != nil? p->mtl->name: nil;
+		P.mtlname = p->mtl != nil? p->mtl->name: nil;
 
-		itemarrayadd(prima, &prim, 1);
+		itemarrayadd(Pa, &P, 1);
 		p++;
 	}
 
@@ -907,8 +907,8 @@ writemodel(int fd, Model *m)
 		n += BprintT(out, itemarrayget(Ta, i));
 	for(i = 0; i < va->nitems; i++)
 		n += Bprintv(out, itemarrayget(va, i));
-	for(i = 0; i < prima->nitems; i++)
-		n += Bprintprim(out, itemarrayget(prima, i));
+	for(i = 0; i < Pa->nitems; i++)
+		n += BprintP(out, itemarrayget(Pa, i));
 
 	rmitemarray(pa);
 	rmitemarray(na);
@@ -916,7 +916,7 @@ writemodel(int fd, Model *m)
 	rmitemarray(ca);
 	rmitemarray(Ta);
 	rmitemarray(va);
-	rmitemarray(prima);
+	rmitemarray(Pa);
 	Bterm(out);
 	return n;
 }
