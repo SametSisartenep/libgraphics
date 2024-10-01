@@ -28,6 +28,7 @@ v	vertex
 T	tangent
 P	primitive
 mtl	material definition
+	* name can contain spaces if quoted (see quote(2))
 	* ambient, diffuse and specular parameters take colors in linear RGB space
 	* diffusemap assumes the image colors are gamma-corrected (sRGBTexture)
 	* specularmap and normals both assume image contents are linear (RAWTexture)

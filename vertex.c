@@ -8,7 +8,7 @@
 #include "internal.h"
 
 static void
-_addvattr(Vertex *v, Vertexattr *va)
+_addvattr(Vertexattrs *v, Vertexattr *va)
 {
 	int i;
 
@@ -95,7 +95,7 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 }
 
 void
-addvattr(Vertex *v, char *id, int type, void *val)
+addvattr(Vertexattrs *v, char *id, int type, void *val)
 {
 	Vertexattr va;
 
@@ -110,7 +110,7 @@ addvattr(Vertex *v, char *id, int type, void *val)
 }
 
 Vertexattr *
-getvattr(Vertex *v, char *id)
+getvattr(Vertexattrs *v, char *id)
 {
 	int i;
 

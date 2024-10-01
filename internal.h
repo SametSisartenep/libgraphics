@@ -73,6 +73,8 @@ void lerpvertex(Vertex*, Vertex*, Vertex*, double);
 void berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
 void delvattrs(Vertex*);
 void fprintvattrs(int, Vertex*);
+void addvattr(Vertexattrs*, char*, int, void*);
+Vertexattr *getvattr(Vertexattrs*, char*);
 
 /* clip */
 int clipprimitive(Primitive*, Primitive*);

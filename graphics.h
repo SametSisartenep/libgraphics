@@ -51,6 +51,7 @@ typedef struct Color Color;
 typedef struct Texture Texture;
 typedef struct Cubemap Cubemap;
 typedef struct Vertexattr Vertexattr;
+typedef struct Vertexattrs Vertexattrs;
 typedef struct Vertex Vertex;
 typedef struct LightSource LightSource;
 typedef struct Material Material;
@@ -123,6 +124,12 @@ struct Vertexattr
 	};
 };
 
+struct Vertexattrs
+{
+	Vertexattr *attrs;
+	ulong nattrs;
+};
+
 struct Vertex
 {
 	Point3 p;		/* position */
@@ -131,10 +138,7 @@ struct Vertex
 	Point2 uv;		/* texture coordinate */
 	Material *mtl;
 	Point3 tangent;
-
-	/* TODO it'd be neat to use a dynamic hash table instead */
-	Vertexattr *attrs;	/* attributes (aka varyings) */
-	ulong nattrs;
+	Vertexattrs;		/* attributes (varyings) */
 };
 
 struct LightSource
@@ -219,15 +223,11 @@ struct Shaderparams
 struct SUparams
 {
 	Framebuf *fb;
+	Shadertab *stab;
 	Renderjob *job;
 	Camera *camera;
 	Entity *entity;
 	Primitive *eb, *ee;
-
-	uvlong uni_time;
-
-	Point3 (*vshader)(Shaderparams*);
-	Color (*fshader)(Shaderparams*);
 };
 
 struct Shadertab
@@ -235,6 +235,7 @@ struct Shadertab
 	char *name;
 	Point3 (*vshader)(Shaderparams*);	/* vertex shader */
 	Color (*fshader)(Shaderparams*);	/* fragment shader */
+	Vertexattrs;				/* uniforms */
 };
 
 struct Rendertime
@@ -387,6 +388,7 @@ void rmviewport(Viewport*);
 
 /* render */
 Renderer *initgraphics(void);
+void setuniform(Shadertab*, char*, int, void*);
 
 /* xform */
 Point3 model2world(Entity*, Point3);
@@ -420,10 +422,6 @@ Scene *newscene(char*);
 Scene *dupscene(Scene*);
 void delscene(Scene*);
 void clearscene(Scene*);
-
-/* vertex */
-void addvattr(Vertex*, char*, int, void*);
-Vertexattr *getvattr(Vertex*, char*);
 
 /* texture */
 Texture *alloctexture(int, Memimage*);

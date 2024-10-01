@@ -12,8 +12,13 @@ Rectangle UR = {0,0,1,1};
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
-	USED(sp, id);
-	return nil;
+	return getvattr(sp->su->stab, id);
+}
+
+void
+setuniform(Shadertab *st, char *id, int type, void *val)
+{
+	addvattr(st, id, type, val);
 }
 
 static Vertexattr *
@@ -202,7 +207,7 @@ rasterize(Rastertask *task)
 
 		fsp.v = &prim->v[0];
 		fsp.p = p;
-		c = params->fshader(&fsp);
+		c = params->stab->fshader(&fsp);
 		if(c.a == 0)			/* discard non-colors */
 			break;
 		if(ropts & RODepth)
@@ -268,7 +273,7 @@ rasterize(Rastertask *task)
 			lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
 
 			fsp.p = p;
-			c = params->fshader(&fsp);
+			c = params->stab->fshader(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				goto discard;
 			if(ropts & RODepth)
@@ -322,7 +327,7 @@ discard:
 			berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
 
 			fsp.p = p;
-			c = params->fshader(&fsp);
+			c = params->stab->fshader(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				continue;
 			if(ropts & RODepth)
@@ -477,7 +482,7 @@ tiler(void *arg)
 
 				vsp.v = &p->v[0];
 				vsp.idx = 0;
-				p->v[0].p = params->vshader(&vsp);
+				p->v[0].p = params->stab->vshader(&vsp);
 
 				if(!isvisible(p->v[0].p))
 					break;
@@ -512,7 +517,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->vshader(&vsp);
+					p->v[i].p = params->stab->vshader(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
@@ -558,7 +563,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->vshader(&vsp);
+					p->v[i].p = params->stab->vshader(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){
@@ -751,12 +756,10 @@ renderer(void *arg)
 			params = emalloc(sizeof *params);
 			memset(params, 0, sizeof *params);
 			params->fb = job->fb;
+			params->stab = job->shaders;
 			params->job = job;
 			params->camera = job->camera;
 			params->entity = ent;
-			params->uni_time = time;
-			params->vshader = job->shaders->vshader;
-			params->fshader = job->shaders->fshader;
 			sendp(ep->paramsc, params);
 		}
 		/* mark end of job */
