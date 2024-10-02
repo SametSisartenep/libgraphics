@@ -207,7 +207,7 @@ rasterize(Rastertask *task)
 
 		fsp.v = &prim->v[0];
 		fsp.p = p;
-		c = params->stab->fshader(&fsp);
+		c = params->stab->fs(&fsp);
 		if(c.a == 0)			/* discard non-colors */
 			break;
 		if(ropts & RODepth)
@@ -273,7 +273,7 @@ rasterize(Rastertask *task)
 			lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
 
 			fsp.p = p;
-			c = params->stab->fshader(&fsp);
+			c = params->stab->fs(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				goto discard;
 			if(ropts & RODepth)
@@ -327,7 +327,7 @@ discard:
 			berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
 
 			fsp.p = p;
-			c = params->stab->fshader(&fsp);
+			c = params->stab->fs(&fsp);
 			if(c.a == 0)			/* discard non-colors */
 				continue;
 			if(ropts & RODepth)
@@ -482,7 +482,7 @@ tiler(void *arg)
 
 				vsp.v = &p->v[0];
 				vsp.idx = 0;
-				p->v[0].p = params->stab->vshader(&vsp);
+				p->v[0].p = params->stab->vs(&vsp);
 
 				if(!isvisible(p->v[0].p))
 					break;
@@ -517,7 +517,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->stab->vshader(&vsp);
+					p->v[i].p = params->stab->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
@@ -563,7 +563,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->stab->vshader(&vsp);
+					p->v[i].p = params->stab->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){

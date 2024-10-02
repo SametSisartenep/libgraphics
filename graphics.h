@@ -233,9 +233,9 @@ struct SUparams
 struct Shadertab
 {
 	char *name;
-	Point3 (*vshader)(Shaderparams*);	/* vertex shader */
-	Color (*fshader)(Shaderparams*);	/* fragment shader */
-	Vertexattrs;				/* uniforms */
+	Point3 (*vs)(Shaderparams*);	/* vertex shader */
+	Color (*fs)(Shaderparams*);	/* fragment shader */
+	Vertexattrs;			/* uniforms */
 };
 
 struct Rendertime
@@ -446,6 +446,8 @@ Point3 modulapt3(Point3, Point3);
 Point3 minpt3(Point3, Point3);
 Point3 maxpt3(Point3, Point3);
 int eqpt3(Point3, Point3);
+Quaternion qsandwich(Quaternion, Quaternion);
+Point3 qsandwichpt3(Quaternion, Point3);
 Memimage *rgba(ulong);
 Memimage *dupmemimage(Memimage*);
 

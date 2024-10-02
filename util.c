@@ -91,6 +91,21 @@ eqpt3(Point3 a, Point3 b)
 	return vec3len(subpt3(a, b)) < ε2;
 }
 
+Quaternion
+qsandwich(Quaternion q, Quaternion p)
+{
+	return mulq(mulq(q, p), invq(q));
+}
+
+Point3
+qsandwichpt3(Quaternion q, Point3 p)
+{
+	Quaternion r;
+
+	r = qsandwich(q, Quatvec(0, p));
+	return Pt3(r.i, r.j, r.k, p.w);
+}
+
 void
 memsetf(void *dp, float v, usize len)
 {
