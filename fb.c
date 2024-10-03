@@ -114,7 +114,7 @@ rasterconvF2C(Raster *dst, Raster *src)
 			continue;
 		}
 		b = (*f++ - min)/max * 0xFF;
-		*c++ = (b * 0x00010101)<<8 | 0xFF;
+		*c++ = (b * 0x01010100) | 0xFF;
 	}
 }
 
