@@ -92,7 +92,7 @@ rasterconvF2C(Raster *dst, Raster *src)
 	/* first run: get the domain */
 	f = (float*)src->data;
 	len = Dx(dst->r)*Dy(dst->r);
-	for(min = 0, max = 0; len--; f++){
+	for(min = max = 0; len--; f++){
 		if(isInf(*f, -1))	/* -∞ is the DNotacolor of the z-buffer */
 			continue;
 		min = min(*f, min);

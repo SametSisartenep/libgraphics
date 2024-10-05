@@ -260,8 +260,8 @@ rasterize(Rastertask *task)
 
 			z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if((ropts & RODepth) &&
-			   !ptinrect(p, params->fb->r) || z <= getdepth(zr, p))
+			if(!ptinrect(p, params->fb->r) ||
+			   ((ropts & RODepth) && z <= getdepth(zr, p)))
 				goto discard;
 
 			/* interpolate z⁻¹ and get actual z */

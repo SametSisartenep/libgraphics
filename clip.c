@@ -199,8 +199,10 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	lerpvertex(&v[1], v0, v1, perc);
 
-	*v0 = dupvertex(&v[0]);
-	*v1 = dupvertex(&v[1]);
+	delvattrs(v0);
+	delvattrs(v1);
+	*v0 = v[0];
+	*v1 = v[1];
 }
 
 /*
