@@ -179,7 +179,7 @@ rasterize(Rastertask *task)
 	double dplen, perc;
 	float z, pcz;
 	uint ropts;
-	int steep = 0, Δe, e, Δy;
+	int steep, Δe, e, Δy;
 
 	params = task->params;
 	prim = &task->p;
@@ -233,6 +233,7 @@ rasterize(Rastertask *task)
 		if(rectclipline(task->wr, &p0, &p1, &prim->v[0], &prim->v[1]) < 0)
 			break;
 
+		steep = 0;
 		/* transpose the points */
 		if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){
 			steep = 1;

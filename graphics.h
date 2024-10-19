@@ -150,6 +150,8 @@ struct LightSource
 	/* spotlights */
 	double θu;	/* umbra angle. anything beyond is unlit */
 	double θp;	/* penumbra angle. anything within is fully lit */
+
+	LightSource *prev, *next;
 };
 
 struct Material
@@ -199,6 +201,8 @@ struct Scene
 	char *name;
 	Entity ents;
 	ulong nents;
+	LightSource lights;
+	ulong nlights;
 	Cubemap *skybox;
 
 	void (*addent)(Scene*, Entity*);
@@ -446,8 +450,6 @@ Point3 modulapt3(Point3, Point3);
 Point3 minpt3(Point3, Point3);
 Point3 maxpt3(Point3, Point3);
 int eqpt3(Point3, Point3);
-Quaternion qsandwich(Quaternion, Quaternion);
-Point3 qsandwichpt3(Quaternion, Point3);
 Memimage *rgba(ulong);
 Memimage *dupmemimage(Memimage*);
 
