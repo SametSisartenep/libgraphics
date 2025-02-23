@@ -412,8 +412,8 @@ void orthographic(Matrix3, double, double, double, double, double, double);
 
 /* marshal */
 Model *readmodel(int);
-usize writemodel(int, Model*);
-int exportmodel(char*, Model*);
+usize writemodel(int, Model*, int);
+int exportmodel(char*, Model*, int);
 
 /* scene */
 Model *newmodel(void);

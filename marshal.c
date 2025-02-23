@@ -96,6 +96,7 @@ mkitemarray(usize is)
 	return a;
 }
 
+/* TODO: implement binary insertion and search */
 static usize
 itemarrayadd(IArray *a, void *i, int dedup)
 {
@@ -844,7 +845,7 @@ Bprintmtl(Biobuf *b, Material *m)
 }
 
 usize
-writemodel(int fd, Model *m)
+writemodel(int fd, Model *m, int dedup)
 {
 	IArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
 	Wirevert v;
@@ -875,20 +876,20 @@ writemodel(int fd, Model *m)
 
 		P.nv = p->type+1;
 		for(i = 0; i < P.nv; i++){
-			v.p = itemarrayadd(pa, &p->v[i].p, 1);
+			v.p = itemarrayadd(pa, &p->v[i].p, dedup);
 			v.n = eqpt3(p->v[i].n, Vec3(0,0,0))?
-				NaI: itemarrayadd(na, &p->v[i].n, 1);
+				NaI: itemarrayadd(na, &p->v[i].n, dedup);
 			v.t = p->v[i].uv.w != 1?
-				NaI: itemarrayadd(ta, &p->v[i].uv, 1);
+				NaI: itemarrayadd(ta, &p->v[i].uv, dedup);
 			v.c = p->v[i].c.a == 0?
-				NaI: itemarrayadd(ca, &p->v[i].c, 1);
-			P.v[i] = itemarrayadd(va, &v, 1);
+				NaI: itemarrayadd(ca, &p->v[i].c, dedup);
+			P.v[i] = itemarrayadd(va, &v, dedup);
 		}
 		P.T = eqpt3(p->tangent, Vec3(0,0,0))?
-			NaI: itemarrayadd(Ta, &p->tangent, 1);
+			NaI: itemarrayadd(Ta, &p->tangent, dedup);
 		P.mtlname = p->mtl != nil? p->mtl->name: nil;
 
-		itemarrayadd(Pa, &P, 1);
+		itemarrayadd(Pa, &P, dedup);
 		p++;
 	}
 
@@ -941,7 +942,7 @@ exporttexture(char *path, Texture *t)
 }
 
 int
-exportmodel(char *path, Model *m)
+exportmodel(char *path, Model *m, int dedup)
 {
 	static char Esmallbuf[] = "buf too small to hold path";
 	Material *mtl;
@@ -1004,7 +1005,7 @@ exportmodel(char *path, Model *m)
 		werrstr("create: %r");
 		return -1;
 	}
-	if(writemodel(fd, m) == 0){
+	if(writemodel(fd, m, dedup) == 0){
 		close(fd);
 		werrstr("writemodel: %r");
 		return -1;
