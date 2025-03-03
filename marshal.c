@@ -96,7 +96,6 @@ mkitemarray(usize is)
 	return a;
 }
 
-/* TODO: implement binary insertion and search */
 static usize
 itemarrayadd(IArray *a, void *i, int dedup)
 {
@@ -889,7 +888,7 @@ writemodel(int fd, Model *m, int dedup)
 			NaI: itemarrayadd(Ta, &p->tangent, dedup);
 		P.mtlname = p->mtl != nil? p->mtl->name: nil;
 
-		itemarrayadd(Pa, &P, dedup);
+		itemarrayadd(Pa, &P, 0);
 		p++;
 	}
 
