@@ -105,18 +105,20 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 
 	buf = &fb->abuf;
 	stk = &buf->stk[p.y*Dx(fb->r) + p.x];
-	stk->items = erealloc(stk->items, ++stk->size*sizeof(*stk->items));
-	memset(&stk->items[stk->size-1], 0, sizeof(*stk->items));
+	if(stk->nitems == stk->size){
+		stk->size += 8;
+		stk->items = erealloc(stk->items, stk->size*sizeof(*stk->items));
+		memset(&stk->items[stk->size-8], 0, 8*sizeof(*stk->items));
+	}
+	stk->nitems++;
 
-	for(i = 0; i < stk->size; i++)
+	for(i = 0; i < stk->nitems-1; i++)
 		if(z > stk->items[i].z)
 			break;
 
-	if(i < stk->size){
-		memmove(&stk->items[i+1], &stk->items[i], (stk->size-1 - i)*sizeof(*stk->items));
-		stk->items[i] = (Fragment){c, z};
-	}else
-		stk->items[stk->size-1] = (Fragment){c, z};
+	if(i < stk->nitems-1)
+		memmove(&stk->items[i+1], &stk->items[i], (stk->nitems-1 - i)*sizeof(*stk->items));
+	stk->items[i] = (Fragment){c, z};
 
 	if(!stk->active){
 		stk->active++;

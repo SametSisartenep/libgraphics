@@ -285,6 +285,7 @@ struct Astk
 {
 	Point p;
 	Fragment *items;
+	ulong nitems;
 	ulong size;
 	int active;
 };
