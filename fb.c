@@ -590,6 +590,7 @@ mkfbctl(Rectangle r)
 	fc->fetchraster = framebufctl_fetchraster;
 	fc->getfb = framebufctl_getfb;
 	fc->getbb = framebufctl_getbb;
+	fc->reset(fc);
 	return fc;
 }
 
