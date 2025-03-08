@@ -13,14 +13,12 @@ Rodrigo G. López
 rgl@antares-labs.eu
 .AB
 .I Libgraphics
-is a 3D computer graphics library that provides a way to set up a
-scene, fill it up with a bunch of models (with their own meshes and
-materials), lights and cameras, and start taking pictures at the user
-request.  It implements a fully concurrent retained mode software
-renderer, with support for vertex and fragment/pixel shaders written
-in C (not GPU ones, at least for now), and featuring a z-buffer, front- and
-back-face culling, textures and skyboxes, directional and punctual
-lights, tangent-space normal mapping, among other things.
+is a 3D computer graphics library for Plan 9.  It implements a fully
+concurrent retained mode software renderer for polygon rasterization,
+and supports vertex and pixel shaders written in C (not GPU ones, at
+least for now[1]), a z-buffer, front- and back-face culling,
+textures, skyboxes, and directional and punctual lights, among other
+things.
 .AE
 .SH
 Introduction
@@ -36,24 +34,21 @@ struct Scene
 	char *name;
 	Entity ents;
 	ulong nents;
+	LightSource lights;
+	ulong nlights;
 	Cubemap *skybox;
 
 	void (*addent)(Scene*, Entity*);
 	void (*delent)(Scene*, Entity*);
+	Entity *(*getent)(Scene*, char*);
 };
 .P2
 .PP
 A
 .I scene
 is a container, represented as a graph, that hosts the entities that
-make up the world.  Each of these entities has a model made out of a
-series of meshes, which in turn are made out of geometric primitives
-(only
-.I points ,
-.I lines
-and
-.I triangles
-are supported.) Each model also stores a list of materials.
+make up the world, as well as properties of it such as lighting and the
+skybox.
 .PP
 .KS
 .PS
@@ -62,16 +57,37 @@ boxwid = 0.5
 boxht = 0.2
 linewid = 0.1
 lineht = 0.2
-box "Scene"
-down; line from last box.s; right; line
-box "Entity"
-down; line from last box.s; right; line
+movewid = 0.1
+moveht = 0.2
+ellipsewid = 0.5
+ellipseht = 0.25
+ellipse "Scene"
+down; line from last ellipse.s; line
+left; line
+box "Light 0"
+left; line dashed
+box dashed "Light 1"
+left; line dashed
+box dashed "..."
+lineht = 0.12
+right; line from 3rd last box.e; down; line; line
+left; line
+box "Skybox"
+lineht = 0.2
+move to last ellipse.s; down; move; right; line
+box "Entity 0"
+right; line dashed
+box dashed "Entity 1"
+right; line dashed
+box dashed "..."
+down; line from 3rd last box.s; right; line
 box "Model"
 down; line from last box.s; right; line
-box dashed "Mesh"
+box dotted "Mesh"
 down; line from last box.s; right; line
 box "Primitive"
 down
+lineht = 0.12
 line from 2nd last line.s; line; right; line
 box "Material"
 reset
@@ -94,7 +110,10 @@ struct Entity
 .P2
 .PP
 .I Entities
-represent physical objects in the scene.
+represent visible physical objects in the scene.  Each of these
+entities has a frame of reference to locate and orient it in the
+world, a unique name and a localized model that encodes its physical
+properties.
 .NH 2
 Models
 .PP
@@ -105,10 +124,23 @@ struct Model
 	ulong nprims;
 	Material *materials;
 	ulong nmaterials;
+
+	int (*addprim)(Model*, Primitive);
+	int (*addmaterial)(Model*, Material);
 };
 .P2
+.PP
+A model contains the geometric and material properties of an
+.I Entity .
+The geometry is encoded as a list of primitives, which in turn refer
+to any out of a list of materials that encode the visual parameters
+that determine its appearance.
 .NH 2
 Meshes
+.PP
+Meshes are not implemented yet, but the idea is for them to provide a
+hierarchy of primitives with which to apply optimizations (for
+storage, visibility determination, maybe others.)
 .NH 2
 Primitives
 .PP
@@ -118,9 +150,13 @@ struct Primitive
 	int type;
 	Vertex v[3];
 	Material *mtl;
-	Point3 tangent;	/* used for normal mapping */
+	Point3 tangent;
 };
 .P2
+.PP
+Primitives are geometric building blocks, namely points, lines and
+triangles.  The tangent is used in triangles for warp-safe normal
+mapping.
 .NH 2
 Materials
 .PP
@@ -133,9 +169,12 @@ struct Material
 	Color specular;
 	double shininess;
 	Texture *diffusemap;
+	Texture *specularmap;
 	Texture *normalmap;
 };
 .P2
+.PP
+A material defines the optical characteristics of a surface.
 .NH
 Cameras
 .PP
@@ -169,8 +208,8 @@ is the core of the library. It follows a
 model, which means that the user won't get a picture until the entire
 scene has been rendered.  Thanks to this we can apply optimizations to
 make better use of the pipeline, clear and swap the framebuffers,
-and—in the future—run distributed rendering jobs, all without their
-intervention; they only need to concern themselves with shooting and
+and—in the future—run distributed rendering jobs, all without any
+intervention; users only need to concern themselves with shooting and
 “developing” a camera.
 .LP
 It's implemented as a tree of concurrent processes connected by buffered
@@ -242,14 +281,15 @@ sent by another user process, specifying a framebuffer, a scene, a
 camera and a shader table.  It walks the scene and sends each
 .CW Entity
 individually to the
-entityproc.
+.B entityproc .
 .NH 2
 entityproc
 .PP
 The
 .B entityproc
 receives an entity and splits its geometry equitatively among the
-tilers, sending a batch for each of them to process.
+.B tiler s,
+sending a batch for each of them to process.
 .NH 2
 tilers
 .PP
@@ -267,7 +307,9 @@ project them into the viewport to obtain their screen space
 coordinates.  Following this step, they build a bounding box, used to
 allocate each primitive into a rasterization bucket, or
 .B tile ,
-managed by one of the rasterizers; as illustrated in
+managed by one of the
+.B rasterizer s;
+as illustrated in
 .B "Figure 4" .
 If it spans multiple tiles, it will be copied and sent to each of
 them.
@@ -407,7 +449,7 @@ includes user-defined filters for specific ratios, such as the family
 of pixel art filters
 .I Scale[234]x ,
 used for 2x2, 3x3 and 4x4 scaling
-.I [SCALE2x] . respectively
+.I [2] . respectively
 Users control it with calls to the viewport's
 .CW setscale
 and
@@ -435,58 +477,61 @@ View: [
 .SH
 References
 .PP
+.PP
 .IP [1]
-https://www.scale2x.it/
+https://shithub.us/sirjofri/gpufs/HEAD/info.html
 .IP [2]
+https://www.scale2x.it/
+.IP [3]
 Thomas W. Crockett,
 “Design Considerations for Parallel Graphics Libraries”,
 .I
 NASA Langley Research Center, Contract Nos. NAS1-18605 and NAS1-19480, June 1994
-.IP [3]
+.IP [4]
 Thomas W. Crockett,
 “Parallel Rendering”,
 .I
 NASA Langley Research Center, Contract No. NAS1-19480, April 1995
-.IP [4]
+.IP [5]
 Thomas W. Crockett,
 “Beyond the Renderer: Software Architecture for Parallel Graphics and Visualization”,
 .I
 NASA Langley Research Center, Contract No. NAS1-19480, December 1996
-.IP [5]
+.IP [6]
 Tomas Akenine-Möller et al,
 “Real-Time Rendering”,
 .I
 4th edition, Taylor & Francis, CRC Press, 2018
-.IP [6]
+.IP [7]
 James F. Blinn, Martin E. Newell,
 “Clipping Using Homogeneous Coordinates”,
 .I
 SIGGRAPH '78: Proceedings, August 1978, pp. 245-251
-.IP [7]
-“GPU Gems” series
 .IP [8]
-“Graphics Gems” series
+“GPU Gems” series
 .IP [9]
+“Graphics Gems” series
+.IP [10]
 Ian Stephenson,
 “Production Rendering: Design and Implementation”,
 .I
 Springer, 2005
-.IP [10]
+.IP [11]
 Paul S. Heckbert,
 “Survey of Texture Mapping”,
 .I
 IEEE Computer Graphics and Applications, Nov. 1986, pp. 56-67
-.IP [11]
+.IP [12]
 Paul S. Heckbert,
 “Fundamentals of Texture Mapping and Image Warping”,
 .I
 University of California, Berkeley, Technical Report No. UCB/CSD-89-516, June 1989
-.IP [12]
+.IP [13]
 Robert L. Cook, Loren Carpenter, Edwin Catmull
 “The REYES Image Rendering Architecture”,
 .I
 ACM Transactions on Computer Graphics, Vol. 21, No. 4, July 1987
-.IP [13]
+.IP [14]
 Bruce J. Lindbloom,
 “Accurate Color Reproduction for Computer Graphics Applications”,
 .I

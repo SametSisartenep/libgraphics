@@ -626,175 +626,268 @@ mark
 (ABSTRACT) 2626 2030 w
 (Libgraphics) 1330 2290 w
 10 /LucidaSansUnicode00 f
-(is) 1930 2290 w
-(a) 2044 2290 w
-(3D) 2133 2290 w
-(computer) 2305 2290 w
-(graphics) 2803 2290 w
-(library) 3251 2290 w
-(that) 3596 2290 w
-(provides) 3822 2290 w
-(a) 4273 2290 w
-(way) 4363 2290 w
-(to) 4582 2290 w
-(set) 1080 2410 w
-(up) 1265 2410 w
-(a) 1431 2410 w
-(scene,) 1527 2410 w
-(fill) 1876 2410 w
-(it) 2041 2410 w
-(up) 2148 2410 w
-(with) 2314 2410 w
-(a) 2560 2410 w
-(bunch) 2656 2410 w
-(of) 2997 2410 w
-(models) 3135 2410 w
-(\(with) 3528 2410 w
-(their) 3806 2410 w
-(own) 4071 2410 w
-(meshes) 4311 2410 w
-(and) 1080 2530 w
-(materials\),) 1303 2530 w
-(lights) 1857 2530 w
-(and) 2170 2530 w
-(cameras,) 2393 2530 w
-(and) 2870 2530 w
-(start) 3093 2530 w
-(taking) 3357 2530 w
-(pictures) 3703 2530 w
-(at) 4136 2530 w
-(the) 4271 2530 w
-(user) 4470 2530 w
-(request.) 1080 2650 w
-(It) 1562 2650 w
-(implements) 1680 2650 w
-(a) 2301 2650 w
-(fully) 2408 2650 w
-(concurrent) 2669 2650 w
-(retained) 3245 2650 w
-(mode) 3696 2650 w
-(software) 4021 2650 w
-(ren\255) 4488 2650 w
-(derer,) 1080 2770 w
-(with) 1418 2770 w
-(support) 1672 2770 w
-(for) 2099 2770 w
-(vertex) 2287 2770 w
-(and) 2639 2770 w
-(fragment/pixel) 2868 2770 w
-(shaders) 3652 2770 w
-(written) 4081 2770 w
-(in) 4470 2770 w
-(C) 4611 2770 w
-(\(not) 1080 2890 w
-(GPU) 1326 2890 w
-(ones,) 1575 2890 w
-(at) 1890 2890 w
-(least) 2035 2890 w
-(for) 2316 2890 w
-(now\),) 2508 2890 w
-(and) 2825 2890 w
-(featuring) 3057 2890 w
-(a) 3550 2890 w
-(z-buffer,) 3657 2890 w
-(front-) 4152 2890 w
-(and) 4500 2890 w
-(back-face) 1080 3010 w
-(culling,) 1598 3010 w
-(textures) 1988 3010 w
-(and) 2424 3010 w
-(skyboxes,) 2639 3010 w
-(directional) 3159 3010 w
-(and) 3707 3010 w
-(punctual) 3922 3010 w
-(lights,) 4378 3010 w
-(tangent-space normal mapping, among other things.) 1080 3130 w
+(is) 1940 2290 w
+(a) 2064 2290 w
+(3D) 2163 2290 w
+(computer) 2345 2290 w
+(graphics) 2853 2290 w
+(library) 3311 2290 w
+(for) 3665 2290 w
+(Plan) 3848 2290 w
+(9.) 4094 2290 w
+(It) 4266 2290 w
+(imple\255) 4377 2290 w
+(ments) 1080 2410 w
+(a) 1433 2410 w
+(fully) 1542 2410 w
+(concurrent) 1805 2410 w
+(retained) 2383 2410 w
+(mode) 2835 2410 w
+(software) 3161 2410 w
+(renderer) 3629 2410 w
+(for) 4098 2410 w
+(polygon) 4290 2410 w
+(rasterization, and supports vertex) 1080 2530 w
+(and) 2764 2530 w
+(pixel) 2977 2530 w
+(shaders) 3248 2530 w
+(written) 3660 2530 w
+(in) 4032 2530 w
+(C) 4156 2530 w
+(\(not) 4258 2530 w
+(GPU) 4484 2530 w
+(ones,) 1080 2650 w
+(at) 1386 2650 w
+(least) 1522 2650 w
+(for) 1794 2650 w
+(now[1]\),) 1977 2650 w
+(a) 2415 2650 w
+(z-buffer,) 2514 2650 w
+(front-) 3001 2650 w
+(and) 3341 2650 w
+(back-face) 3565 2650 w
+(culling,) 4093 2650 w
+(tex\255) 4493 2650 w
+(tures, skyboxes, and directional and punctual lights, among other things.) 1080 2770 w
 10 /LucidaSans-Demi f
-(Introduction) 720 3490 w
+(Introduction) 720 3130 w
 10 /LucidaSansUnicode00 f
-(Write the intro last.) 970 3682 w
+(Write the intro last.) 970 3322 w
 10 /LucidaSans-Demi f
-(1.) 720 3922 w
-(The scene) 873 3922 w
+(1.) 720 3562 w
+(The scene) 873 3562 w
 9 /LucidaTypewriter f
-(struct) 920 4128 w
-(Scene) 1375 4128 w
-({) 920 4238 w
-(char) 1440 4348 w
-(*name;) 1765 4348 w
-(Entity) 1440 4458 w
-(ents;) 1895 4458 w
-(ulong) 1440 4568 w
-(nents;) 1830 4568 w
-(Cubemap) 1440 4678 w
-(*skybox;) 1960 4678 w
-(void) 1440 4898 w
-(\(*addent\)\(Scene*,) 1765 4898 w
-(Entity*\);) 2935 4898 w
-(void) 1440 5008 w
-(\(*delent\)\(Scene*,) 1765 5008 w
-(Entity*\);) 2935 5008 w
-(};) 920 5118 w
+(struct) 920 3768 w
+(Scene) 1375 3768 w
+({) 920 3878 w
+(char) 1440 3988 w
+(*name;) 1765 3988 w
+(Entity) 1440 4098 w
+(ents;) 1895 4098 w
+(ulong) 1440 4208 w
+(nents;) 1830 4208 w
+(LightSource) 1440 4318 w
+(lights;) 2220 4318 w
+(ulong) 1440 4428 w
+(nlights;) 1830 4428 w
+(Cubemap) 1440 4538 w
+(*skybox;) 1960 4538 w
+(void) 1440 4758 w
+(\(*addent\)\(Scene*,) 1765 4758 w
+(Entity*\);) 2935 4758 w
+(void) 1440 4868 w
+(\(*delent\)\(Scene*,) 1765 4868 w
+(Entity*\);) 2935 4868 w
+(Entity) 1440 4978 w
+(*\(*getent\)\(Scene*,) 1895 4978 w
+(char*\);) 3130 4978 w
+(};) 920 5088 w
 10 /LucidaSansUnicode00 f
-(A) 970 5334 w
+(A) 970 5304 w
 10 /LucidaSans-Italic f
-(scene) 1073 5334 w
+(scene) 1073 5304 w
 10 /LucidaSansUnicode00 f
-(is) 1374 5334 w
-(a) 1488 5334 w
-(container,) 1577 5334 w
-(represented) 2097 5334 w
-(as) 2713 5334 w
-(a) 2853 5334 w
-(graph,) 2942 5334 w
-(that) 3291 5334 w
-(hosts) 3516 5334 w
-(the) 3812 5334 w
-(entities) 4001 5334 w
-(that) 4392 5334 w
-(make) 4618 5334 w
-(up) 4915 5334 w
-(the) 720 5454 w
-(world.) 913 5454 w
-(Each) 1286 5454 w
-(of) 1545 5454 w
-(these) 1680 5454 w
-(entities) 1979 5454 w
-(has) 2373 5454 w
-(a) 2578 5454 w
-(model) 2670 5454 w
-(made) 3009 5454 w
-(out) 3313 5454 w
-(of) 3510 5454 w
-(a) 3645 5454 w
-(series) 3737 5454 w
-(of) 4058 5454 w
-(meshes,) 4193 5454 w
-(which) 4631 5454 w
-(in) 4949 5454 w
-(turn) 720 5574 w
-(are) 977 5574 w
-(made) 1184 5574 w
-(out) 1506 5574 w
-(of) 1721 5574 w
-(geometric) 1874 5574 w
-(primitives) 2415 5574 w
-(\(only) 2950 5574 w
-10 /LucidaSans-Italic f
-(points) 3242 5574 w
+(is) 1374 5304 w
+(a) 1488 5304 w
+(container,) 1577 5304 w
+(represented) 2097 5304 w
+(as) 2713 5304 w
+(a) 2853 5304 w
+(graph,) 2942 5304 w
+(that) 3291 5304 w
+(hosts) 3516 5304 w
+(the) 3812 5304 w
+(entities) 4001 5304 w
+(that) 4392 5304 w
+(make) 4618 5304 w
+(up) 4915 5304 w
+(the world, as well as properties of it such as lighting and the skybox.) 720 5424 w
+2700 5712 360 180 De
+7 /LucidaSansUnicode00 f
+(Scene) 2783 5726 w
+2880 5802 2880 5946 Dl
+2880 5946 2880 6090 Dl
+2880 6090 2808 6090 Dl
+2448 6162 2448 6018 Dl
+2448 6018 2808 6018 Dl
+2808 6018 2808 6162 Dl
+2808 6162 2448 6162 Dl
+(Light) 2511 6104 w
+(0) 2702 6104 w
+2448 6090 2376 6090 Dl
+2016 6162 2052 6162 Dl
+2096 6162 2132 6162 Dl
+2178 6162 2214 6162 Dl
+2258 6162 2294 6162 Dl
+2340 6162 2376 6162 Dl
+2376 6162 2376 6126 Dl
+2376 6108 2376 6072 Dl
+2376 6054 2376 6018 Dl
+2376 6018 2340 6018 Dl
+2294 6018 2258 6018 Dl
+2214 6018 2178 6018 Dl
+2132 6018 2096 6018 Dl
+2052 6018 2016 6018 Dl
+2016 6018 2016 6054 Dl
+2016 6072 2016 6108 Dl
+2016 6126 2016 6162 Dl
+(Light) 2079 6104 w
+(1) 2270 6104 w
+2016 6090 1944 6090 Dl
+1584 6162 1620 6162 Dl
+1664 6162 1700 6162 Dl
+1746 6162 1782 6162 Dl
+1826 6162 1862 6162 Dl
+1908 6162 1944 6162 Dl
+1944 6162 1944 6126 Dl
+1944 6108 1944 6072 Dl
+1944 6054 1944 6018 Dl
+1944 6018 1908 6018 Dl
+1863 6018 1827 6018 Dl
+1782 6018 1746 6018 Dl
+1701 6018 1665 6018 Dl
+1620 6018 1584 6018 Dl
+1584 6018 1584 6054 Dl
+1584 6072 1584 6108 Dl
+1584 6126 1584 6162 Dl
+(...) 1731 6104 w
+2808 6090 2880 6090 Dl
+2880 6090 2880 6176 Dl
+2880 6176 2880 6262 Dl
+2880 6262 2808 6262 Dl
+2448 6334 2448 6190 Dl
+2448 6190 2808 6190 Dl
+2808 6190 2808 6334 Dl
+2808 6334 2448 6334 Dl
+(Skybox) 2506 6276 w
+2880 5946 2952 5946 Dl
+2952 6018 2952 5874 Dl
+2952 5874 3312 5874 Dl
+3312 5874 3312 6018 Dl
+3312 6018 2952 6018 Dl
+(Entity 0) 3005 5960 w
+3312 5946 3348 5946 Dl
+3348 5946 3384 5946 Dl
+3384 6018 3420 6018 Dl
+3464 6018 3500 6018 Dl
+3546 6018 3582 6018 Dl
+3626 6018 3662 6018 Dl
+3708 6018 3744 6018 Dl
+3744 6018 3744 5982 Dl
+3744 5964 3744 5928 Dl
+3744 5910 3744 5874 Dl
+3744 5874 3708 5874 Dl
+3663 5874 3627 5874 Dl
+3582 5874 3546 5874 Dl
+3501 5874 3465 5874 Dl
+3420 5874 3384 5874 Dl
+3384 5874 3384 5910 Dl
+3384 5928 3384 5964 Dl
+3384 5982 3384 6018 Dl
+(Entity 1) 3437 5960 w
+3744 5946 3780 5946 Dl
+3780 5946 3816 5946 Dl
+3816 6018 3852 6018 Dl
+3896 6018 3932 6018 Dl
+3978 6018 4014 6018 Dl
+4058 6018 4094 6018 Dl
+4140 6018 4176 6018 Dl
+4176 6018 4176 5982 Dl
+4176 5964 4176 5928 Dl
+4176 5910 4176 5874 Dl
+4176 5874 4140 5874 Dl
+4094 5874 4058 5874 Dl
+4014 5874 3978 5874 Dl
+3932 5874 3896 5874 Dl
+3852 5874 3816 5874 Dl
+3816 5874 3816 5910 Dl
+3816 5928 3816 5964 Dl
+3816 5982 3816 6018 Dl
+(...) 3963 5960 w
+3132 6018 3132 6162 Dl
+3132 6162 3204 6162 Dl
+3204 6234 3204 6090 Dl
+3204 6090 3564 6090 Dl
+3564 6090 3564 6234 Dl
+3564 6234 3204 6234 Dl
+(Model) 3281 6176 w
+3384 6234 3384 6378 Dl
+3384 6378 3456 6378 Dl
+4 /LucidaSansUnicode00 f
+(.) 3449 6452 w
+(.) 3485 6452 w
+(.) 3521 6452 w
+(.) 3557 6452 w
+(.) 3593 6452 w
+(.) 3629 6452 w
+(.) 3665 6452 w
+(.) 3701 6452 w
+(.) 3737 6452 w
+(.) 3773 6452 w
+(.) 3809 6452 w
+(.) 3809 6452 w
+(.) 3809 6416 w
+(.) 3809 6380 w
+(.) 3809 6344 w
+(.) 3809 6308 w
+(.) 3809 6308 w
+(.) 3773 6308 w
+(.) 3737 6308 w
+(.) 3701 6308 w
+(.) 3665 6308 w
+(.) 3629 6308 w
+(.) 3593 6308 w
+(.) 3557 6308 w
+(.) 3521 6308 w
+(.) 3485 6308 w
+(.) 3449 6308 w
+(.) 3449 6308 w
+(.) 3449 6344 w
+(.) 3449 6380 w
+(.) 3449 6416 w
+(.) 3449 6452 w
+7 /LucidaSansUnicode00 f
+(Mesh) 3547 6392 w
+3636 6450 3636 6594 Dl
+3636 6594 3708 6594 Dl
+3708 6666 3708 6522 Dl
+3708 6522 4068 6522 Dl
+4068 6522 4068 6666 Dl
+4068 6666 3708 6666 Dl
+(Primitive) 3741 6608 w
+3636 6594 3636 6680 Dl
+3636 6680 3636 6766 Dl
+3636 6766 3708 6766 Dl
+3708 6838 3708 6694 Dl
+3708 6694 4068 6694 Dl
+4068 6694 4068 6838 Dl
+4068 6838 3708 6838 Dl
+(Material) 3752 6780 w
+10 /LucidaSans-Demi f
+(Figure 1) 2219 7036 w
 10 /LucidaSansUnicode00 f
-(,) 3538 5574 w
-10 /LucidaSans-Italic f
-(lines) 3625 5574 w
-10 /LucidaSansUnicode00 f
-(and) 3902 5574 w
-10 /LucidaSans-Italic f
-(triangles) 4137 5574 w
-10 /LucidaSansUnicode00 f
-(are) 4623 5574 w
-(sup\255) 4831 5574 w
-(ported.\) Each model also stores a list of materials.) 720 5694 w
-(September 9, 2024) 2415 7680 w
+(: The scene graph.) 2641 7036 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -805,129 +898,182 @@ mark
 2 pagesetup
 10 /LucidaSansUnicode00 f
 (\255 2 \255) 2783 480 w
-2196 1026 2196 882 Dl
-2196 882 2556 882 Dl
-2556 882 2556 1026 Dl
-2556 1026 2196 1026 Dl
-7 /LucidaSansUnicode00 f
-(Scene) 2279 968 w
-2376 1026 2376 1170 Dl
-2376 1170 2448 1170 Dl
-2448 1242 2448 1098 Dl
-2448 1098 2808 1098 Dl
-2808 1098 2808 1242 Dl
-2808 1242 2448 1242 Dl
-(Entity) 2534 1184 w
-2628 1242 2628 1386 Dl
-2628 1386 2700 1386 Dl
-2700 1458 2700 1314 Dl
-2700 1314 3060 1314 Dl
-3060 1314 3060 1458 Dl
-3060 1458 2700 1458 Dl
-(Model) 2777 1400 w
-2880 1458 2880 1602 Dl
-2880 1602 2952 1602 Dl
-2952 1674 2988 1674 Dl
-3033 1674 3069 1674 Dl
-3114 1674 3150 1674 Dl
-3195 1674 3231 1674 Dl
-3276 1674 3312 1674 Dl
-3312 1674 3312 1638 Dl
-3312 1620 3312 1584 Dl
-3312 1566 3312 1530 Dl
-3312 1530 3276 1530 Dl
-3231 1530 3195 1530 Dl
-3150 1530 3114 1530 Dl
-3069 1530 3033 1530 Dl
-2988 1530 2952 1530 Dl
-2952 1530 2952 1566 Dl
-2952 1584 2952 1620 Dl
-2952 1638 2952 1674 Dl
-(Mesh) 3043 1616 w
-3132 1674 3132 1818 Dl
-3132 1818 3204 1818 Dl
-3204 1890 3204 1746 Dl
-3204 1746 3564 1746 Dl
-3564 1746 3564 1890 Dl
-3564 1890 3204 1890 Dl
-(Primitive) 3237 1832 w
-3132 1818 3132 1962 Dl
-3132 1962 3132 2106 Dl
-3132 2106 3204 2106 Dl
-3204 2178 3204 2034 Dl
-3204 2034 3564 2034 Dl
-3564 2034 3564 2178 Dl
-3564 2178 3204 2178 Dl
-(Material) 3248 2120 w
 10 /LucidaSans-Demi f
-(Figure 1) 2219 2376 w
-10 /LucidaSansUnicode00 f
-(: The scene graph.) 2641 2376 w
-10 /LucidaSans-Demi f
-(1.1.) 720 2616 w
-(Entities) 962 2616 w
+(1.1.) 720 840 w
+(Entities) 962 840 w
 9 /LucidaTypewriter f
-(struct) 920 2822 w
-(Entity) 1375 2822 w
-({) 920 2932 w
-(RFrame3;) 1440 3042 w
-(char) 1440 3152 w
-(*name;) 1765 3152 w
-(Model) 1440 3262 w
-(*mdl;) 1830 3262 w
-(Entity) 1440 3482 w
-(*prev,) 1895 3482 w
-(*next;) 2350 3482 w
-(};) 920 3592 w
+(struct) 920 1046 w
+(Entity) 1375 1046 w
+({) 920 1156 w
+(RFrame3;) 1440 1266 w
+(char) 1440 1376 w
+(*name;) 1765 1376 w
+(Model) 1440 1486 w
+(*mdl;) 1830 1486 w
+(Entity) 1440 1706 w
+(*prev,) 1895 1706 w
+(*next;) 2350 1706 w
+(};) 920 1816 w
 10 /LucidaSans-Italic f
-(Entities) 970 3808 w
+(Entities) 970 2032 w
 10 /LucidaSansUnicode00 f
-(represent physical objects in the scene.) 1355 3808 w
+(represent) 1358 2032 w
+(visible) 1856 2032 w
+(physical) 2200 2032 w
+(objects) 2627 2032 w
+(in) 3011 2032 w
+(the) 3137 2032 w
+(scene.) 3327 2032 w
+(Each) 3702 2032 w
+(of) 3959 2032 w
+(these) 4092 2032 w
+(entities) 4389 2032 w
+(has) 4781 2032 w
+(a) 4985 2032 w
+(frame) 720 2152 w
+(of) 1046 2152 w
+(reference) 1188 2152 w
+(to) 1688 2152 w
+(locate) 1830 2152 w
+(and) 2163 2152 w
+(orient) 2387 2152 w
+(it) 2717 2152 w
+(in) 2827 2152 w
+(the) 2961 2152 w
+(world,) 3159 2152 w
+(a) 3505 2152 w
+(unique) 3603 2152 w
+(name) 3980 2152 w
+(and) 4289 2152 w
+(a) 4512 2152 w
+(localized) 4610 2152 w
+(model that encodes its physical properties.) 720 2272 w
 10 /LucidaSans-Demi f
-(1.2.) 720 4048 w
-(Models) 962 4048 w
+(1.2.) 720 2512 w
+(Models) 962 2512 w
 9 /LucidaTypewriter f
-(struct) 920 4254 w
-(Model) 1375 4254 w
-({) 920 4364 w
-(Primitive) 1440 4474 w
-(*prims;) 2090 4474 w
-(ulong) 1440 4584 w
-(nprims;) 1830 4584 w
-(Material) 1440 4694 w
-(*materials;) 2025 4694 w
-(ulong) 1440 4804 w
-(nmaterials;) 1830 4804 w
-(};) 920 4914 w
-10 /LucidaSans-Demi f
-(1.3.) 720 5214 w
-(Meshes) 962 5214 w
-(1.4.) 720 5454 w
-(Primitives) 962 5454 w
-9 /LucidaTypewriter f
-(struct) 920 5660 w
-(Primitive) 1375 5660 w
-({) 920 5770 w
-(int) 1440 5880 w
-(type;) 1700 5880 w
-(Vertex) 1440 5990 w
-(v[3];) 1895 5990 w
-(Material) 1440 6100 w
-(*mtl;) 2025 6100 w
-(Point3) 1440 6210 w
-(tangent;) 1895 6210 w
-(/*) 2480 6210 w
-(used) 2675 6210 w
-(for) 3000 6210 w
-(normal) 3260 6210 w
-(mapping) 3715 6210 w
-(*/) 4235 6210 w
-(};) 920 6320 w
-10 /LucidaSans-Demi f
-(1.5.) 720 6620 w
-(Materials) 962 6620 w
+(struct) 920 2718 w
+(Model) 1375 2718 w
+({) 920 2828 w
+(Primitive) 1440 2938 w
+(*prims;) 2090 2938 w
+(ulong) 1440 3048 w
+(nprims;) 1830 3048 w
+(Material) 1440 3158 w
+(*materials;) 2025 3158 w
+(ulong) 1440 3268 w
+(nmaterials;) 1830 3268 w
+(int) 1440 3488 w
+(\(*addprim\)\(Model*,) 1700 3488 w
+(Primitive\);) 2935 3488 w
+(int) 1440 3598 w
+(\(*addmaterial\)\(Model*,) 1700 3598 w
+(Material\);) 3195 3598 w
+(};) 920 3708 w
 10 /LucidaSansUnicode00 f
-(September 9, 2024) 2415 7680 w
+(A) 970 3924 w
+(model) 1078 3924 w
+(contains) 1420 3924 w
+(the) 1868 3924 w
+(geometric) 2063 3924 w
+(and) 2589 3924 w
+(material) 2809 3924 w
+(properties) 3244 3924 w
+(of) 3782 3924 w
+(an) 3920 3924 w
+10 /LucidaSans-Italic f
+(Entity) 4077 3924 w
+10 /LucidaSansUnicode00 f
+(.) 4354 3924 w
+(The) 4458 3924 w
+(geome\255) 4679 3924 w
+(try) 720 4044 w
+(is) 888 4044 w
+(encoded) 1006 4044 w
+(as) 1456 4044 w
+(a) 1599 4044 w
+(list) 1691 4044 w
+(of) 1874 4044 w
+(primitives,) 2009 4044 w
+(which) 2558 4044 w
+(in) 2876 4044 w
+(turn) 3004 4044 w
+(refer) 3243 4044 w
+(to) 3511 4044 w
+(any) 3646 4044 w
+(out) 3852 4044 w
+(of) 4049 4044 w
+(a) 4184 4044 w
+(list) 4276 4044 w
+(of) 4459 4044 w
+(materials) 4594 4044 w
+(that encode the visual parameters that determine its appearance.) 720 4164 w
+10 /LucidaSans-Demi f
+(1.3.) 720 4404 w
+(Meshes) 962 4404 w
+10 /LucidaSansUnicode00 f
+(Meshes) 970 4560 w
+(are) 1367 4560 w
+(not) 1554 4560 w
+(implemented) 1749 4560 w
+(yet,) 2421 4560 w
+(but) 2633 4560 w
+(the) 2830 4560 w
+(idea) 3020 4560 w
+(is) 3258 4560 w
+(for) 3373 4560 w
+(them) 3547 4560 w
+(to) 3831 4560 w
+(provide) 3965 4560 w
+(a) 4366 4560 w
+(hierarchy) 4457 4560 w
+(of) 4942 4560 w
+(primitives) 720 4680 w
+(with) 1234 4680 w
+(which) 1472 4680 w
+(to) 1786 4680 w
+(apply) 1917 4680 w
+(optimizations) 2212 4680 w
+(\(for) 2909 4680 w
+(storage,) 3114 4680 w
+(visibility) 3542 4680 w
+(determination,) 3975 4680 w
+(maybe) 4721 4680 w
+(others.\)) 720 4800 w
+10 /LucidaSans-Demi f
+(1.4.) 720 5040 w
+(Primitives) 962 5040 w
+9 /LucidaTypewriter f
+(struct) 920 5246 w
+(Primitive) 1375 5246 w
+({) 920 5356 w
+(int) 1440 5466 w
+(type;) 1700 5466 w
+(Vertex) 1440 5576 w
+(v[3];) 1895 5576 w
+(Material) 1440 5686 w
+(*mtl;) 2025 5686 w
+(Point3) 1440 5796 w
+(tangent;) 1895 5796 w
+(};) 920 5906 w
+10 /LucidaSansUnicode00 f
+(Primitives) 970 6122 w
+(are) 1488 6122 w
+(geometric) 1686 6122 w
+(building) 2218 6122 w
+(blocks,) 2663 6122 w
+(namely) 3054 6122 w
+(points,) 3447 6122 w
+(lines) 3828 6122 w
+(and) 4101 6122 w
+(triangles.) 4327 6122 w
+(The) 4859 6122 w
+(tangent is used in triangles for warp-safe normal mapping.) 720 6242 w
+10 /LucidaSans-Demi f
+(1.5.) 720 6482 w
+(Materials) 962 6482 w
+10 /LucidaSansUnicode00 f
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -955,200 +1101,215 @@ mark
 (Texture) 1440 1600 w
 (*diffusemap;) 1960 1600 w
 (Texture) 1440 1710 w
-(*normalmap;) 1960 1710 w
-(};) 920 1820 w
+(*specularmap;) 1960 1710 w
+(Texture) 1440 1820 w
+(*normalmap;) 1960 1820 w
+(};) 920 1930 w
+10 /LucidaSansUnicode00 f
+(A material defines the optical characteristics of a surface.) 970 2146 w
 10 /LucidaSans-Demi f
-(2.) 720 2120 w
-(Cameras) 873 2120 w
+(2.) 720 2386 w
+(Cameras) 873 2386 w
 9 /LucidaTypewriter f
-(struct) 920 2326 w
-(Camera) 1375 2326 w
-({) 920 2436 w
-(RFrame3;) 1440 2546 w
-(/*) 3000 2546 w
-(VCS) 3195 2546 w
-(*/) 3455 2546 w
-(Viewport) 1440 2656 w
-(*view;) 2025 2656 w
-(Scene) 1440 2766 w
-(*scene;) 1830 2766 w
-(Renderer) 1440 2876 w
-(*rctl;) 2025 2876 w
-(double) 1440 2986 w
-(fov;) 1895 2986 w
-(/*) 3000 2986 w
-(vertical) 3195 2986 w
-(FOV) 3780 2986 w
-(*/) 4040 2986 w
-(struct) 1440 3096 w
-({) 1895 3096 w
-(double) 1960 3206 w
-(n,) 2415 3206 w
-(f;) 2610 3206 w
-(/*) 3000 3206 w
-(near) 3195 3206 w
-(and) 3520 3206 w
-(far) 3780 3206 w
-(clipping) 4040 3206 w
-(planes) 4625 3206 w
-(*/) 5080 3206 w
-(}) 1440 3316 w
-(clip;) 1570 3316 w
-(Matrix3) 1440 3426 w
-(proj;) 1960 3426 w
-(/*) 3000 3426 w
-(VCS) 3195 3426 w
-(to) 3455 3426 w
-(clip) 3650 3426 w
-(space) 3975 3426 w
-(xform) 4365 3426 w
-(*/) 4755 3426 w
-(Projection) 1440 3536 w
-(projtype;) 2155 3536 w
-(ulong) 1440 3646 w
-(clearcolor;) 1830 3646 w
-(int) 1440 3756 w
-(cullmode;) 1700 3756 w
-(int) 1440 3866 w
-(enableblend;) 1700 3866 w
-(int) 1440 3976 w
-(enabledepth;) 1700 3976 w
-(int) 1440 4086 w
-(enableAbuff;) 1700 4086 w
-(};) 920 4196 w
+(struct) 920 2592 w
+(Camera) 1375 2592 w
+({) 920 2702 w
+(RFrame3;) 1440 2812 w
+(/*) 3000 2812 w
+(VCS) 3195 2812 w
+(*/) 3455 2812 w
+(Viewport) 1440 2922 w
+(*view;) 2025 2922 w
+(Scene) 1440 3032 w
+(*scene;) 1830 3032 w
+(Renderer) 1440 3142 w
+(*rctl;) 2025 3142 w
+(double) 1440 3252 w
+(fov;) 1895 3252 w
+(/*) 3000 3252 w
+(vertical) 3195 3252 w
+(FOV) 3780 3252 w
+(*/) 4040 3252 w
+(struct) 1440 3362 w
+({) 1895 3362 w
+(double) 1960 3472 w
+(n,) 2415 3472 w
+(f;) 2610 3472 w
+(/*) 3000 3472 w
+(near) 3195 3472 w
+(and) 3520 3472 w
+(far) 3780 3472 w
+(clipping) 4040 3472 w
+(planes) 4625 3472 w
+(*/) 5080 3472 w
+(}) 1440 3582 w
+(clip;) 1570 3582 w
+(Matrix3) 1440 3692 w
+(proj;) 1960 3692 w
+(/*) 3000 3692 w
+(VCS) 3195 3692 w
+(to) 3455 3692 w
+(clip) 3650 3692 w
+(space) 3975 3692 w
+(xform) 4365 3692 w
+(*/) 4755 3692 w
+(Projection) 1440 3802 w
+(projtype;) 2155 3802 w
+(ulong) 1440 3912 w
+(clearcolor;) 1830 3912 w
+(int) 1440 4022 w
+(cullmode;) 1700 4022 w
+(int) 1440 4132 w
+(enableblend;) 1700 4132 w
+(int) 1440 4242 w
+(enabledepth;) 1700 4242 w
+(int) 1440 4352 w
+(enableAbuff;) 1700 4352 w
+(};) 920 4462 w
 10 /LucidaSans-Demi f
-(3.) 720 4496 w
-(The renderer) 873 4496 w
+(3.) 720 4762 w
+(The renderer) 873 4762 w
 10 /LucidaSansUnicode00 f
-(The) 720 4652 w
+(The) 720 4918 w
 10 /LucidaSans-Italic f
-(renderer) 938 4652 w
+(renderer) 938 4918 w
 10 /LucidaSansUnicode00 f
-(is) 1401 4652 w
-(the) 1518 4652 w
-(core) 1710 4652 w
-(of) 1956 4652 w
-(the) 2091 4652 w
-(library.) 2283 4652 w
-(It) 2662 4652 w
-(follows) 2766 4652 w
-(a) 3149 4652 w
+(is) 1401 4918 w
+(the) 1518 4918 w
+(core) 1710 4918 w
+(of) 1956 4918 w
+(the) 2091 4918 w
+(library.) 2283 4918 w
+(It) 2662 4918 w
+(follows) 2766 4918 w
+(a) 3149 4918 w
 10 /LucidaSans-Demi f
-(retained) 3242 4652 w
-(mode) 3708 4652 w
+(retained) 3242 4918 w
+(mode) 3708 4918 w
 10 /LucidaSansUnicode00 f
-(model,) 4032 4652 w
-(which) 4404 4652 w
-(means) 4723 4652 w
-(that) 720 4772 w
-(the) 955 4772 w
-(user) 1154 4772 w
-(won) 1408 4772 w
+(model,) 4032 4918 w
+(which) 4404 4918 w
+(means) 4723 4918 w
+(that) 720 5038 w
+(the) 955 5038 w
+(user) 1154 5038 w
+(won) 1408 5038 w
 10 /LucidaSansUnicode20 f
-(\031) 1608 4772 w
+(\031) 1608 5038 w
 10 /LucidaSansUnicode00 f
-(t) 1640 4772 w
-(get) 1721 4772 w
-(a) 1920 4772 w
-(picture) 2019 4772 w
-(until) 2402 4772 w
-(the) 2665 4772 w
-(entire) 2864 4772 w
-(scene) 3189 4772 w
-(has) 3509 4772 w
-(been) 3721 4772 w
-(rendered.) 4002 4772 w
-(Thanks) 4548 4772 w
-(to) 4942 4772 w
-(this) 720 4892 w
-(we) 939 4892 w
-(can) 1112 4892 w
-(apply) 1320 4892 w
-(optimizations) 1622 4892 w
-(to) 2326 4892 w
-(make) 2465 4892 w
-(better) 2768 4892 w
-(use) 3099 4892 w
-(of) 3309 4892 w
-(the) 3448 4892 w
-(pipeline,) 3644 4892 w
-(clear) 4104 4892 w
-(and) 4377 4892 w
-(swap) 4598 4892 w
-(the) 4885 4892 w
-(framebuffers,) 720 5012 w
-(and) 1419 5012 w
+(t) 1640 5038 w
+(get) 1721 5038 w
+(a) 1920 5038 w
+(picture) 2019 5038 w
+(until) 2402 5038 w
+(the) 2665 5038 w
+(entire) 2864 5038 w
+(scene) 3189 5038 w
+(has) 3509 5038 w
+(been) 3721 5038 w
+(rendered.) 4002 5038 w
+(Thanks) 4548 5038 w
+(to) 4942 5038 w
+(this) 720 5158 w
+(we) 939 5158 w
+(can) 1112 5158 w
+(apply) 1320 5158 w
+(optimizations) 1622 5158 w
+(to) 2326 5158 w
+(make) 2465 5158 w
+(better) 2768 5158 w
+(use) 3099 5158 w
+(of) 3309 5158 w
+(the) 3448 5158 w
+(pipeline,) 3644 5158 w
+(clear) 4104 5158 w
+(and) 4377 5158 w
+(swap) 4598 5158 w
+(the) 4885 5158 w
+(framebuffers,) 720 5278 w
+(and) 1424 5278 w
 10 /LucidaSansUnicode20 f
-(\024) 1599 5012 w
+(\024) 1604 5278 w
 10 /LucidaSansUnicode00 f
-(in) 1699 5012 w
-(the) 1828 5012 w
-(future) 2020 5012 w
+(in) 1704 5278 w
+(the) 1838 5278 w
+(future) 2036 5278 w
 10 /LucidaSansUnicode20 f
-(\024) 2315 5012 w
+(\024) 2331 5278 w
 10 /LucidaSansUnicode00 f
-(run) 2415 5012 w
-(distributed) 2617 5012 w
-(rendering) 3185 5012 w
-(jobs,) 3694 5012 w
-(all) 3968 5012 w
-(without) 4118 5012 w
-(their) 4520 5012 w
-(inter\255) 4782 5012 w
-(vention; they only need to concern themselves with shooting and ) 720 5132 w
+(run) 2431 5278 w
+(distributed) 2639 5278 w
+(rendering) 3213 5278 w
+(jobs,) 3728 5278 w
+(all) 4008 5278 w
+(without) 4164 5278 w
+(any) 4571 5278 w
+(inter\255) 4782 5278 w
+(vention;) 720 5398 w
+(users) 1152 5398 w
+(only) 1454 5398 w
+(need) 1699 5398 w
+(to) 1977 5398 w
+(concern) 2116 5398 w
+(themselves) 2541 5398 w
+(with) 3126 5398 w
+(shooting) 3373 5398 w
+(and) 3840 5398 w
 10 /LucidaSansUnicode20 f
-(\034) 3914 5132 w
+(\034) 4062 5398 w
 10 /LucidaSansUnicode00 f
-(developing) 3951 5132 w
+(developing) 4099 5398 w
 10 /LucidaSansUnicode20 f
-(\035) 4484 5132 w
+(\035) 4632 5398 w
 10 /LucidaSansUnicode00 f
-(a camera.) 4553 5132 w
-(It) 720 5288 w
+(a) 4711 5398 w
+(cam\255) 4808 5398 w
+(era.) 720 5518 w
+(It) 720 5674 w
 10 /LucidaSansUnicode20 f
-(\031) 786 5288 w
+(\031) 786 5674 w
 10 /LucidaSansUnicode00 f
-(s) 818 5288 w
-(implemented) 974 5288 w
-(as) 1716 5288 w
-(a) 1927 5288 w
-(tree) 2087 5288 w
-(of) 2382 5288 w
-(concurrent) 2585 5288 w
-(processes) 3214 5288 w
-(connected) 3800 5288 w
-(by) 4404 5288 w
-(buffered) 4625 5288 w
+(s) 818 5674 w
+(implemented) 974 5674 w
+(as) 1716 5674 w
+(a) 1927 5674 w
+(tree) 2087 5674 w
+(of) 2382 5674 w
+(concurrent) 2585 5674 w
+(processes) 3214 5674 w
+(connected) 3800 5674 w
+(by) 4404 5674 w
+(buffered) 4625 5674 w
 10 /LucidaTypewriter f
-(Channel) 720 5408 w
+(Channel) 720 5794 w
 10 /LucidaSansUnicode00 f
-(s) 1224 5408 w
+(s) 1224 5794 w
 10 /LucidaSansUnicode20 f
-(\024) 1275 5408 w
+(\024) 1275 5794 w
 10 /LucidaSansUnicode00 f
-(as) 1375 5408 w
-(seen) 1520 5408 w
-(in) 1784 5408 w
+(as) 1375 5794 w
+(seen) 1520 5794 w
+(in) 1784 5794 w
 10 /LucidaSans-Demi f
-(Figure) 1914 5408 w
-(2) 2278 5408 w
+(Figure) 1914 5794 w
+(2) 2278 5794 w
 10 /LucidaSansUnicode20 f
-(\024) 2342 5408 w
+(\024) 2342 5794 w
 10 /LucidaSansUnicode00 f
-(,) 2442 5408 w
-(spawned) 2512 5408 w
-(with) 2977 5408 w
-(a) 3220 5408 w
-(call) 3313 5408 w
-(to) 3515 5408 w
+(,) 2442 5794 w
+(spawned) 2512 5794 w
+(with) 2977 5794 w
+(a) 3220 5794 w
+(call) 3313 5794 w
+(to) 3515 5794 w
 10 /LucidaTypewriter f
-(initgraphics) 3651 5408 w
+(initgraphics) 3651 5794 w
 10 /LucidaSansUnicode00 f
-(,) 4515 5408 w
-(each) 4585 5408 w
-(rep\255) 4847 5408 w
-(resenting a stage of the pipeline:) 720 5528 w
-(September 9, 2024) 2415 7680 w
+(,) 4515 5794 w
+(each) 4585 5794 w
+(rep\255) 4847 5794 w
+(resenting a stage of the pipeline:) 720 5914 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -1381,24 +1542,26 @@ mark
 (a) 4598 3540 w
 (camera) 4689 3540 w
 (and) 720 3660 w
-(a) 936 3660 w
-(shader) 1027 3660 w
-(table.) 1391 3660 w
-(It) 1731 3660 w
-(walks) 1833 3660 w
-(the) 2139 3660 w
-(scene) 2330 3660 w
-(and) 2642 3660 w
-(sends) 2858 3660 w
-(each) 3177 3660 w
+(a) 954 3660 w
+(shader) 1063 3660 w
+(table.) 1445 3660 w
+(It) 1803 3660 w
+(walks) 1923 3660 w
+(the) 2247 3660 w
+(scene) 2456 3660 w
+(and) 2786 3660 w
+(sends) 3020 3660 w
+(each) 3357 3660 w
 10 /LucidaTypewriter f
-(Entity) 3437 3660 w
+(Entity) 3636 3660 w
 10 /LucidaSansUnicode00 f
-(individually) 3905 3660 w
-(to) 4496 3660 w
-(the) 4631 3660 w
-(enti\255) 4823 3660 w
-(typroc.) 720 3780 w
+(individually) 4123 3660 w
+(to) 4732 3660 w
+(the) 4885 3660 w
+10 /LucidaSans-Demi f
+(entityproc) 720 3780 w
+10 /LucidaSansUnicode00 f
+(.) 1246 3780 w
 10 /LucidaSans-Demi f
 (3.2.) 720 4020 w
 (entityproc) 962 4020 w
@@ -1417,7 +1580,10 @@ mark
 (equitatively) 3899 4176 w
 (among) 4504 4176 w
 (the) 4885 4176 w
-(tilers, sending a batch for each of them to process.) 720 4296 w
+10 /LucidaSans-Demi f
+(tiler) 720 4296 w
+10 /LucidaSansUnicode00 f
+(s, sending a batch for each of them to process.) 931 4296 w
 10 /LucidaSans-Demi f
 (3.3.) 720 4536 w
 (tilers) 962 4536 w
@@ -1521,27 +1687,30 @@ mark
 (by) 4711 5292 w
 (one) 4861 5292 w
 (of) 720 5412 w
-(the) 859 5412 w
-(rasterizers;) 1055 5412 w
-(as) 1643 5412 w
-(illustrated) 1790 5412 w
-(in) 2320 5412 w
+(the) 857 5412 w
 10 /LucidaSans-Demi f
-(Figure) 2452 5412 w
-(4) 2819 5412 w
+(rasterizer) 1051 5412 w
 10 /LucidaSansUnicode00 f
-(.) 2883 5412 w
-(If) 2988 5412 w
-(it) 3095 5412 w
-(spans) 3202 5412 w
-(multiple) 3526 5412 w
-(tiles,) 3966 5412 w
-(it) 4242 5412 w
-(will) 4350 5412 w
-(be) 4556 5412 w
+(s;) 1553 5412 w
+(as) 1675 5412 w
+(illustrated) 1820 5412 w
+(in) 2348 5412 w
+10 /LucidaSans-Demi f
+(Figure) 2478 5412 w
+(4) 2843 5412 w
+10 /LucidaSansUnicode00 f
+(.) 2907 5412 w
+(If) 3010 5412 w
+(it) 3115 5412 w
+(spans) 3220 5412 w
+(multiple) 3541 5412 w
+(tiles,) 3978 5412 w
+(it) 4251 5412 w
+(will) 4356 5412 w
+(be) 4559 5412 w
 (copied) 4717 5412 w
 (and sent to each of them.) 720 5532 w
-(September 9, 2024) 2415 7680 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -2033,7 +2202,7 @@ mark
 (Figure 4) 2073 7032 w
 10 /LucidaSansUnicode00 f
 (: Raster task scheduling.) 2495 7032 w
-(September 9, 2024) 2415 7680 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -2171,34 +2340,35 @@ grestore
 (Scale[234]x) 720 3240 w
 10 /LucidaSansUnicode00 f
 (,) 1277 3240 w
-(used) 1349 3240 w
-(for) 1622 3240 w
-(2x2,) 1802 3240 w
-(3x3) 2062 3240 w
-(and) 2290 3240 w
-(4x4) 2511 3240 w
-(scaling) 2739 3240 w
-(respectively) 3119 3240 w
+(used) 1359 3240 w
+(for) 1641 3240 w
+(2x2,) 1830 3240 w
+(3x3) 2099 3240 w
+(and) 2336 3240 w
+(4x4) 2566 3240 w
+(scaling) 2803 3240 w
+(respectively) 3192 3240 w
 10 /LucidaSans-Italic f
-([SCALE2x]) 3692 3240 w
+([2]) 3765 3240 w
 10 /LucidaSansUnicode00 f
-(.) 4177 3240 w
-(Users) 4282 3240 w
-(control) 4591 3240 w
-(it) 4974 3240 w
-(with calls to the viewport) 720 3360 w
+(.) 3894 3240 w
+(Users) 4008 3240 w
+(control) 4326 3240 w
+(it) 4718 3240 w
+(with) 4835 3240 w
+(calls to the viewport) 720 3360 w
 10 /LucidaSansUnicode20 f
-(\031) 1937 3360 w
+(\031) 1700 3360 w
 10 /LucidaSansUnicode00 f
-(s) 1969 3360 w
+(s) 1732 3360 w
 10 /LucidaTypewriter f
-(setscale) 2052 3360 w
+(setscale) 1815 3360 w
 10 /LucidaSansUnicode00 f
-(and) 2660 3360 w
+(and) 2423 3360 w
 10 /LucidaTypewriter f
-(setscalefilter) 2872 3360 w
+(setscalefilter) 2635 3360 w
 10 /LucidaSansUnicode00 f
-(methods.) 3912 3360 w
+(methods.) 3675 3360 w
 1836 5034 1836 3594 Dl
 1836 3594 3996 3594 Dl
 3996 3594 3996 5034 Dl
@@ -2244,125 +2414,124 @@ grestore
 10 /LucidaSans-Demi f
 (References) 720 5472 w
 10 /LucidaSansUnicode00 f
-([1]) 720 5664 w
-(https://www.scale2x.it/) 970 5664 w
-([2]) 720 5820 w
-(Thomas) 970 5820 w
-(W.) 1395 5820 w
-(Crockett,) 1553 5820 w
+([1]) 720 5700 w
+(https://shithub.us/sirjofri/gpufs/HEAD/info.html) 970 5700 w
+([2]) 720 5856 w
+(https://www.scale2x.it/) 970 5856 w
+([3]) 720 6012 w
+(Thomas) 970 6012 w
+(W.) 1395 6012 w
+(Crockett,) 1553 6012 w
 10 /LucidaSansUnicode20 f
-(\034) 2035 5820 w
+(\034) 2035 6012 w
 10 /LucidaSansUnicode00 f
-(Design) 2072 5820 w
-(Considerations) 2447 5820 w
-(for) 3214 5820 w
-(Parallel) 3393 5820 w
-(Graphics) 3782 5820 w
-(Libraries) 4246 5820 w
+(Design) 2072 6012 w
+(Considerations) 2447 6012 w
+(for) 3214 6012 w
+(Parallel) 3393 6012 w
+(Graphics) 3782 6012 w
+(Libraries) 4246 6012 w
 10 /LucidaSansUnicode20 f
-(\035) 4664 5820 w
+(\035) 4664 6012 w
 10 /LucidaSansUnicode00 f
-(,) 4701 5820 w
+(,) 4701 6012 w
 10 /LucidaSans-Italic f
-(NASA) 4773 5820 w
-(Langley Research Center, Contract Nos. NAS1-18605 and NAS1-19480, June 1994) 970 5940 w
+(NASA) 4773 6012 w
+(Langley Research Center, Contract Nos. NAS1-18605 and NAS1-19480, June 1994) 970 6132 w
 10 /LucidaSansUnicode00 f
-([3]) 720 6096 w
-(Thomas) 970 6096 w
-(W.) 1390 6096 w
-(Crockett,) 1543 6096 w
+([4]) 720 6288 w
+(Thomas) 970 6288 w
+(W.) 1390 6288 w
+(Crockett,) 1543 6288 w
 10 /LucidaSansUnicode20 f
-(\034) 2020 6096 w
+(\034) 2020 6288 w
 10 /LucidaSansUnicode00 f
-(Parallel) 2057 6096 w
-(Rendering) 2441 6096 w
+(Parallel) 2057 6288 w
+(Rendering) 2441 6288 w
 10 /LucidaSansUnicode20 f
-(\035) 2935 6096 w
+(\035) 2935 6288 w
 10 /LucidaSansUnicode00 f
-(,) 2972 6096 w
+(,) 2972 6288 w
 10 /LucidaSans-Italic f
-(NASA) 3039 6096 w
-(Langley) 3341 6096 w
-(Research) 3753 6096 w
-(Center,) 4228 6096 w
-(Contract) 4618 6096 w
-(No. NAS1-19480, April 1995) 970 6216 w
+(NASA) 3039 6288 w
+(Langley) 3341 6288 w
+(Research) 3753 6288 w
+(Center,) 4228 6288 w
+(Contract) 4618 6288 w
+(No. NAS1-19480, April 1995) 970 6408 w
 10 /LucidaSansUnicode00 f
-([4]) 720 6372 w
-(Thomas) 970 6372 w
-(W.) 1423 6372 w
-(Crockett,) 1609 6372 w
+([5]) 720 6564 w
+(Thomas) 970 6564 w
+(W.) 1423 6564 w
+(Crockett,) 1609 6564 w
 10 /LucidaSansUnicode20 f
-(\034) 2119 6372 w
+(\034) 2119 6564 w
 10 /LucidaSansUnicode00 f
-(Beyond) 2156 6372 w
-(the) 2576 6372 w
-(Renderer:) 2799 6372 w
-(Software) 3337 6372 w
-(Architecture) 3823 6372 w
-(for) 4483 6372 w
-(Parallel) 4691 6372 w
-(Graphics) 970 6492 w
-(and) 1442 6492 w
-(Visualization) 1670 6492 w
+(Beyond) 2156 6564 w
+(the) 2576 6564 w
+(Renderer:) 2799 6564 w
+(Software) 3337 6564 w
+(Architecture) 3823 6564 w
+(for) 4483 6564 w
+(Parallel) 4691 6564 w
+(Graphics) 970 6684 w
+(and) 1442 6684 w
+(Visualization) 1670 6684 w
 10 /LucidaSansUnicode20 f
-(\035) 2291 6492 w
+(\035) 2291 6684 w
 10 /LucidaSansUnicode00 f
-(,) 2328 6492 w
+(,) 2328 6684 w
 10 /LucidaSans-Italic f
-(NASA) 2408 6492 w
-(Langley) 2723 6492 w
-(Research) 3147 6492 w
-(Center,) 3634 6492 w
-(Contract) 4036 6492 w
-(No.) 4506 6492 w
-(NAS1-) 4716 6492 w
-(19480, December 1996) 970 6612 w
+(NASA) 2408 6684 w
+(Langley) 2723 6684 w
+(Research) 3147 6684 w
+(Center,) 3634 6684 w
+(Contract) 4036 6684 w
+(No.) 4506 6684 w
+(NAS1-) 4716 6684 w
+(19480, December 1996) 970 6804 w
 10 /LucidaSansUnicode00 f
-([5]) 720 6768 w
-(Tomas) 970 6768 w
-(Akenine-M\366ller) 1332 6768 w
-(et) 2123 6768 w
-(al,) 2255 6768 w
+([6]) 720 6960 w
+(Tomas) 970 6960 w
+(Akenine-M\366ller) 1332 6960 w
+(et) 2123 6960 w
+(al,) 2255 6960 w
 10 /LucidaSansUnicode20 f
-(\034) 2410 6768 w
+(\034) 2410 6960 w
 10 /LucidaSansUnicode00 f
-(Real-Time) 2447 6768 w
-(Rendering) 2988 6768 w
+(Real-Time) 2447 6960 w
+(Rendering) 2988 6960 w
 10 /LucidaSansUnicode20 f
-(\035) 3482 6768 w
+(\035) 3482 6960 w
 10 /LucidaSansUnicode00 f
-(,) 3519 6768 w
+(,) 3519 6960 w
 10 /LucidaSans-Italic f
-(4th) 3590 6768 w
-(edition,) 3792 6768 w
-(Taylor) 4193 6768 w
-(&) 4545 6768 w
-(Francis,) 4655 6768 w
-(CRC Press, 2018) 970 6888 w
+(4th) 3590 6960 w
+(edition,) 3792 6960 w
+(Taylor) 4193 6960 w
+(&) 4545 6960 w
+(Francis,) 4655 6960 w
+(CRC Press, 2018) 970 7080 w
 10 /LucidaSansUnicode00 f
-([6]) 720 7044 w
-(James) 970 7044 w
-(F.) 1323 7044 w
-(Blinn,) 1476 7044 w
-(Martin) 1815 7044 w
-(E.) 2192 7044 w
-(Newell,) 2346 7044 w
+([7]) 720 7236 w
+(James) 970 7236 w
+(F.) 1323 7236 w
+(Blinn,) 1476 7236 w
+(Martin) 1815 7236 w
+(E.) 2192 7236 w
+(Newell,) 2346 7236 w
 10 /LucidaSansUnicode20 f
-(\034) 2767 7044 w
+(\034) 2767 7236 w
 10 /LucidaSansUnicode00 f
-(Clipping) 2804 7044 w
-(Using) 3278 7044 w
-(Homogeneous) 3619 7044 w
-(Coordinates) 4386 7044 w
+(Clipping) 2804 7236 w
+(Using) 3278 7236 w
+(Homogeneous) 3619 7236 w
+(Coordinates) 4386 7236 w
 10 /LucidaSansUnicode20 f
-(\035) 4971 7044 w
+(\035) 4971 7236 w
 10 /LucidaSansUnicode00 f
-(,) 5008 7044 w
-10 /LucidaSans-Italic f
-(SIGGRAPH '78: Proceedings, August 1978, pp. 245-251) 970 7164 w
-10 /LucidaSansUnicode00 f
-(September 9, 2024) 2415 7680 w
+(,) 5008 7236 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
@@ -2373,139 +2542,142 @@ mark
 7 pagesetup
 10 /LucidaSansUnicode00 f
 (\255 7 \255) 2783 480 w
-([7]) 720 840 w
-10 /LucidaSansUnicode20 f
-(\034) 970 840 w
+10 /LucidaSans-Italic f
+(SIGGRAPH '78: Proceedings, August 1978, pp. 245-251) 970 840 w
 10 /LucidaSansUnicode00 f
-(GPU Gems) 1007 840 w
-10 /LucidaSansUnicode20 f
-(\035) 1507 840 w
-10 /LucidaSansUnicode00 f
-(series) 1576 840 w
 ([8]) 720 996 w
 10 /LucidaSansUnicode20 f
 (\034) 970 996 w
 10 /LucidaSansUnicode00 f
-(Graphics Gems) 1007 996 w
+(GPU Gems) 1007 996 w
 10 /LucidaSansUnicode20 f
-(\035) 1735 996 w
+(\035) 1507 996 w
 10 /LucidaSansUnicode00 f
-(series) 1804 996 w
+(series) 1576 996 w
 ([9]) 720 1152 w
-(Ian) 970 1152 w
-(Stephenson,) 1180 1152 w
 10 /LucidaSansUnicode20 f
-(\034) 1840 1152 w
+(\034) 970 1152 w
 10 /LucidaSansUnicode00 f
-(Production) 1877 1152 w
-(Rendering:) 2463 1152 w
-(Design) 3053 1152 w
-(and) 3452 1152 w
-(Implementation) 3696 1152 w
+(Graphics Gems) 1007 1152 w
 10 /LucidaSansUnicode20 f
-(\035) 4458 1152 w
+(\035) 1735 1152 w
 10 /LucidaSansUnicode00 f
-(,) 4495 1152 w
+(series) 1804 1152 w
+([10]) 720 1308 w
+(Ian) 970 1308 w
+(Stephenson,) 1180 1308 w
+10 /LucidaSansUnicode20 f
+(\034) 1840 1308 w
+10 /LucidaSansUnicode00 f
+(Production) 1877 1308 w
+(Rendering:) 2463 1308 w
+(Design) 3053 1308 w
+(and) 3452 1308 w
+(Implementation) 3696 1308 w
+10 /LucidaSansUnicode20 f
+(\035) 4458 1308 w
+10 /LucidaSansUnicode00 f
+(,) 4495 1308 w
 10 /LucidaSans-Italic f
-(Springer,) 4591 1152 w
-(2005) 970 1272 w
+(Springer,) 4591 1308 w
+(2005) 970 1428 w
 10 /LucidaSansUnicode00 f
-([10]) 720 1428 w
-(Paul) 970 1428 w
-(S.) 1242 1428 w
-(Heckbert,) 1399 1428 w
+([11]) 720 1584 w
+(Paul) 970 1584 w
+(S.) 1242 1584 w
+(Heckbert,) 1399 1584 w
 10 /LucidaSansUnicode20 f
-(\034) 1938 1428 w
+(\034) 1938 1584 w
 10 /LucidaSansUnicode00 f
-(Survey) 1975 1428 w
-(of) 2363 1428 w
-(Texture) 2532 1428 w
-(Mapping) 2979 1428 w
+(Survey) 1975 1584 w
+(of) 2363 1584 w
+(Texture) 2532 1584 w
+(Mapping) 2979 1584 w
 10 /LucidaSansUnicode20 f
-(\035) 3399 1428 w
+(\035) 3399 1584 w
 10 /LucidaSansUnicode00 f
-(,) 3436 1428 w
+(,) 3436 1584 w
 10 /LucidaSans-Italic f
-(IEEE) 3539 1428 w
-(Computer) 3804 1428 w
-(Graphics) 4355 1428 w
-(and) 4856 1428 w
-(Applications, Nov. 1986, pp. 56-67) 970 1548 w
+(IEEE) 3539 1584 w
+(Computer) 3804 1584 w
+(Graphics) 4355 1584 w
+(and) 4856 1584 w
+(Applications, Nov. 1986, pp. 56-67) 970 1704 w
 10 /LucidaSansUnicode00 f
-([11]) 720 1704 w
-(Paul) 970 1704 w
-(S.) 1255 1704 w
-(Heckbert,) 1425 1704 w
+([12]) 720 1860 w
+(Paul) 970 1860 w
+(S.) 1255 1860 w
+(Heckbert,) 1425 1860 w
 10 /LucidaSansUnicode20 f
-(\034) 1978 1704 w
+(\034) 1978 1860 w
 10 /LucidaSansUnicode00 f
-(Fundamentals) 2015 1704 w
-(of) 2779 1704 w
-(Texture) 2962 1704 w
-(Mapping) 3423 1704 w
-(and) 3928 1704 w
-(Image) 4193 1704 w
-(Warping) 4573 1704 w
+(Fundamentals) 2015 1860 w
+(of) 2779 1860 w
+(Texture) 2962 1860 w
+(Mapping) 3423 1860 w
+(and) 3928 1860 w
+(Image) 4193 1860 w
+(Warping) 4573 1860 w
 10 /LucidaSansUnicode20 f
-(\035) 4971 1704 w
+(\035) 4971 1860 w
 10 /LucidaSansUnicode00 f
-(,) 5008 1704 w
+(,) 5008 1860 w
 10 /LucidaSans-Italic f
-(University) 970 1824 w
-(of) 1514 1824 w
-(California,) 1667 1824 w
-(Berkeley,) 2239 1824 w
-(Technical) 2737 1824 w
-(Report) 3253 1824 w
-(No.) 3631 1824 w
-(UCB/CSD-89-516,) 3851 1824 w
-(June) 4822 1824 w
-(1989) 970 1944 w
+(University) 970 1980 w
+(of) 1514 1980 w
+(California,) 1667 1980 w
+(Berkeley,) 2239 1980 w
+(Technical) 2737 1980 w
+(Report) 3253 1980 w
+(No.) 3631 1980 w
+(UCB/CSD-89-516,) 3851 1980 w
+(June) 4822 1980 w
+(1989) 970 2100 w
 10 /LucidaSansUnicode00 f
-([12]) 720 2100 w
-(Robert L. Cook, Loren) 970 2100 w
-(Carpenter,) 2059 2100 w
-(Edwin) 2604 2100 w
-(Catmull) 2922 2100 w
+([13]) 720 2256 w
+(Robert L. Cook, Loren) 970 2256 w
+(Carpenter,) 2059 2256 w
+(Edwin) 2604 2256 w
+(Catmull) 2922 2256 w
 10 /LucidaSansUnicode20 f
-(\034) 3329 2100 w
+(\034) 3329 2256 w
 10 /LucidaSansUnicode00 f
-(The) 3366 2100 w
-(REYES) 3580 2100 w
-(Image) 3900 2100 w
-(Rendering) 4228 2100 w
-(Archi\255) 4755 2100 w
-(tecture) 970 2220 w
+(The) 3366 2256 w
+(REYES) 3580 2256 w
+(Image) 3900 2256 w
+(Rendering) 4228 2256 w
+(Archi\255) 4755 2256 w
+(tecture) 970 2376 w
 10 /LucidaSansUnicode20 f
-(\035) 1310 2220 w
+(\035) 1310 2376 w
 10 /LucidaSansUnicode00 f
-(,) 1347 2220 w
+(,) 1347 2376 w
 10 /LucidaSans-Italic f
-(ACM Transactions on Computer Graphics, Vol. 21, No. 4, July 1987) 1411 2220 w
+(ACM Transactions on Computer Graphics, Vol. 21, No. 4, July 1987) 1411 2376 w
 10 /LucidaSansUnicode00 f
-([13]) 720 2376 w
-(Bruce) 970 2376 w
-(J.) 1281 2376 w
-(Lindbloom,) 1387 2376 w
+([14]) 720 2532 w
+(Bruce) 970 2532 w
+(J.) 1281 2532 w
+(Lindbloom,) 1387 2532 w
 10 /LucidaSansUnicode20 f
-(\034) 1976 2376 w
+(\034) 1976 2532 w
 10 /LucidaSansUnicode00 f
-(Accurate) 2013 2376 w
-(Color) 2478 2376 w
-(Reproduction) 2782 2376 w
-(for) 3474 2376 w
-(Computer) 3656 2376 w
-(Graphics) 4181 2376 w
-(Applica\255) 4648 2376 w
-(tions) 970 2496 w
+(Accurate) 2013 2532 w
+(Color) 2478 2532 w
+(Reproduction) 2782 2532 w
+(for) 3474 2532 w
+(Computer) 3656 2532 w
+(Graphics) 4181 2532 w
+(Applica\255) 4648 2532 w
+(tions) 970 2652 w
 10 /LucidaSansUnicode20 f
-(\035) 1210 2496 w
+(\035) 1210 2652 w
 10 /LucidaSansUnicode00 f
-(,) 1247 2496 w
+(,) 1247 2652 w
 10 /LucidaSans-Italic f
-(ACM Transactions on Computer Graphics, Vol. 23, No. 3, July 1989) 1311 2496 w
+(ACM Transactions on Computer Graphics, Vol. 23, No. 3, July 1989) 1311 2652 w
 10 /LucidaSansUnicode00 f
-(September 9, 2024) 2415 7680 w
+(March 8, 2025) 2527 7680 w
 cleartomark
 showpage
 saveobj restore
