@@ -191,11 +191,8 @@ struct Camera
 	} clip;
 	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
-	ulong clearcolor;
 	int cullmode;
-	int enableblend;
-	int enabledepth;
-	int enableAbuff;
+	uint rendopts;
 };
 .P2
 .NH
@@ -360,14 +357,16 @@ is performed, discarding fragments that are further away. Then a
 is applied and the result written to the framebuffer after blending.
 .QP
 Depth testing and blending can be disabled by clearing the camera's
-.CW enabledepth
+.CW RODepth
 and
-.CW enableblend
-parameters, respectively.  An experimental A-buffer implementation is
+.CW ROBlend
+bits from the
+.CW rendopts
+property, respectively.  An experimental A-buffer implementation is
 also included for order-independent rendering of transparent
 primitives (OIT).  If enabled, by setting the camera's
-.CW enableAbuff
-parameter, fragments will be pushed to a depth-sorted stack, waiting
+.CW ROAbuff
+bit, fragments will be pushed to a depth-sorted stack, waiting
 to be blended back-to-front and written to the framebuffer at the end
 of the job.
 .QE
@@ -410,7 +409,12 @@ arrow from Tiles.Tn.e to Raster.Rn.w
 .NH
 Frames of reference
 .PP
-Frames are right-handed throughout every stage.
+Frames are right-handed throughout every stage of the pipeline, as
+well as in the world.  A camera that's looking at an object has its
+Z-axis basis
+.CW bz ) (
+pointing away from it.
+.TE
 .KS
 .PS
 .ps 7
