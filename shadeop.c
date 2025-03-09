@@ -30,20 +30,67 @@ smoothstep(double edge0, double edge1, double n)
 	return t*t * (3 - 2*t);
 }
 
-/* TODO apply attenuation for punctual lights */
-Color
-getlightcolor(LightSource *l, Point3 dir)
+/* see Equation 5.16, Real-Time Rendering 4th ed. § 5.2.2 */
+static double
+dfalloff(double d)
 {
-	double cθs, cθu, cθp, t;
+	enum { RMAX = 3000 };	/* cutoff distance */
+	d = d/RMAX;
+	d *= d;
+	d = max(0, 1 - d);
+	return d*d;
+}
 
-	/* see “Spotlights”, Real-Time Rendering 4th ed. § 5.2.2 */
-	if(l->type == LightSpot){
-		cθs = dotvec3(mulpt3(dir, -1), l->dir);
+Color
+getlightcolor(LightSource *l, Point3 p, Point3 n)
+{
+	double cθs, cθu, cθp, t, r;
+	Point3 ldir;
+	Color c;
+
+	ldir = subpt3(l->p, p);
+	r = vec3len(ldir);
+	ldir = divpt3(ldir, r);
+
+	switch(l->type){
+	case LightPoint:
+		t = max(0, dotvec3(ldir, n));
+		c = mulpt3(l->c, t);
+
+		/* attenuation */
+		c = mulpt3(c, dfalloff(r));
+		break;
+	case LightDirectional:
+		t = max(0, dotvec3(mulpt3(l->dir, -1), n));
+		c = mulpt3(l->c, t);
+		break;
+	case LightSpot:
+		/* see “Spotlights”, Real-Time Rendering 4th ed. § 5.2.2 */
+		cθs = dotvec3(mulpt3(ldir, -1), l->dir);
 		cθu = cos(l->θu);
 		cθp = cos(l->θp);
+
 //		return mulpt3(l->c, smoothstep(cθu, cθp, cθs));
 		t = fclamp((cθs - cθu)/(cθp - cθu), 0, 1);
-		return mulpt3(l->c, t*t);
+
+		c = mulpt3(l->c, t*t);
+
+		/* attenuation */
+		c = mulpt3(c, dfalloff(r));
+		break;
+	default: sysfatal("alien light form detected");
 	}
-	return l->c;
+	return c;
+}
+
+Color
+getscenecolor(Scene *s, Point3 p, Point3 n)
+{
+	LightSource *l;
+	Color c;
+
+	c = Vec3(0,0,0);
+	for(l = s->lights.next; l != &s->lights; l = l->next)
+		c = addpt3(c, getlightcolor(l, p, n));
+	return c;
 }

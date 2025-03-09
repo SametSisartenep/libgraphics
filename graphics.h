@@ -208,6 +208,7 @@ struct Scene
 	void (*addent)(Scene*, Entity*);
 	void (*delent)(Scene*, Entity*);
 	Entity *(*getent)(Scene*, char*);
+	void (*addlight)(Scene*, LightSource*);
 };
 
 struct Shaderparams
@@ -467,6 +468,7 @@ Color aces2(Color);
 double sign(double);
 double step(double, double);
 double smoothstep(double, double, double);
-Color getlightcolor(LightSource*, Point3);
+Color getlightcolor(LightSource*, Point3, Point3);
+Color getscenecolor(Scene*, Point3, Point3);
 
 extern Rectangle UR;	/* unit rectangle */

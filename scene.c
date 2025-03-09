@@ -163,6 +163,16 @@ scene_getent(Scene *s, char *name)
 	return nil;
 }
 
+static void
+scene_addlight(Scene *s, LightSource *l)
+{
+	l->prev = s->lights.prev;
+	l->next = s->lights.prev->next;
+	s->lights.prev->next = l;
+	s->lights.prev = l;
+	s->nlights++;
+}
+
 Scene *
 newscene(char *name)
 {
@@ -172,10 +182,13 @@ newscene(char *name)
 	s->name = name == nil? nil: strdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;
+	s->lights.prev = s->lights.next = &s->lights;
+	s->nlights = 0;
 	s->skybox = nil;
 	s->addent = scene_addent;
 	s->delent = scene_delent;
 	s->getent = scene_getent;
+	s->addlight = scene_addlight;
 	return s;
 }
 
