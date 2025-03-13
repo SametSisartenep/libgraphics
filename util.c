@@ -7,6 +7,8 @@
 #include "graphics.h"
 #include "internal.h"
 
+Rectangle UR = {0,0,1,1};
+
 Point
 minpt(Point a, Point b)
 {

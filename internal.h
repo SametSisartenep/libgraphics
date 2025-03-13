@@ -84,9 +84,6 @@ int rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
 void memsetf(void*, float, usize);
 void memsetl(void*, ulong, usize);
 
-/* nanosec */
-uvlong nanosec(void);
-
 #define getpixel(fb, p)		rastergetcolor(fb, p)
 #define putpixel(fb, p, c)	rasterputcolor(fb, p, c)
 #define getdepth(fb, p)		rastergetfloat(fb, p)

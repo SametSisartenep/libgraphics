@@ -7,8 +7,6 @@
 #include "graphics.h"
 #include "internal.h"
 
-Rectangle UR = {0,0,1,1};
-
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {

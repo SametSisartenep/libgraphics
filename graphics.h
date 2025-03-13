@@ -471,4 +471,7 @@ double smoothstep(double, double, double);
 Color getlightcolor(LightSource*, Point3, Point3);
 Color getscenecolor(Scene*, Point3, Point3);
 
+/* nanosec */
+uvlong nanosec(void);
+
 extern Rectangle UR;	/* unit rectangle */
