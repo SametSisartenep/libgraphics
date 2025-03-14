@@ -7,6 +7,34 @@
 #include "graphics.h"
 #include "internal.h"
 
+Material *
+newmaterial(char *name)
+{
+	Material *mtl;
+
+	if(name == nil){
+		werrstr("needs a name");
+		return nil;
+	}
+
+	mtl = emalloc(sizeof *mtl);
+	memset(mtl, 0, sizeof *mtl);
+	mtl->name = strdup(name);
+	mtl->ambient = Pt3(1,1,1,1);
+	mtl->diffuse = Pt3(1,1,1,1);
+	mtl->specular = Pt3(1,1,1,1);
+	return mtl;
+}
+
+void
+delmaterial(Material *mtl)
+{
+	freetexture(mtl->diffusemap);
+	freetexture(mtl->specularmap);
+	freetexture(mtl->normalmap);
+	free(mtl->name);
+}
+
 static int
 model_addprim(Model *m, Primitive p)
 {
@@ -23,6 +51,17 @@ model_addmaterial(Model *m, Material mtl)
 	return m->nmaterials-1;
 }
 
+static Material *
+model_getmaterial(Model *m, char *name)
+{
+	Material *mtl;
+
+	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++)
+		if(strcmp(mtl->name, name) == 0)
+			return mtl;
+	return nil;
+}
+
 Model *
 newmodel(void)
 {
@@ -32,6 +71,7 @@ newmodel(void)
 	memset(m, 0, sizeof *m);
 	m->addprim = model_addprim;
 	m->addmaterial = model_addmaterial;
+	m->getmaterial = model_getmaterial;
 	return m;
 }
 
@@ -45,7 +85,6 @@ dupmodel(Model *m)
 		return nil;
 
 	nm = newmodel();
-	nm->tex = duptexture(m->tex);
 	if(m->nmaterials > 0){
 		nm->nmaterials = m->nmaterials;
 		nm->materials = emalloc(nm->nmaterials*sizeof(*nm->materials));
@@ -77,13 +116,8 @@ delmodel(Model *m)
 	if(m == nil)
 		return;
 
-	freetexture(m->tex);
-	while(m->nmaterials--){
-		freetexture(m->materials[m->nmaterials].diffusemap);
-		freetexture(m->materials[m->nmaterials].specularmap);
-		freetexture(m->materials[m->nmaterials].normalmap);
-		free(m->materials[m->nmaterials].name);
-	}
+	while(m->nmaterials--)
+		delmaterial(&m->materials[m->nmaterials]);
 	free(m->materials);
 	free(m->prims);
 	free(m);

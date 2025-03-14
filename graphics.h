@@ -181,10 +181,9 @@ struct Model
 	Material *materials;
 	ulong nmaterials;
 
-	Texture *tex;		/* texture map (TODO get rid of it, use materials) */
-
 	int (*addprim)(Model*, Primitive);
 	int (*addmaterial)(Model*, Material);
+	Material *(*getmaterial)(Model*, char*);
 };
 
 struct Entity
@@ -418,6 +417,8 @@ usize writemodel(int, Model*, int);
 int exportmodel(char*, Model*, int);
 
 /* scene */
+Material *newmaterial(char*);
+void delmaterial(Material*);
 Model *newmodel(void);
 Model *dupmodel(Model*);
 void delmodel(Model*);
