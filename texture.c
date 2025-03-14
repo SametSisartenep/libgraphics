@@ -102,13 +102,13 @@ bilitexsampler(Texture *t, Point2 uv)
 	if(r.min.x < t->image->r.min.x){
 		r.min.x++;
 		r.max.x++;
-	}if(r.min.y < t->image->r.min.y){
+	}else if(r.min.y < t->image->r.min.y){
 		r.min.y++;
 		r.max.y++;
-	}if(r.max.x >= t->image->r.max.x){
+	}else if(r.max.x >= t->image->r.max.x){
 		r.min.x--;
 		r.max.x--;
-	}if(r.max.y >= t->image->r.max.y){
+	}else if(r.max.y >= t->image->r.max.y){
 		r.min.y--;
 		r.max.y--;
 	}
