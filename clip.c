@@ -27,7 +27,7 @@ static int
 addvert(Polygon *p, Vertex v)
 {
 	if(++p->n > p->cap)
-		p->v = erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
+		p->v = _erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
 	p->v[p->n-1] = v;
 	return p->n;
 }
@@ -38,7 +38,7 @@ cleanpoly(Polygon *p)
 	int i;
 
 	for(i = 0; i < p->n; i++)
-		delvattrs(&p->v[i]);
+		_delvattrs(&p->v[i]);
 	p->n = 0;
 }
 
@@ -58,7 +58,7 @@ fprintpoly(int fd, Polygon *p)
  * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
  */
 int
-clipprimitive(Primitive *p, Primitive *cp)
+_clipprimitive(Primitive *p, Primitive *cp)
 {
 	/* signed distance from each clipping plane */
 	static double sdm[6][4] = {
@@ -102,12 +102,12 @@ clipprimitive(Primitive *p, Primitive *cp)
 			perc = d0/(d0 - d1);
 
 			memset(&v, 0, sizeof v);
-			lerpvertex(&v, v0, v1, perc);
+			_lerpvertex(&v, v0, v1, perc);
 			addvert(Vout, v);
 
 			if(sd1[j] >= 0){
 allin:
-				addvert(Vout, dupvertex(v1));
+				addvert(Vout, _dupvertex(v1));
 			}
 		}
 		cleanpoly(Vin);
@@ -120,8 +120,8 @@ allin:
 	else switch(p->type){
 	case PLine:
 		cp[0] = *p;
-		cp[0].v[0] = dupvertex(&Vout->v[0]);
-		cp[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? dupvertex(&Vout->v[2]): dupvertex(&Vout->v[1]);
+		cp[0].v[0] = _dupvertex(&Vout->v[0]);
+		cp[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? _dupvertex(&Vout->v[2]): _dupvertex(&Vout->v[1]);
 		cleanpoly(Vout);
 		np = 1;
 		break;
@@ -134,9 +134,9 @@ allin:
 			 * to avoid complications during rasterization.
 			 */
 			cp[np] = *p;
-			cp[np].v[0] = i < Vout->n-2-1? dupvertex(&Vout->v[0]): Vout->v[0];
+			cp[np].v[0] = i < Vout->n-2-1? _dupvertex(&Vout->v[0]): Vout->v[0];
 			cp[np].v[1] = Vout->v[i+1];
-			cp[np].v[2] = i < Vout->n-2-1? dupvertex(&Vout->v[i+2]): Vout->v[i+2];
+			cp[np].v[2] = i < Vout->n-2-1? _dupvertex(&Vout->v[i+2]): Vout->v[i+2];
 		}
 		break;
 	}
@@ -193,14 +193,14 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 
 	Δp = subpt(Pt(v0->p.x, v0->p.y), *p0);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
-	lerpvertex(&v[0], v0, v1, perc);
+	_lerpvertex(&v[0], v0, v1, perc);
 
 	Δp = subpt(Pt(v0->p.x, v0->p.y), *p1);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
-	lerpvertex(&v[1], v0, v1, perc);
+	_lerpvertex(&v[1], v0, v1, perc);
 
-	delvattrs(v0);
-	delvattrs(v1);
+	_delvattrs(v0);
+	_delvattrs(v1);
 	*v0 = v[0];
 	*v1 = v[1];
 }
@@ -209,7 +209,7 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
  * Cohen-Sutherland rectangle-line clipping
  */
 int
-rectclipline(Rectangle r, Point *p0, Point *p1, Vertex *v0, Vertex *v1)
+_rectclipline(Rectangle r, Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 {
 	int code0, code1;
 	int Δx, Δy;

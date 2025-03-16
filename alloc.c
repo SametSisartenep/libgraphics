@@ -8,7 +8,7 @@
 #include "internal.h"
 
 void *
-emalloc(ulong n)
+_emalloc(ulong n)
 {
 	void *p;
 
@@ -20,7 +20,7 @@ emalloc(ulong n)
 }
 
 void *
-erealloc(void *p, ulong n)
+_erealloc(void *p, ulong n)
 {
 	void *np;
 
@@ -38,7 +38,7 @@ erealloc(void *p, ulong n)
 }
 
 Memimage *
-eallocmemimage(Rectangle r, ulong chan)
+_eallocmemimage(Rectangle r, ulong chan)
 {
 	Memimage *i;
 

@@ -46,48 +46,48 @@ struct Rastertask
 };
 
 /* alloc */
-void *emalloc(ulong);
-void *erealloc(void*, ulong);
-Memimage *eallocmemimage(Rectangle, ulong);
+void *_emalloc(ulong);
+void *_erealloc(void*, ulong);
+Memimage *_eallocmemimage(Rectangle, ulong);
 
 /* fb */
-Raster *allocraster(char*, Rectangle, ulong);
-void clearraster(Raster*, ulong);
-void fclearraster(Raster*, float);
-uchar *rasterbyteaddr(Raster*, Point);
-void rasterput(Raster*, Point, void*);
-void rasterget(Raster*, Point, void*);
-void rasterputcolor(Raster*, Point, ulong);
-ulong rastergetcolor(Raster*, Point);
-void rasterputfloat(Raster*, Point, float);
-float rastergetfloat(Raster*, Point);
-void freeraster(Raster*);
-Framebuf *mkfb(Rectangle);
-void rmfb(Framebuf*);
-Framebufctl *mkfbctl(Rectangle);
-void rmfbctl(Framebufctl*);
+Raster *_allocraster(char*, Rectangle, ulong);
+void _clearraster(Raster*, ulong);
+void _fclearraster(Raster*, float);
+uchar *_rasterbyteaddr(Raster*, Point);
+void _rasterput(Raster*, Point, void*);
+void _rasterget(Raster*, Point, void*);
+void _rasterputcolor(Raster*, Point, ulong);
+ulong _rastergetcolor(Raster*, Point);
+void _rasterputfloat(Raster*, Point, float);
+float _rastergetfloat(Raster*, Point);
+void _freeraster(Raster*);
+Framebuf *_mkfb(Rectangle);
+void _rmfb(Framebuf*);
+Framebufctl *_mkfbctl(Rectangle);
+void _rmfbctl(Framebufctl*);
 
 /* vertex */
-Vertex dupvertex(Vertex*);
-void lerpvertex(Vertex*, Vertex*, Vertex*, double);
-void berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
-void delvattrs(Vertex*);
-void fprintvattrs(int, Vertex*);
-void addvattr(Vertexattrs*, char*, int, void*);
-Vertexattr *getvattr(Vertexattrs*, char*);
+Vertex _dupvertex(Vertex*);
+void _lerpvertex(Vertex*, Vertex*, Vertex*, double);
+void _berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
+void _delvattrs(Vertex*);
+void _fprintvattrs(int, Vertex*);
+void _addvattr(Vertexattrs*, char*, int, void*);
+Vertexattr *_getvattr(Vertexattrs*, char*);
 
 /* clip */
-int clipprimitive(Primitive*, Primitive*);
-int rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
+int _clipprimitive(Primitive*, Primitive*);
+int _rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
 
 /* util */
-void memsetf(void*, float, usize);
-void memsetl(void*, ulong, usize);
+void _memsetf(void*, float, usize);
+void _memsetl(void*, ulong, usize);
 
-#define getpixel(fb, p)		rastergetcolor(fb, p)
-#define putpixel(fb, p, c)	rasterputcolor(fb, p, c)
-#define getdepth(fb, p)		rastergetfloat(fb, p)
-#define putdepth(fb, p, z)	rasterputfloat(fb, p, z)
+#define getpixel(fb, p)		_rastergetcolor(fb, p)
+#define putpixel(fb, p, c)	_rasterputcolor(fb, p, c)
+#define getdepth(fb, p)		_rastergetfloat(fb, p)
+#define putdepth(fb, p, z)	_rasterputfloat(fb, p, z)
 
 /* void SWAP(type t, type *a, type *b) */
 #define SWAP(t, a, b) {t tmp; tmp = *(a); *(a) = *(b); *(b) = tmp;}

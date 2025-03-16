@@ -8,7 +8,7 @@
 #include "internal.h"
 
 static void
-_addvattr(Vertexattrs *v, Vertexattr *va)
+addvattr(Vertexattrs *v, Vertexattr *va)
 {
 	int i;
 
@@ -19,7 +19,7 @@ _addvattr(Vertexattrs *v, Vertexattr *va)
 			v->attrs[i] = *va;
 			return;
 		}
-	v->attrs = erealloc(v->attrs, ++v->nattrs*sizeof(*va));
+	v->attrs = _erealloc(v->attrs, ++v->nattrs*sizeof(*va));
 	v->attrs[v->nattrs-1] = *va;
 }
 
@@ -29,11 +29,11 @@ copyvattrs(Vertex *d, Vertex *s)
 	int i;
 
 	for(i = 0; i < s->nattrs; i++)
-		_addvattr(d, &s->attrs[i]);
+		addvattr(d, &s->attrs[i]);
 }
 
 Vertex
-dupvertex(Vertex *v)
+_dupvertex(Vertex *v)
 {
 	Vertex nv;
 
@@ -48,7 +48,7 @@ dupvertex(Vertex *v)
  * linear attribute interpolation
  */
 void
-lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
+_lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 {
 	Vertexattr va;
 	int i;
@@ -65,7 +65,7 @@ lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 			va.p = lerp3(v0->attrs[i].p, v1->attrs[i].p, t);
 		else
 			va.n = flerp(v0->attrs[i].n, v1->attrs[i].n, t);
-		_addvattr(v, &va);
+		addvattr(v, &va);
 	}
 }
 
@@ -73,7 +73,7 @@ lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
  * barycentric attribute interpolation
  */
 void
-berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
+_berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 {
 	Vertexattr va;
 	int i;
@@ -90,12 +90,12 @@ berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 			va.p = berp3(v0->attrs[i].p, v1->attrs[i].p, v2->attrs[i].p, bc);
 		else
 			va.n = fberp(v0->attrs[i].n, v1->attrs[i].n, v2->attrs[i].n, bc);
-		_addvattr(v, &va);
+		addvattr(v, &va);
 	}
 }
 
 void
-addvattr(Vertexattrs *v, char *id, int type, void *val)
+_addvattr(Vertexattrs *v, char *id, int type, void *val)
 {
 	Vertexattr va;
 
@@ -106,11 +106,11 @@ addvattr(Vertexattrs *v, char *id, int type, void *val)
 	case VANumber: va.n = *(double*)val; break;
 	default: sysfatal("unknown vertex attribute type '%d'", type);
 	}
-	_addvattr(v, &va);
+	addvattr(v, &va);
 }
 
 Vertexattr *
-getvattr(Vertexattrs *v, char *id)
+_getvattr(Vertexattrs *v, char *id)
 {
 	int i;
 
@@ -121,7 +121,7 @@ getvattr(Vertexattrs *v, char *id)
 }
 
 void
-delvattrs(Vertex *v)
+_delvattrs(Vertex *v)
 {
 	free(v->attrs);
 	v->attrs= nil;
@@ -129,7 +129,7 @@ delvattrs(Vertex *v)
 }
 
 void
-fprintvattrs(int fd, Vertex *v)
+_fprintvattrs(int fd, Vertex *v)
 {
 	int i;
 

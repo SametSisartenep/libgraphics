@@ -127,7 +127,7 @@ newcamera(void)
 {
 	Camera *c;
 
-	c = emalloc(sizeof *c);
+	c = _emalloc(sizeof *c);
 	memset(c, 0, sizeof *c);
 	c->rendopts = RODepth;
 	return c;
@@ -242,11 +242,11 @@ shootcamera(Camera *c, Shadertab *s)
 
 	fbctl = c->view->fbctl;
 
-	job = emalloc(sizeof *job);
+	job = _emalloc(sizeof *job);
 	memset(job, 0, sizeof *job);
 	job->rctl = c->rctl;
 	job->fb = fbctl->getbb(fbctl);
-	job->camera = emalloc(sizeof *c);
+	job->camera = _emalloc(sizeof *c);
 	*job->camera = *c;
 	job->scene = dupscene(c->scene);	/* take a snapshot */	
 	job->shaders = s;

@@ -41,7 +41,7 @@ cbuf2col(uchar b[4])
 }
 
 static Color
-_memreadcolor(Texture *t, Point sp)
+memreadcolor(Texture *t, Point sp)
 {
 	Color c;
 	uchar cbuf[4];
@@ -86,7 +86,7 @@ _memreadcolor(Texture *t, Point sp)
 Color
 neartexsampler(Texture *t, Point2 uv)
 {
-	return _memreadcolor(t, uv2tp(uv, t));
+	return memreadcolor(t, uv2tp(uv, t));
 }
 
 /*
@@ -112,8 +112,8 @@ bilitexsampler(Texture *t, Point2 uv)
 		r.min.y--;
 		r.max.y--;
 	}
-	c1 = lerp3(_memreadcolor(t, r.min), _memreadcolor(t, Pt(r.max.x, r.min.y)), 0.5);
-	c2 = lerp3(_memreadcolor(t, Pt(r.min.x, r.max.y)), _memreadcolor(t, r.max), 0.5);
+	c1 = lerp3(memreadcolor(t, r.min), memreadcolor(t, Pt(r.max.x, r.min.y)), 0.5);
+	c2 = lerp3(memreadcolor(t, Pt(r.min.x, r.max.y)), memreadcolor(t, r.max), 0.5);
 	return lerp3(c1, c2, 0.5);
 }
 
@@ -128,7 +128,7 @@ alloctexture(int type, Memimage *i)
 {
 	Texture *t;
 
-	t = emalloc(sizeof *t);
+	t = _emalloc(sizeof *t);
 	memset(t, 0, sizeof *t);
 	t->image = i;
 	t->type = type;
@@ -163,7 +163,7 @@ readcubemap(char *paths[6])
 	char **p;
 	int fd;
 
-	cm = emalloc(sizeof *cm);
+	cm = _emalloc(sizeof *cm);
 	memset(cm, 0, sizeof *cm);
 	
 	for(p = paths; p < paths+6; p++){
@@ -189,7 +189,7 @@ dupcubemap(Cubemap *cm)
 	if(cm == nil)
 		return nil;
 
-	ncm = emalloc(sizeof *ncm);
+	ncm = _emalloc(sizeof *ncm);
 	memset(ncm, 0, sizeof *ncm);
 	if(cm->name != nil)
 		ncm->name = strdup(cm->name);

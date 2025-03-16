@@ -88,11 +88,11 @@ mkviewport(Rectangle r)
 		return nil;
 	}
 
-	v = emalloc(sizeof *v);
+	v = _emalloc(sizeof *v);
 	v->p = Pt2(0,0,1);
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);
-	v->fbctl = mkfbctl(r);
+	v->fbctl = _mkfbctl(r);
 	v->r = r;
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
@@ -111,6 +111,6 @@ rmviewport(Viewport *v)
 {
 	if(v == nil)
 		return;
-	rmfbctl(v->fbctl);
+	_rmfbctl(v->fbctl);
 	free(v);
 }

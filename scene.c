@@ -17,7 +17,7 @@ newmaterial(char *name)
 		return nil;
 	}
 
-	mtl = emalloc(sizeof *mtl);
+	mtl = _emalloc(sizeof *mtl);
 	memset(mtl, 0, sizeof *mtl);
 	mtl->name = strdup(name);
 	mtl->ambient = Pt3(1,1,1,1);
@@ -38,7 +38,7 @@ delmaterial(Material *mtl)
 static int
 model_addprim(Model *m, Primitive p)
 {
-	m->prims = erealloc(m->prims, ++m->nprims*sizeof(*m->prims));
+	m->prims = _erealloc(m->prims, ++m->nprims*sizeof(*m->prims));
 	m->prims[m->nprims-1] = p;
 	return m->nprims-1;
 }
@@ -46,7 +46,7 @@ model_addprim(Model *m, Primitive p)
 static int
 model_addmaterial(Model *m, Material mtl)
 {
-	m->materials = erealloc(m->materials, ++m->nmaterials*sizeof(*m->materials));
+	m->materials = _erealloc(m->materials, ++m->nmaterials*sizeof(*m->materials));
 	m->materials[m->nmaterials-1] = mtl;
 	return m->nmaterials-1;
 }
@@ -67,7 +67,7 @@ newmodel(void)
 {
 	Model *m;
 
-	m = emalloc(sizeof *m);
+	m = _emalloc(sizeof *m);
 	memset(m, 0, sizeof *m);
 	m->addprim = model_addprim;
 	m->addmaterial = model_addmaterial;
@@ -87,7 +87,7 @@ dupmodel(Model *m)
 	nm = newmodel();
 	if(m->nmaterials > 0){
 		nm->nmaterials = m->nmaterials;
-		nm->materials = emalloc(nm->nmaterials*sizeof(*nm->materials));
+		nm->materials = _emalloc(nm->nmaterials*sizeof(*nm->materials));
 		for(i = 0; i < m->nmaterials; i++){
 			nm->materials[i] = m->materials[i];
 			nm->materials[i].diffusemap = duptexture(m->materials[i].diffusemap);
@@ -100,7 +100,7 @@ dupmodel(Model *m)
 	}
 	if(m->nprims > 0){
 		nm->nprims = m->nprims;
-		nm->prims = emalloc(nm->nprims*sizeof(*nm->prims));
+		nm->prims = _emalloc(nm->nprims*sizeof(*nm->prims));
 		for(i = 0; i < m->nprims; i++){
 			nm->prims[i] = m->prims[i];
 			if(nm->nmaterials > 0 && m->prims[i].mtl != nil)
@@ -128,7 +128,7 @@ newentity(char *name, Model *m)
 {
 	Entity *e;
 
-	e = emalloc(sizeof *e);
+	e = _emalloc(sizeof *e);
 	e->p = Pt3(0,0,0,1);
 	e->bx = Vec3(1,0,0);
 	e->by = Vec3(0,1,0);
@@ -212,7 +212,7 @@ newscene(char *name)
 {
 	Scene *s;
 
-	s = emalloc(sizeof *s);
+	s = _emalloc(sizeof *s);
 	s->name = name == nil? nil: strdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;

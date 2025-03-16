@@ -90,7 +90,7 @@ mkitemarray(usize is)
 {
 	IArray *a;
 
-	a = emalloc(sizeof *a);
+	a = _emalloc(sizeof *a);
 	memset(a, 0, sizeof *a);
 	a->itemsize = is;
 	return a;
@@ -110,7 +110,7 @@ itemarrayadd(IArray *a, void *i, int dedup)
 	}
 
 	idx = a->nitems;
-	a->items = erealloc(a->items, ++a->nitems * a->itemsize);
+	a->items = _erealloc(a->items, ++a->nitems * a->itemsize);
 	p = a->items;
 	p += idx*a->itemsize;
 	memmove(p, i, a->itemsize);
@@ -153,7 +153,7 @@ mkmtltab(void)
 {
 	Mtltab *t;
 
-	t = emalloc(sizeof *t);
+	t = _emalloc(sizeof *t);
 	memset(t, 0, sizeof *t);
 	return t;
 }
@@ -174,7 +174,7 @@ mtltabadd(Mtltab *t, Material *m)
 	Mtlentry *nm, *mp, *prev;
 	uint h;
 
-	nm = emalloc(sizeof *nm);
+	nm = _emalloc(sizeof *nm);
 	memset(nm, 0, sizeof *nm);
 	nm->Material = *m;
 	nm->next = nil;

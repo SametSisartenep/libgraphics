@@ -10,25 +10,25 @@
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
-	return getvattr(sp->su->stab, id);
+	return _getvattr(sp->su->stab, id);
 }
 
 void
 setuniform(Shadertab *st, char *id, int type, void *val)
 {
-	addvattr(st, id, type, val);
+	_addvattr(st, id, type, val);
 }
 
 static Vertexattr *
 sparams_getattr(Shaderparams *sp, char *id)
 {
-	return getvattr(sp->v, id);
+	return _getvattr(sp->v, id);
 }
 
 static void
 sparams_setattr(Shaderparams *sp, char *id, int type, void *val)
 {
-	addvattr(sp->v, id, type, val);
+	_addvattr(sp->v, id, type, val);
 }
 
 static void
@@ -50,10 +50,10 @@ sparams_toraster(Shaderparams *sp, char *rname, void *v)
 	switch(r->chan){
 	case COLOR32:
 		c = col2ul(*(Color*)v);
-		rasterput(r, sp->p, &c);
+		_rasterput(r, sp->p, &c);
 		break;
 	case FLOAT32:
-		rasterput(r, sp->p, v);
+		_rasterput(r, sp->p, v);
 		break;
 	}
 }
@@ -105,7 +105,7 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 	stk = &buf->stk[p.y*Dx(fb->r) + p.x];
 	if(stk->nitems == stk->size){
 		stk->size += 8;
-		stk->items = erealloc(stk->items, stk->size*sizeof(*stk->items));
+		stk->items = _erealloc(stk->items, stk->size*sizeof(*stk->items));
 		memset(&stk->items[stk->size-8], 0, 8*sizeof(*stk->items));
 	}
 	stk->nitems++;
@@ -122,7 +122,7 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 		stk->active++;
 		stk->p = p;
 		qlock(buf);
-		buf->act = erealloc(buf->act, ++buf->nact*sizeof(*buf->act));
+		buf->act = _erealloc(buf->act, ++buf->nact*sizeof(*buf->act));
 		buf->act[buf->nact-1] = stk;
 		qunlock(buf);
 	}
@@ -224,13 +224,13 @@ rasterize(Rastertask *task)
 			task->clipr->min = minpt(task->clipr->min, p);
 			task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
 		}
-		delvattrs(fsp.v);
+		_delvattrs(fsp.v);
 		break;
 	case PLine:
 		p0 = Pt(prim->v[0].p.x, prim->v[0].p.y);
 		p1 = Pt(prim->v[1].p.x, prim->v[1].p.y);
 		/* clip it against our wr */
-		if(rectclipline(task->wr, &p0, &p1, &prim->v[0], &prim->v[1]) < 0)
+		if(_rectclipline(task->wr, &p0, &p1, &prim->v[0], &prim->v[1]) < 0)
 			break;
 
 		steep = 0;
@@ -271,7 +271,7 @@ rasterize(Rastertask *task)
 
 			/* perspective-correct attribute interpolation  */
 			perc *= prim->v[0].p.w * pcz;
-			lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
+			_lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
 
 			fsp.p = p;
 			c = params->stab->fs(&fsp);
@@ -300,7 +300,7 @@ discard:
 				e -= 2*dp.x;
 			}
 		}
-		delvattrs(fsp.v);
+		_delvattrs(fsp.v);
 		break;
 	case PTriangle:
 		t.p0 = Pt2(prim->v[0].p.x, prim->v[0].p.y, 1);
@@ -325,7 +325,7 @@ discard:
 			bc = modulapt3(bc, Vec3(prim->v[0].p.w*pcz,
 						prim->v[1].p.w*pcz,
 						prim->v[2].p.w*pcz));
-			berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
+			_berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
 
 			fsp.p = p;
 			c = params->stab->fs(&fsp);
@@ -346,7 +346,7 @@ discard:
 				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
 			}
 		}
-		delvattrs(fsp.v);
+		_delvattrs(fsp.v);
 		break;
 	default: sysfatal("alien primitive detected");
 	}
@@ -406,7 +406,7 @@ rasterizer(void *arg)
 		rasterize(task);
 
 		for(i = 0; i < task->p.type+1; i++)
-			delvattrs(&task->p.v[i]);
+			_delvattrs(&task->p.v[i]);
 		free(params);
 		free(task);
 	}
@@ -429,10 +429,10 @@ tiler(void *arg)
 	tp = arg;
 	threadsetname("tiler %d", tp->id);
 
-	cp = emalloc(sizeof(*cp)*16);
+	cp = _emalloc(sizeof(*cp)*16);
 	taskchans = tp->taskchans;
 	nproc = tp->nproc;
-	wr = emalloc(nproc*sizeof(Rectangle));
+	wr = _emalloc(nproc*sizeof(Rectangle));
 
 	memset(&vsp, 0, sizeof vsp);
 	vsp.getuniform = sparams_getuniform;
@@ -453,7 +453,7 @@ tiler(void *arg)
 			if(decref(params->job) < 1){
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
-					task = emalloc(sizeof *task);
+					task = _emalloc(sizeof *task);
 					memset(task, 0, sizeof *task);
 					task->params = params;
 					sendp(taskchans[i], task);
@@ -498,17 +498,17 @@ tiler(void *arg)
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox, wr[i])){
-						newparams = emalloc(sizeof *newparams);
+						newparams = _emalloc(sizeof *newparams);
 						*newparams = *params;
-						task = emalloc(sizeof *task);
+						task = _emalloc(sizeof *task);
 						task->params = newparams;
 						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
-						task->p.v[0] = dupvertex(&p->v[0]);
+						task->p.v[0] = _dupvertex(&p->v[0]);
 						sendp(taskchans[i], task);
 						break;
 					}
-				delvattrs(&p->v[0]);
+				_delvattrs(&p->v[0]);
 				break;
 			case PLine:
 				for(i = 0; i < 2; i++){
@@ -522,7 +522,7 @@ tiler(void *arg)
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
-					np = clipprimitive(p, cp);
+					np = _clipprimitive(p, cp);
 					p = cp;
 				}
 
@@ -541,19 +541,19 @@ tiler(void *arg)
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox, wr[i])){
-						newparams = emalloc(sizeof *newparams);
+						newparams = _emalloc(sizeof *newparams);
 						*newparams = *params;
-						task = emalloc(sizeof *task);
+						task = _emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
 						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
-						task->p.v[0] = dupvertex(&p->v[0]);
-						task->p.v[1] = dupvertex(&p->v[1]);
+						task->p.v[0] = _dupvertex(&p->v[0]);
+						task->p.v[1] = _dupvertex(&p->v[1]);
 						sendp(taskchans[i], task);
 					}
-				delvattrs(&p->v[0]);
-				delvattrs(&p->v[1]);
+				_delvattrs(&p->v[0]);
+				_delvattrs(&p->v[1]);
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
@@ -568,7 +568,7 @@ tiler(void *arg)
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){
-					np = clipprimitive(p, cp);
+					np = _clipprimitive(p, cp);
 					p = cp;
 				}
 
@@ -594,23 +594,23 @@ tiler(void *arg)
 
 					for(i = 0; i < nproc; i++)
 						if(rectXrect(bbox, wr[i])){
-							newparams = emalloc(sizeof *newparams);
+							newparams = _emalloc(sizeof *newparams);
 							*newparams = *params;
-							task = emalloc(sizeof *task);
+							task = _emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = bbox;
 							rectclip(&task->wr, wr[i]);
 							task->clipr = &params->job->cliprects[i];
 							task->p = *p;
-							task->p.v[0] = dupvertex(&p->v[0]);
-							task->p.v[1] = dupvertex(&p->v[1]);
-							task->p.v[2] = dupvertex(&p->v[2]);
+							task->p.v[0] = _dupvertex(&p->v[0]);
+							task->p.v[1] = _dupvertex(&p->v[1]);
+							task->p.v[2] = _dupvertex(&p->v[2]);
 							sendp(taskchans[i], task);
 						}
 skiptri:
-					delvattrs(&p->v[0]);
-					delvattrs(&p->v[1]);
-					delvattrs(&p->v[2]);
+					_delvattrs(&p->v[0]);
+					_delvattrs(&p->v[1]);
+					_delvattrs(&p->v[2]);
 				}
 				break;
 			default: sysfatal("alien primitive detected");
@@ -642,11 +642,11 @@ entityproc(void *arg)
 	if(nproc > 2)
 		nproc /= 2;
 
-	paramsout = emalloc(nproc*sizeof(*paramsout));
-	taskchans = emalloc(nproc*sizeof(*taskchans));
+	paramsout = _emalloc(nproc*sizeof(*paramsout));
+	taskchans = _emalloc(nproc*sizeof(*taskchans));
 	for(i = 0; i < nproc; i++){
 		paramsout[i] = chancreate(sizeof(SUparams*), 256);
-		tp = emalloc(sizeof *tp);
+		tp = _emalloc(sizeof *tp);
 		tp->id = i;
 		tp->paramsc = paramsout[i];
 		tp->taskchans = taskchans;
@@ -654,7 +654,7 @@ entityproc(void *arg)
 		proccreate(tiler, tp, mainstacksize);
 	}
 	for(i = 0; i < nproc; i++){
-		rp = emalloc(sizeof *rp);
+		rp = _emalloc(sizeof *rp);
 		rp->id = i;
 		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask*), 512);
 		proccreate(rasterizer, rp, mainstacksize);
@@ -668,8 +668,8 @@ entityproc(void *arg)
 		/* prof: initialize timing slots for the next stages */
 		if(params->job->rctl->doprof && params->job->times.Tn == nil){
 			assert(params->job->times.Rn == nil);
-			params->job->times.Tn = emalloc(nproc*sizeof(Rendertime));
-			params->job->times.Rn = emalloc(nproc*sizeof(Rendertime));
+			params->job->times.Tn = _emalloc(nproc*sizeof(Rendertime));
+			params->job->times.Rn = _emalloc(nproc*sizeof(Rendertime));
 			memset(params->job->times.Tn, 0, nproc*sizeof(Rendertime));
 			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
 		}
@@ -685,7 +685,7 @@ entityproc(void *arg)
 		}
 
 		if(params->job->cliprects == nil){
-			params->job->cliprects = emalloc(nproc*sizeof(Rectangle));
+			params->job->cliprects = _emalloc(nproc*sizeof(Rectangle));
 			params->job->ncliprects = nproc;
 			for(i = 0; i < nproc; i++){
 				params->job->cliprects[i].min = Pt(-1,-1);
@@ -706,7 +706,7 @@ entityproc(void *arg)
 		}
 
 		for(i = 0; i < nworkers; i++){
-			newparams = emalloc(sizeof *newparams);
+			newparams = _emalloc(sizeof *newparams);
 			*newparams = *params;
 			newparams->eb = eb + i*stride;
 			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
@@ -732,7 +732,7 @@ renderer(void *arg)
 	rctl = arg;
 	lastid = 0;
 
-	ep = emalloc(sizeof *ep);
+	ep = _emalloc(sizeof *ep);
 	ep->rctl = rctl;
 	ep->paramsc = chancreate(sizeof(SUparams*), 256);
 	proccreate(entityproc, ep, mainstacksize);
@@ -749,12 +749,12 @@ renderer(void *arg)
 
 		/* initialize the A-buffer */
 		if((job->camera->rendopts & ROAbuff) && job->fb->abuf.stk == nil){
-			job->fb->abuf.stk = emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
+			job->fb->abuf.stk = _emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 			memset(job->fb->abuf.stk, 0, Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
 		}
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
-			params = emalloc(sizeof *params);
+			params = _emalloc(sizeof *params);
 			memset(params, 0, sizeof *params);
 			params->fb = job->fb;
 			params->stab = job->shaders;
@@ -764,7 +764,7 @@ renderer(void *arg)
 			sendp(ep->paramsc, params);
 		}
 		/* mark end of job */
-		params = emalloc(sizeof *params);
+		params = _emalloc(sizeof *params);
 		memset(params, 0, sizeof *params);
 		params->job = job;
 		sendp(ep->paramsc, params);
@@ -785,7 +785,7 @@ initgraphics(void)
 		nproc = 1;
 	free(nprocs);
 
-	r = emalloc(sizeof *r);
+	r = _emalloc(sizeof *r);
 	memset(r, 0, sizeof *r);
 	r->jobq = chancreate(sizeof(Renderjob*), 8);
 	r->nprocs = nproc;

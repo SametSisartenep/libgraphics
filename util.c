@@ -94,7 +94,7 @@ eqpt3(Point3 a, Point3 b)
 }
 
 void
-memsetf(void *dp, float v, usize len)
+_memsetf(void *dp, float v, usize len)
 {
 	float *p;
 
@@ -104,7 +104,7 @@ memsetf(void *dp, float v, usize len)
 }
 
 void
-memsetl(void *dp, ulong v, usize len)
+_memsetl(void *dp, ulong v, usize len)
 {
 	ulong *p;
 
@@ -118,7 +118,7 @@ rgba(ulong c)
 {
 	Memimage *i;
 
-	i = eallocmemimage(UR, RGBA32);
+	i = _eallocmemimage(UR, RGBA32);
 	i->flags |= Frepl;
 	i->clipr = Rect(-1e6, -1e6, 1e6, 1e6);
 	memfillcolor(i, c);
