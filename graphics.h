@@ -143,10 +143,11 @@ struct Vertex
 
 struct LightSource
 {
+	int type;
 	Point3 p;
 	Point3 dir;
 	Color c;
-	int type;
+	double cutoff;	/* distance */
 	/* spotlights */
 	double θu;	/* umbra angle. anything beyond is unlit */
 	double θp;	/* penumbra angle. anything within is fully lit */

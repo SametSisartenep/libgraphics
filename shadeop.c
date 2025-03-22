@@ -32,10 +32,12 @@ smoothstep(double edge0, double edge1, double n)
 
 /* see Equation 5.16, Real-Time Rendering 4th ed. § 5.2.2 */
 static double
-dfalloff(double d)
+dfalloff(LightSource *l, double d)
 {
-	enum { RMAX = 3000 };	/* cutoff distance */
-	d = d/RMAX;
+	if(l->cutoff <= 0)
+		return 0;
+
+	d = d/l->cutoff;
 	d *= d;
 	d = max(0, 1 - d);
 	return d*d;
@@ -53,16 +55,16 @@ getlightcolor(LightSource *l, Point3 p, Point3 n)
 	ldir = divpt3(ldir, r);
 
 	switch(l->type){
+	case LightDirectional:
+		t = max(0, dotvec3(mulpt3(l->dir, -1), n));
+		c = mulpt3(l->c, t);
+		break;
 	case LightPoint:
 		t = max(0, dotvec3(ldir, n));
 		c = mulpt3(l->c, t);
 
 		/* attenuation */
-		c = mulpt3(c, dfalloff(r));
-		break;
-	case LightDirectional:
-		t = max(0, dotvec3(mulpt3(l->dir, -1), n));
-		c = mulpt3(l->c, t);
+		c = mulpt3(c, dfalloff(l, r));
 		break;
 	case LightSpot:
 		/* see “Spotlights”, Real-Time Rendering 4th ed. § 5.2.2 */
@@ -76,7 +78,7 @@ getlightcolor(LightSource *l, Point3 p, Point3 n)
 		c = mulpt3(l->c, t*t);
 
 		/* attenuation */
-		c = mulpt3(c, dfalloff(r));
+		c = mulpt3(c, dfalloff(l, r));
 		break;
 	default: sysfatal("alien light form detected");
 	}
