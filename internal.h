@@ -71,6 +71,7 @@ void _rmfbctl(Framebufctl*);
 Vertex _dupvertex(Vertex*);
 void _lerpvertex(Vertex*, Vertex*, Vertex*, double);
 void _berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
+void _perspdiv(Vertex*, double);
 void _delvattrs(Vertex*);
 void _fprintvattrs(int, Vertex*);
 void _addvattr(Vertexattrs*, char*, int, void*);

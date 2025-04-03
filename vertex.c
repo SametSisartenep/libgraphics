@@ -57,6 +57,7 @@ _lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
 	v->n = lerp3(v0->n, v1->n, t);
 	v->c = lerp3(v0->c, v1->c, t);
 	v->uv = lerp2(v0->uv, v1->uv, t);
+	v->tangent = lerp3(v0->tangent, v1->tangent, t);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl;
 	for(i = 0; i < v0->nattrs; i++){
 		va.id = v0->attrs[i].id;
@@ -82,6 +83,7 @@ _berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 	v->n = berp3(v0->n, v1->n, v2->n, bc);
 	v->c = berp3(v0->c, v1->c, v2->c, bc);
 	v->uv = berp2(v0->uv, v1->uv, v2->uv, bc);
+	v->tangent = berp3(v0->tangent, v1->tangent, v2->tangent, bc);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl != nil? v1->mtl: v2->mtl;
 	for(i = 0; i < v0->nattrs; i++){
 		va.id = v0->attrs[i].id;
@@ -91,6 +93,26 @@ _berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 		else
 			va.n = fberp(v0->attrs[i].n, v1->attrs[i].n, v2->attrs[i].n, bc);
 		addvattr(v, &va);
+	}
+}
+
+/*
+ * perspective divide vertex attributes
+ */
+void
+_perspdiv(Vertex *v, double z⁻¹)
+{
+	Vertexattr *va;
+
+	v->n = mulpt3(v->n, z⁻¹);
+	v->c = mulpt3(v->c, z⁻¹);
+	v->uv = mulpt2(v->uv, z⁻¹);
+	v->tangent = mulpt3(v->tangent, z⁻¹);
+	for(va = v->attrs; va < v->attrs + v->nattrs; va++){
+		if(va->type == VAPoint)
+			va->p = mulpt3(va->p, z⁻¹);
+		else
+			va->n *= z⁻¹;
 	}
 }
 

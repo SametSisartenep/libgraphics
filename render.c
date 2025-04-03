@@ -307,6 +307,10 @@ discard:
 		t.p1 = Pt2(prim->v[1].p.x, prim->v[1].p.y, 1);
 		t.p2 = Pt2(prim->v[2].p.x, prim->v[2].p.y, 1);
 
+		_perspdiv(prim->v+0, prim->v[0].p.w);
+		_perspdiv(prim->v+1, prim->v[1].p.w);
+		_perspdiv(prim->v+2, prim->v[2].p.w);
+
 		for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++)
 		for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
 			bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
@@ -322,9 +326,7 @@ discard:
 			pcz = 1.0/(pcz < ε1? ε1: pcz);
 
 			/* perspective-correct attribute interpolation  */
-			bc = modulapt3(bc, Vec3(prim->v[0].p.w*pcz,
-						prim->v[1].p.w*pcz,
-						prim->v[2].p.w*pcz));
+			bc = mulpt3(bc, pcz);
 			_berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
 
 			fsp.p = p;
