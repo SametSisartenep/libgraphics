@@ -170,8 +170,6 @@ rasterize(Rastertask *task)
 	SUparams *params;
 	Raster *cr, *zr;
 	Primitive *prim;
-	Vertex v;
-	Shaderparams fsp;
 	Triangle2 t;
 	Point p, dp, Δp, p0, p1;
 	Point3 bc;
@@ -183,14 +181,6 @@ rasterize(Rastertask *task)
 
 	params = task->params;
 	prim = &task->p;
-	memset(&fsp, 0, sizeof fsp);
-	memset(&v, 0, sizeof v);
-	fsp.su = params;
-	fsp.v = &v;
-	fsp.getuniform = sparams_getuniform;
-	fsp.getattr = sparams_getattr;
-	fsp.setattr = nil;
-	fsp.toraster = sparams_toraster;
 
 	cr = params->fb->rasters;
 	zr = cr->next;
@@ -205,9 +195,9 @@ rasterize(Rastertask *task)
 		if((ropts & RODepth) && z <= getdepth(zr, p))
 			break;
 
-		fsp.v = &prim->v[0];
-		fsp.p = p;
-		c = params->stab->fs(&fsp);
+		*task->fsp->v = prim->v[0];
+		task->fsp->p = p;
+		c = params->stab->fs(task->fsp);
 		if(c.a == 0)			/* discard non-colors */
 			break;
 		if(ropts & RODepth)
@@ -224,13 +214,12 @@ rasterize(Rastertask *task)
 			task->clipr->min = minpt(task->clipr->min, p);
 			task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
 		}
-		_delvattrs(fsp.v);
 		break;
 	case PLine:
 		p0 = Pt(prim->v[0].p.x, prim->v[0].p.y);
 		p1 = Pt(prim->v[1].p.x, prim->v[1].p.y);
 		/* clip it against our wr */
-		if(_rectclipline(task->wr, &p0, &p1, &prim->v[0], &prim->v[1]) < 0)
+		if(_rectclipline(task->wr, &p0, &p1, prim->v+0, prim->v+1) < 0)
 			break;
 
 		steep = 0;
@@ -244,7 +233,7 @@ rasterize(Rastertask *task)
 		/* make them left-to-right */
 		if(p0.x > p1.x){
 			SWAP(Point, &p0, &p1);
-			SWAP(Vertex, &prim->v[0], &prim->v[1]);
+			SWAP(Vertex, prim->v+0, prim->v+1);
 		}
 
 		dp = subpt(p1, p0);
@@ -271,10 +260,10 @@ rasterize(Rastertask *task)
 
 			/* perspective-correct attribute interpolation  */
 			perc *= prim->v[0].p.w * pcz;
-			_lerpvertex(fsp.v, &prim->v[0], &prim->v[1], perc);
+			_lerpvertex(task->fsp->v, prim->v+0, prim->v+1, perc);
 
-			fsp.p = p;
-			c = params->stab->fs(&fsp);
+			task->fsp->p = p;
+			c = params->stab->fs(task->fsp);
 			if(c.a == 0)			/* discard non-colors */
 				goto discard;
 			if(ropts & RODepth)
@@ -300,7 +289,6 @@ discard:
 				e -= 2*dp.x;
 			}
 		}
-		_delvattrs(fsp.v);
 		break;
 	case PTriangle:
 		t.p0 = Pt2(prim->v[0].p.x, prim->v[0].p.y, 1);
@@ -327,10 +315,10 @@ discard:
 
 			/* perspective-correct attribute interpolation  */
 			bc = mulpt3(bc, pcz);
-			_berpvertex(fsp.v, &prim->v[0], &prim->v[1], &prim->v[2], bc);
+			_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, bc);
 
-			fsp.p = p;
-			c = params->stab->fs(&fsp);
+			task->fsp->p = p;
+			c = params->stab->fs(task->fsp);
 			if(c.a == 0)			/* discard non-colors */
 				continue;
 			if(ropts & RODepth)
@@ -348,7 +336,6 @@ discard:
 				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
 			}
 		}
-		_delvattrs(fsp.v);
 		break;
 	default: sysfatal("alien primitive detected");
 	}
@@ -361,11 +348,21 @@ rasterizer(void *arg)
 	Rastertask *task;
 	SUparams *params;
 	Renderjob *job;
+	Vertex v;
+	Shaderparams fsp;
 	uvlong t0;
 	int i;
 
 	rp = arg;
 	threadsetname("rasterizer %d", rp->id);
+
+	memset(&fsp, 0, sizeof fsp);
+	memset(&v, 0, sizeof v);
+	fsp.v = &v;
+	fsp.getuniform = sparams_getuniform;
+	fsp.getattr = sparams_getattr;
+	fsp.setattr = nil;
+	fsp.toraster = sparams_toraster;
 
 	while((task = recvp(rp->taskc)) != nil){
 		t0 = nanosec();
@@ -405,8 +402,11 @@ rasterizer(void *arg)
 			continue;
 		}
 
+		fsp.su = params;
+		task->fsp = &fsp;
 		rasterize(task);
 
+		_delvattrs(&v);
 		for(i = 0; i < task->p.type+1; i++)
 			_delvattrs(&task->p.v[i]);
 		free(params);

@@ -40,6 +40,7 @@ struct Rasterparam
 struct Rastertask
 {
 	SUparams *params;
+	Shaderparams *fsp;
 	Rectangle wr;		/* working rect */
 	Rectangle *clipr;
 	Primitive p;
