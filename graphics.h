@@ -423,6 +423,11 @@ void delmaterial(Material*);
 Model *newmodel(void);
 Model *dupmodel(Model*);
 void delmodel(Model*);
+LightSource *newpointlight(Point3, Color);
+LightSource *newdireclight(Point3, Point3, Color);
+LightSource *newspotlight(Point3, Point3, Color, double, double);
+LightSource *duplight(LightSource*);
+void dellight(LightSource*);
 Entity *newentity(char*, Model*);
 Entity *dupentity(Entity*);
 void delentity(Entity*);
@@ -477,3 +482,5 @@ Color getscenecolor(Scene*, Point3, Point3);
 uvlong nanosec(void);
 
 extern Rectangle UR;	/* unit rectangle */
+extern Point2 ZP2;
+extern Point3 ZP3;

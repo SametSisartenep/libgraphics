@@ -876,7 +876,7 @@ writemodel(int fd, Model *m, int dedup)
 		P.nv = p->type+1;
 		for(i = 0; i < P.nv; i++){
 			v.p = itemarrayadd(pa, &p->v[i].p, dedup);
-			v.n = eqpt3(p->v[i].n, Vec3(0,0,0))?
+			v.n = eqpt3(p->v[i].n, ZP3)?
 				NaI: itemarrayadd(na, &p->v[i].n, dedup);
 			v.t = p->v[i].uv.w != 1?
 				NaI: itemarrayadd(ta, &p->v[i].uv, dedup);
@@ -884,7 +884,7 @@ writemodel(int fd, Model *m, int dedup)
 				NaI: itemarrayadd(ca, &p->v[i].c, dedup);
 			P.v[i] = itemarrayadd(va, &v, dedup);
 		}
-		P.T = eqpt3(p->tangent, Vec3(0,0,0))?
+		P.T = eqpt3(p->tangent, ZP3)?
 			NaI: itemarrayadd(Ta, &p->tangent, dedup);
 		P.mtlname = p->mtl != nil? p->mtl->name: nil;
 

@@ -123,6 +123,59 @@ delmodel(Model *m)
 	free(m);
 }
 
+static LightSource *
+newlight(int t, Point3 p, Point3 d, Color c, double coff, double θu, double θp)
+{
+	LightSource *l;
+
+	l = _emalloc(sizeof *l);
+	l->type = t;
+	l->p = p;
+	l->dir = d;
+	l->c = c;
+	l->cutoff = coff;
+	l->θu = θu;
+	l->θp = θp;
+	l->prev = l->next = nil;
+	return l;
+}
+
+LightSource *
+newpointlight(Point3 p, Color c)
+{
+	return newlight(LightPoint, p, ZP3, c, 1000, 0, 0);
+}
+
+LightSource *
+newdireclight(Point3 p, Point3 dir, Color c)
+{
+	return newlight(LightDirectional, p, dir, c, 1000, 0, 0);
+}
+
+LightSource *
+newspotlight(Point3 p, Point3 dir, Color c, double θu, double θp)
+{
+	return newlight(LightSpot, p, dir, c, 1000, θu, θp);
+}
+
+LightSource *
+duplight(LightSource *l)
+{
+	LightSource *nl;
+
+	nl = _emalloc(sizeof *nl);
+	memset(nl, 0, sizeof *nl);
+	*nl = *l;
+	nl->prev = nl->next = nil;
+	return nl;
+}
+
+void
+dellight(LightSource *l)
+{
+	free(l);
+}
+
 Entity *
 newentity(char *name, Model *m)
 {
@@ -231,14 +284,16 @@ dupscene(Scene *s)
 {
 	Scene *ns;
 	Entity *e;
+	LightSource *l;
 
 	if(s == nil)
 		return nil;
 
 	ns = newscene(s->name);
-	if(s->nents > 0)
-		for(e = s->ents.next; e != &s->ents; e = e->next)
-			ns->addent(ns, dupentity(e));
+	for(e = s->ents.next; e != &s->ents; e = e->next)
+		ns->addent(ns, dupentity(e));
+	for(l = s->lights.next; l != &s->lights; l = l->next)
+		ns->addlight(ns, duplight(l));
 	ns->skybox = dupcubemap(s->skybox);
 	return ns;
 }

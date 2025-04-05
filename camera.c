@@ -248,7 +248,8 @@ shootcamera(Camera *c, Shadertab *s)
 	job->fb = fbctl->getbb(fbctl);
 	job->camera = _emalloc(sizeof *c);
 	*job->camera = *c;
-	job->scene = dupscene(c->scene);	/* take a snapshot */	
+	job->scene = dupscene(c->scene);	/* take a snapshot */
+	job->camera->scene = job->scene;
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
@@ -270,6 +271,7 @@ shootcamera(Camera *c, Shadertab *s)
 		job->camera->fov = 90*DEG;
 		reloadcamera(job->camera);
 		job->scene = dupscene(skyboxscene);
+		job->camera->scene = job->scene;
 		job->shaders = &skyboxshader;
 		sendp(c->rctl->jobq, job);
 		recvp(job->donec);

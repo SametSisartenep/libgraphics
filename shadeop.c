@@ -91,7 +91,7 @@ getscenecolor(Scene *s, Point3 p, Point3 n)
 	LightSource *l;
 	Color c;
 
-	c = Vec3(0,0,0);
+	c = ZP3;
 	for(l = s->lights.next; l != &s->lights; l = l->next)
 		c = addpt3(c, getlightcolor(l, p, n));
 	return c;
