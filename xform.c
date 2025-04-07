@@ -63,11 +63,10 @@ world2clip(Camera *c, Point3 p)
 Point3
 clip2ndc(Point3 p)
 {
-	p.w = p.w == 0? 0: 1.0/p.w;
-	p.x *= p.w;
-	p.y *= p.w;
-	p.z *= p.w;
-	return p;
+	double w;
+
+	w = p.w == 0? 0: 1.0/p.w;
+	return (Point3){p.x*w, p.y*w, p.z*w, w};
 }
 
 /*
@@ -79,18 +78,13 @@ Point3
 ndc2viewport(Framebuf *fb, Point3 p)
 {
 	Matrix3 view = {
-		Dx(fb->r)/2.0,             0,       0,       Dx(fb->r)/2.0,
-		0,            -Dy(fb->r)/2.0,       0,       Dy(fb->r)/2.0,
-		0,                         0, 1.0/2.0,             1.0/2.0,
+		Dx(fb->r)/2.0,             0,       0,       Dx(fb->r)/(2*p.w),
+		0,            -Dy(fb->r)/2.0,       0,       Dy(fb->r)/(2*p.w),
+		0,                         0, 1.0/2.0,             1.0/(2*p.w),
 		0,                         0,       0,                   1,
 	};
-	double w;
 
-	w = p.w;
-	p.w = 1;
-	p = xform3(p, view);
-	p.w = w;
-	return p;
+	return xform3(p, view);
 }
 
 Point3
