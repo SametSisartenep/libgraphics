@@ -248,15 +248,14 @@ shootcamera(Camera *c, Shadertab *s)
 	job->fb = fbctl->getbb(fbctl);
 	job->camera = _emalloc(sizeof *c);
 	*job->camera = *c;
-	job->scene = dupscene(c->scene);	/* take a snapshot */
-	job->camera->scene = job->scene;
+	job->camera->scene = dupscene(c->scene);	/* take a snapshot */
 	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
 	t0 = nanosec();
 	sendp(c->rctl->jobq, job);
 	recvp(job->donec);
-	delscene(job->scene);			/* destroy the snapshot */
+	delscene(job->camera->scene);			/* destroy the snapshot */
 	/*
 	 * if the scene has a skybox, do another render pass,
 	 * filling in the pixels left untouched.
@@ -270,12 +269,12 @@ shootcamera(Camera *c, Shadertab *s)
 		job->camera->cullmode = CullNone;
 		job->camera->fov = 90*DEG;
 		reloadcamera(job->camera);
-		job->scene = dupscene(skyboxscene);
-		job->camera->scene = job->scene;
+		job->camera->scene = dupscene(skyboxscene);
+		job->camera->scene->skybox = dupcubemap(c->scene->skybox);
 		job->shaders = &skyboxshader;
 		sendp(c->rctl->jobq, job);
 		recvp(job->donec);
-		delscene(job->scene);
+		delscene(job->camera->scene);
 	}
 	t1 = nanosec();
 	fbctl->swap(fbctl);

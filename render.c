@@ -781,7 +781,7 @@ renderer(void *arg)
 		time = nanosec();
 		if(job->rctl->doprof) job->times.R.t0 = time;
 		job->id = lastid++;
-		sc = job->scene;
+		sc = job->camera->scene;
 		if(sc->nents < 1){
 			nbsend(job->donec, nil);
 			continue;

@@ -262,7 +262,6 @@ struct Renderjob
 	Renderer *rctl;
 	Framebuf *fb;
 	Camera *camera;
-	Scene *scene;
 	Shadertab *shaders;
 	Channel *donec;
 	Rectangle *cliprects;	/* one per rasterizer */
