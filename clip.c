@@ -191,11 +191,11 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 	dp = subpt3(v1->p, v0->p);
 	len = hypot(dp.x, dp.y);
 
-	Δp = subpt(Pt(v0->p.x, v0->p.y), *p0);
+	Δp = subpt((Point){v0->p.x, v0->p.y}, *p0);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	_lerpvertex(&v[0], v0, v1, perc);
 
-	Δp = subpt(Pt(v0->p.x, v0->p.y), *p1);
+	Δp = subpt((Point){v0->p.x, v0->p.y}, *p1);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	_lerpvertex(&v[1], v0, v1, perc);
 

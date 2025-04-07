@@ -99,7 +99,7 @@ Camv(Viewport *v, Renderer *r, Projection p, double fov, double n, double f)
 {
 	Camera *c;
 
-	if(v == nil || r == nil)
+	if(v == nil)
 		return nil;
 
 	c = newcamera();

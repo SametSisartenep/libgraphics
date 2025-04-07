@@ -165,14 +165,58 @@ _barycoords(Triangle2 t, Point2 p)
 }
 
 static void
-rasterize(Rastertask *task)
+rasterizept(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
 	Primitive *prim;
-	Triangle2 t;
+	Point p;
+	Color c;
+	float z;
+	uint ropts;
+
+	params = task->params;
+	prim = &task->p;
+
+	cr = params->fb->rasters;
+	zr = cr->next;
+
+	ropts = params->camera->rendopts;
+
+	p = (Point){prim->v[0].p.x, prim->v[0].p.y};
+
+	z = fclamp(prim->v[0].p.z, 0, 1);
+	if((ropts & RODepth) && z <= getdepth(zr, p))
+		return;
+
+	*task->fsp->v = prim->v[0];
+	task->fsp->p = p;
+	c = params->stab->fs(task->fsp);
+	if(c.a == 0)			/* discard non-colors */
+		return;
+	if(ropts & RODepth)
+		putdepth(zr, p, z);
+	if(ropts & ROAbuff)
+		pushtoAbuf(params->fb, p, c, z);
+	else
+		pixel(cr, p, c, ropts & ROBlend);
+
+	if(task->clipr->min.x < 0){
+		task->clipr->min = p;
+		task->clipr->max = addpt(p, (Point){1,1});
+	}else{
+		task->clipr->min = minpt(task->clipr->min, p);
+		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
+	}
+}
+
+static void
+rasterizeline(Rastertask *task)
+{
+	SUparams *params;
+	Raster *cr, *zr;
+	Primitive *prim;
 	Point p, dp, Δp, p0, p1;
-	Point3 bc;
 	Color c;
 	double dplen, perc;
 	float z, pcz;
@@ -187,19 +231,56 @@ rasterize(Rastertask *task)
 
 	ropts = params->camera->rendopts;
 
-	switch(prim->type){
-	case PPoint:
-		p = Pt(prim->v[0].p.x, prim->v[0].p.y);
+	p0 = (Point){prim->v[0].p.x, prim->v[0].p.y};
+	p1 = (Point){prim->v[1].p.x, prim->v[1].p.y};
+	/* clip it against our wr */
+	if(_rectclipline(task->wr, &p0, &p1, prim->v+0, prim->v+1) < 0)
+		return;
 
-		z = fclamp(prim->v[0].p.z, 0, 1);
-		if((ropts & RODepth) && z <= getdepth(zr, p))
-			break;
+	steep = 0;
+	/* transpose the points */
+	if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){
+		steep = 1;
+		SWAP(int, &p0.x, &p0.y);
+		SWAP(int, &p1.x, &p1.y);
+	}
 
-		*task->fsp->v = prim->v[0];
+	/* make them left-to-right */
+	if(p0.x > p1.x){
+		SWAP(Point, &p0, &p1);
+		SWAP(Vertex, prim->v+0, prim->v+1);
+	}
+
+	dp = subpt(p1, p0);
+	Δe = 2*abs(dp.y);
+	e = 0;
+	Δy = p1.y > p0.y? 1: -1;
+
+	for(p = p0; p.x <= p1.x; p.x++){
+		Δp = subpt(p, p0);
+		dplen = hypot(dp.x, dp.y);
+		perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
+
+		if(steep) SWAP(int, &p.x, &p.y);
+
+		z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
+		/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
+		if(!ptinrect(p, params->fb->r) ||
+		   ((ropts & RODepth) && z <= getdepth(zr, p)))
+			goto discard;
+
+		/* interpolate z⁻¹ and get actual z */
+		pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
+		pcz = 1.0/(pcz < ε1? ε1: pcz);
+
+		/* perspective-correct attribute interpolation  */
+		perc *= prim->v[0].p.w * pcz;
+		_lerpvertex(task->fsp->v, prim->v+0, prim->v+1, perc);
+
 		task->fsp->p = p;
 		c = params->stab->fs(task->fsp);
 		if(c.a == 0)			/* discard non-colors */
-			break;
+			goto discard;
 		if(ropts & RODepth)
 			putdepth(zr, p, z);
 		if(ropts & ROAbuff)
@@ -209,135 +290,87 @@ rasterize(Rastertask *task)
 
 		if(task->clipr->min.x < 0){
 			task->clipr->min = p;
-			task->clipr->max = addpt(p, Pt(1,1));
+			task->clipr->max = addpt(p, (Point){1,1});
 		}else{
 			task->clipr->min = minpt(task->clipr->min, p);
-			task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
+			task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 		}
-		break;
-	case PLine:
-		p0 = Pt(prim->v[0].p.x, prim->v[0].p.y);
-		p1 = Pt(prim->v[1].p.x, prim->v[1].p.y);
-		/* clip it against our wr */
-		if(_rectclipline(task->wr, &p0, &p1, prim->v+0, prim->v+1) < 0)
-			break;
-
-		steep = 0;
-		/* transpose the points */
-		if(abs(p0.x-p1.x) < abs(p0.y-p1.y)){
-			steep = 1;
-			SWAP(int, &p0.x, &p0.y);
-			SWAP(int, &p1.x, &p1.y);
-		}
-
-		/* make them left-to-right */
-		if(p0.x > p1.x){
-			SWAP(Point, &p0, &p1);
-			SWAP(Vertex, prim->v+0, prim->v+1);
-		}
-
-		dp = subpt(p1, p0);
-		Δe = 2*abs(dp.y);
-		e = 0;
-		Δy = p1.y > p0.y? 1: -1;
-
-		for(p = p0; p.x <= p1.x; p.x++){
-			Δp = subpt(p, p0);
-			dplen = hypot(dp.x, dp.y);
-			perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
-
-			if(steep) SWAP(int, &p.x, &p.y);
-
-			z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
-			/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-			if(!ptinrect(p, params->fb->r) ||
-			   ((ropts & RODepth) && z <= getdepth(zr, p)))
-				goto discard;
-
-			/* interpolate z⁻¹ and get actual z */
-			pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
-			pcz = 1.0/(pcz < ε1? ε1: pcz);
-
-			/* perspective-correct attribute interpolation  */
-			perc *= prim->v[0].p.w * pcz;
-			_lerpvertex(task->fsp->v, prim->v+0, prim->v+1, perc);
-
-			task->fsp->p = p;
-			c = params->stab->fs(task->fsp);
-			if(c.a == 0)			/* discard non-colors */
-				goto discard;
-			if(ropts & RODepth)
-				putdepth(zr, p, z);
-			if(ropts & ROAbuff)
-				pushtoAbuf(params->fb, p, c, z);
-			else
-				pixel(cr, p, c, ropts & ROBlend);
-
-			if(task->clipr->min.x < 0){
-				task->clipr->min = p;
-				task->clipr->max = addpt(p, Pt(1,1));
-			}else{
-				task->clipr->min = minpt(task->clipr->min, p);
-				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
-			}
 discard:
-			if(steep) SWAP(int, &p.x, &p.y);
+		if(steep) SWAP(int, &p.x, &p.y);
 
-			e += Δe;
-			if(e > dp.x){
-				p.y += Δy;
-				e -= 2*dp.x;
-			}
+		e += Δe;
+		if(e > dp.x){
+			p.y += Δy;
+			e -= 2*dp.x;
 		}
-		break;
-	case PTriangle:
-		t.p0 = Pt2(prim->v[0].p.x, prim->v[0].p.y, 1);
-		t.p1 = Pt2(prim->v[1].p.x, prim->v[1].p.y, 1);
-		t.p2 = Pt2(prim->v[2].p.x, prim->v[2].p.y, 1);
+	}
+}
 
-		_perspdiv(prim->v+0, prim->v[0].p.w);
-		_perspdiv(prim->v+1, prim->v[1].p.w);
-		_perspdiv(prim->v+2, prim->v[2].p.w);
+static void
+rasterizetri(Rastertask *task)
+{
+	SUparams *params;
+	Raster *cr, *zr;
+	Primitive *prim;
+	Triangle2 t;
+	Point p;
+	Point3 bc;
+	Color c;
+	float z, pcz;
+	uint ropts;
 
-		for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++)
-		for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
-			bc = _barycoords(t, Pt2(p.x+0.5,p.y+0.5,1));
-			if(bc.x < 0 || bc.y < 0 || bc.z < 0)
-				continue;
+	params = task->params;
+	prim = &task->p;
 
-			z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
-			if((ropts & RODepth) && z <= getdepth(zr, p))
-				continue;
+	cr = params->fb->rasters;
+	zr = cr->next;
 
-			/* interpolate z⁻¹ and get actual z */
-			pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
-			pcz = 1.0/(pcz < ε1? ε1: pcz);
+	ropts = params->camera->rendopts;
 
-			/* perspective-correct attribute interpolation  */
-			bc = mulpt3(bc, pcz);
-			_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, bc);
+	t.p0 = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
+	t.p1 = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
+	t.p2 = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
 
-			task->fsp->p = p;
-			c = params->stab->fs(task->fsp);
-			if(c.a == 0)			/* discard non-colors */
-				continue;
-			if(ropts & RODepth)
-				putdepth(zr, p, z);
-			if(ropts & ROAbuff)
-				pushtoAbuf(params->fb, p, c, z);
-			else
-				pixel(cr, p, c, ropts & ROBlend);
+	_perspdiv(prim->v+0, prim->v[0].p.w);
+	_perspdiv(prim->v+1, prim->v[1].p.w);
+	_perspdiv(prim->v+2, prim->v[2].p.w);
 
-			if(task->clipr->min.x < 0){
-				task->clipr->min = p;
-				task->clipr->max = addpt(p, Pt(1,1));
-			}else{
-				task->clipr->min = minpt(task->clipr->min, p);
-				task->clipr->max = maxpt(task->clipr->max, addpt(p, Pt(1,1)));
-			}
+	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++)
+	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
+		bc = _barycoords(t, (Point2){p.x+0.5,p.y+0.5,1});
+		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
+			continue;
+
+		z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
+		if((ropts & RODepth) && z <= getdepth(zr, p))
+			continue;
+
+		/* interpolate z⁻¹ and get actual z */
+		pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
+		pcz = 1.0/(pcz < ε1? ε1: pcz);
+
+		/* perspective-correct attribute interpolation  */
+		bc = mulpt3(bc, pcz);
+		_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, bc);
+
+		task->fsp->p = p;
+		c = params->stab->fs(task->fsp);
+		if(c.a == 0)			/* discard non-colors */
+			continue;
+		if(ropts & RODepth)
+			putdepth(zr, p, z);
+		if(ropts & ROAbuff)
+			pushtoAbuf(params->fb, p, c, z);
+		else
+			pixel(cr, p, c, ropts & ROBlend);
+
+		if(task->clipr->min.x < 0){
+			task->clipr->min = p;
+			task->clipr->max = addpt(p, (Point){1,1});
+		}else{
+			task->clipr->min = minpt(task->clipr->min, p);
+			task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 		}
-		break;
-	default: sysfatal("alien primitive detected");
 	}
 }
 
@@ -404,7 +437,12 @@ rasterizer(void *arg)
 
 		fsp.su = params;
 		task->fsp = &fsp;
-		rasterize(task);
+		switch(task->p.type){
+		case PPoint: rasterizept(task); break;
+		case PLine: rasterizeline(task); break;
+		case PTriangle: rasterizetri(task); break;
+		default: sysfatal("alien primitive detected");
+		}
 
 		_delvattrs(&v);
 		for(i = 0; i < task->p.type+1; i++)
