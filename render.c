@@ -377,6 +377,11 @@ rasterizetri(Rastertask *task)
 static void
 rasterizer(void *arg)
 {
+	static void(*rasterfn[])(Rastertask*) = {
+	 [PPoint]	rasterizept,
+	 [PLine]	rasterizeline,
+	 [PTriangle]	rasterizetri,
+	};
 	Rasterparam *rp;
 	Rastertask *task;
 	SUparams *params;
@@ -437,12 +442,7 @@ rasterizer(void *arg)
 
 		fsp.su = params;
 		task->fsp = &fsp;
-		switch(task->p.type){
-		case PPoint: rasterizept(task); break;
-		case PLine: rasterizeline(task); break;
-		case PTriangle: rasterizetri(task); break;
-		default: sysfatal("alien primitive detected");
-		}
+		(*rasterfn[task->p.type])(task);
 
 		_delvattrs(&v);
 		for(i = 0; i < task->p.type+1; i++)
