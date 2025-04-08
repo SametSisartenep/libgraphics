@@ -1,4 +1,5 @@
 #define HZ2MS(hz)	(1000/(hz))
+#define HZ2NS(hz)	(1000000000ULL/(hz))
 #define min(a, b)	((a)<(b)?(a):(b))
 #define max(a, b)	((a)>(b)?(a):(b))
 
