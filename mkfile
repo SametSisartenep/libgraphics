@@ -18,7 +18,7 @@ OFILES=\
 	util.$O\
 	nanosec.$O\
 	marshal.$O\
-	`{fn : { ~ $objtype (amd64)\
+	`{fn : { test -f $1-$objtype.s\
 			&& echo $1-$objtype.$O\
 			|| echo $1.$O };\
 		: memsetl }\
