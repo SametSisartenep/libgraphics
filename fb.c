@@ -136,41 +136,6 @@ premulalpha(Raster *r)
 }
 
 static void
-fb_createraster(Framebuf *fb, char *name, ulong chan)
-{
-	Raster *r;
-
-	assert(name != nil);
-
-	/*
-	 * TODO might be better to keep a tail so it's O(1)
-	 *
-	 * in practice though, most users won't ever create
-	 * more than ten extra rasters.
-	 */
-	r = fb->rasters;
-	while(r->next != nil)
-		r = r->next;
-	r->next = _allocraster(name, fb->r, chan);
-}
-
-static Raster *
-fb_fetchraster(Framebuf *fb, char *name)
-{
-	Raster *r;
-
-	r = fb->rasters;
-	if(name == nil)
-		return r;
-
-	while((r = r->next) != nil)
-		if(strcmp(name, r->name) == 0)
-			return r;
-	return nil;
-
-}
-
-static void
 upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 {
 	void (*filterfn)(ulong*, Raster*, Point, ulong);
@@ -427,13 +392,10 @@ framebufctl_getbb(Framebufctl *ctl)
 static void
 framebufctl_createraster(Framebufctl *ctl, char *name, ulong chan)
 {
-	Framebuf *fb;
-	int i;
+	Framebuf **fb;
 
-	for(i = 0; i < 2; i++){
-		fb = ctl->fb[i];
-		fb->createraster(fb, name, chan);
-	}
+	for(fb = ctl->fb; fb < ctl->fb+2; fb++)
+		(*fb)->createraster(*fb, name, chan);
 }
 
 static Raster *
@@ -445,105 +407,38 @@ framebufctl_fetchraster(Framebufctl *ctl, char *name)
 	return fb->fetchraster(fb, name);
 }
 
-Raster *
-_allocraster(char *name, Rectangle rr, ulong chan)
+static void
+fb_createraster(Framebuf *fb, char *name, ulong chan)
 {
 	Raster *r;
 
-	assert(chan <= FLOAT32);
+	assert(name != nil);
 
-	r = _emalloc(sizeof *r);
-	memset(r, 0, sizeof *r);
-	if(name != nil && (r->name = strdup(name)) == nil)
-		sysfatal("strdup: %r");
-	r->chan = chan;
-	r->r = rr;
-	r->data = _emalloc(Dx(rr)*Dy(rr)*sizeof(*r->data));
-	return r;
+	/*
+	 * TODO might be better to keep a tail so it's O(1)
+	 *
+	 * in practice though, most users won't ever create
+	 * more than ten extra rasters.
+	 */
+	r = fb->rasters;
+	while(r->next != nil)
+		r = r->next;
+	r->next = _allocraster(name, fb->r, chan);
 }
 
-void
-_clearraster(Raster *r, ulong v)
+static Raster *
+fb_fetchraster(Framebuf *fb, char *name)
 {
-	_memsetl(r->data, v, Dx(r->r)*Dy(r->r));
-}
+	Raster *r;
 
-void
-_fclearraster(Raster *r, float v)
-{
-	_memsetf(r->data, v, Dx(r->r)*Dy(r->r));
-}
+	r = fb->rasters;
+	if(name == nil)
+		return r;
 
-uchar *
-_rasterbyteaddr(Raster *r, Point p)
-{
-	return (uchar*)&r->data[p.y*Dx(r->r) + p.x];
-}
-
-void
-_rasterput(Raster *r, Point p, void *v)
-{
-	switch(r->chan){
-	case COLOR32:
-		*(ulong*)_rasterbyteaddr(r, p) = *(ulong*)v;
-		break;
-	case FLOAT32:
-		*(float*)_rasterbyteaddr(r, p) = *(float*)v;
-		break;
-	}
-}
-
-void
-_rasterget(Raster *r, Point p, void *v)
-{
-	switch(r->chan){
-	case COLOR32:
-		*(ulong*)v = *(ulong*)_rasterbyteaddr(r, p);
-		break;
-	case FLOAT32:
-		*(float*)v = *(float*)_rasterbyteaddr(r, p);
-		break;
-	}
-}
-
-void
-_rasterputcolor(Raster *r, Point p, ulong c)
-{
-	_rasterput(r, p, &c);
-}
-
-ulong
-_rastergetcolor(Raster *r, Point p)
-{
-	ulong c;
-
-	_rasterget(r, p, &c);
-	return c;
-}
-
-void
-_rasterputfloat(Raster *r, Point p, float v)
-{
-	_rasterput(r, p, &v);
-}
-
-float
-_rastergetfloat(Raster *r, Point p)
-{
-	float v;
-
-	_rasterget(r, p, &v);
-	return v;
-}
-
-void
-_freeraster(Raster *r)
-{
-	if(r == nil)
-		return;
-	free(r->data);
-	free(r->name);
-	free(r);
+	while((r = r->next) != nil)
+		if(strcmp(name, r->name) == 0)
+			return r;
+	return nil;
 }
 
 Framebuf *

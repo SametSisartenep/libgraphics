@@ -56,11 +56,12 @@ getlightcolor(LightSource *l, Point3 p, Point3 n)
 
 	switch(l->type){
 	case LightDirectional:
-		t = max(0, dotvec3(mulpt3(l->dir, -1), n));
+		ldir = mulpt3(l->dir, -1);
+		t = max(0, _Xdotvec3(ldir, n));
 		c = mulpt3(l->c, t);
 		break;
 	case LightPoint:
-		t = max(0, dotvec3(ldir, n));
+		t = max(0, _Xdotvec3(ldir, n));
 		c = mulpt3(l->c, t);
 
 		/* attenuation */
@@ -68,7 +69,8 @@ getlightcolor(LightSource *l, Point3 p, Point3 n)
 		break;
 	case LightSpot:
 		/* see “Spotlights”, Real-Time Rendering 4th ed. § 5.2.2 */
-		cθs = dotvec3(mulpt3(ldir, -1), l->dir);
+		ldir = mulpt3(l->dir, -1);
+		cθs = _Xdotvec3(ldir, l->dir);
 		cθu = cos(l->θu);
 		cθp = cos(l->θp);
 

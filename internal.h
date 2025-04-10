@@ -51,7 +51,7 @@ void *_emalloc(ulong);
 void *_erealloc(void*, ulong);
 Memimage *_eallocmemimage(Rectangle, ulong);
 
-/* fb */
+/* raster */
 Raster *_allocraster(char*, Rectangle, ulong);
 void _clearraster(Raster*, ulong);
 void _fclearraster(Raster*, float);
@@ -63,6 +63,8 @@ ulong _rastergetcolor(Raster*, Point);
 void _rasterputfloat(Raster*, Point, float);
 float _rastergetfloat(Raster*, Point);
 void _freeraster(Raster*);
+
+/* fb */
 Framebuf *_mkfb(Rectangle);
 void _rmfb(Framebuf*);
 Framebufctl *_mkfbctl(Rectangle);
@@ -83,7 +85,6 @@ int _clipprimitive(Primitive*, Primitive*);
 int _rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
 
 /* util */
-void _memsetf(void*, float, usize);
 void _memsetl(void*, ulong, usize);
 
 #define getpixel(fb, p)		_rastergetcolor(fb, p)
@@ -91,5 +92,5 @@ void _memsetl(void*, ulong, usize);
 #define getdepth(fb, p)		_rastergetfloat(fb, p)
 #define putdepth(fb, p, z)	_rasterputfloat(fb, p, z)
 
-/* void SWAP(type t, type *a, type *b) */
+/* void SWAP(type, type *a, type *b) */
 #define SWAP(t, a, b) {t tmp; tmp = *(a); *(a) = *(b); *(b) = tmp;}

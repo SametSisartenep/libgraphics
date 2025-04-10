@@ -1,0 +1,8 @@
+TEXT _memsetl(SB),1,$0
+	CLD
+	MOVQ	RARG, DI
+	MOVL	c+8(FP), AX
+	MOVQ	n+16(FP), CX
+	REP;	STOSL
+	MOVQ	RARG,AX
+	RET

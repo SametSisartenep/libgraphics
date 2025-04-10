@@ -95,26 +95,6 @@ eqpt3(Point3 a, Point3 b)
 	return vec3len(subpt3(a, b)) < ε2;
 }
 
-void
-_memsetf(void *dp, float v, usize len)
-{
-	float *p;
-
-	p = dp;
-	while(len--)
-		*p++ = v;
-}
-
-void
-_memsetl(void *dp, ulong v, usize len)
-{
-	ulong *p;
-
-	p = dp;
-	while(len--)
-		*p++ = v;
-}
-
 Memimage *
 rgba(ulong c)
 {
