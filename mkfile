@@ -18,9 +18,10 @@ OFILES=\
 	util.$O\
 	nanosec.$O\
 	marshal.$O\
-	`{~ $objtype amd64\
-		&& echo memsetl-$objtype.$O\
-		|| echo memsetl.$O}
+	`{fn : { ~ $objtype (amd64)\
+			&& echo $1-$objtype.$O\
+			|| echo $1.$O };\
+		: memsetl }\
 
 HFILES=\
 	graphics.h\

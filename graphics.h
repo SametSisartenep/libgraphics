@@ -4,8 +4,8 @@
 #define max(a, b)	((a)>(b)?(a):(b))
 
 /* bootleg ripoffs for Xpeed */
-#define _Xdotvec2(a,b)		((a).x*(b).x + (a).y*(b).y)
-#define _Xdotvec3(a,b)		((a).x*(b).x + (a).y*(b).y + (a).z*(b).z)
+#define _Xdotvec2(a,b)	((a).x*(b).x + (a).y*(b).y)
+#define _Xdotvec3(a,b)	((a).x*(b).x + (a).y*(b).y + (a).z*(b).z)
 
 typedef enum {
 	ORTHOGRAPHIC,
