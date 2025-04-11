@@ -8,6 +8,8 @@ typedef struct Entityparam Entityparam;
 typedef struct Tilerparam Tilerparam;
 typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
+typedef struct pGradient pGradient;
+typedef struct vGradient vGradient;
 
 struct Polygon
 {
@@ -46,6 +48,20 @@ struct Rastertask
 	Primitive p;
 };
 
+struct pGradient
+{
+	Point3 p0;
+	Point3 dx;
+	Point3 dy;
+};
+
+struct vGradient
+{
+	Vertex v0;
+	Vertex dx;
+	Vertex dy;
+};
+
 /* alloc */
 void *_emalloc(ulong);
 void *_erealloc(void*, ulong);
@@ -74,7 +90,8 @@ void _rmfbctl(Framebufctl*);
 Vertex _dupvertex(Vertex*);
 void _lerpvertex(Vertex*, Vertex*, Vertex*, double);
 void _berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
-void _perspdiv(Vertex*, double);
+void _addvertex(Vertex*, Vertex*);
+void _mulvertex(Vertex*, double);
 void _delvattrs(Vertex*);
 void _fprintvattrs(int, Vertex*);
 void _addvattr(Vertexattrs*, char*, int, void*);

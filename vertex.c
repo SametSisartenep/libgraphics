@@ -96,23 +96,38 @@ _berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 	}
 }
 
-/*
- * perspective divide vertex attributes
- */
 void
-_perspdiv(Vertex *v, double z⁻¹)
+_addvertex(Vertex *a, Vertex *b)
+{
+	Vertexattr *va, *vb;
+
+	a->n = addpt3(a->n, b->n);
+	a->c = addpt3(a->c, b->c);
+	a->uv = addpt2(a->uv, b->uv);
+	a->tangent = addpt3(a->tangent, b->tangent);
+	for(va = a->attrs; va < a->attrs + a->nattrs; va++){
+		vb = b->attrs + (va - a->attrs);
+		if(va->type == VAPoint)
+			va->p = addpt3(va->p, vb->p);
+		else
+			va->n += vb->n;
+	}
+}
+
+void
+_mulvertex(Vertex *v, double s)
 {
 	Vertexattr *va;
 
-	v->n = mulpt3(v->n, z⁻¹);
-	v->c = mulpt3(v->c, z⁻¹);
-	v->uv = mulpt2(v->uv, z⁻¹);
-	v->tangent = mulpt3(v->tangent, z⁻¹);
+	v->n = mulpt3(v->n, s);
+	v->c = mulpt3(v->c, s);
+	v->uv = mulpt2(v->uv, s);
+	v->tangent = mulpt3(v->tangent, s);
 	for(va = v->attrs; va < v->attrs + v->nattrs; va++){
 		if(va->type == VAPoint)
-			va->p = mulpt3(va->p, z⁻¹);
+			va->p = mulpt3(va->p, s);
 		else
-			va->n *= z⁻¹;
+			va->n *= s;
 	}
 }
 

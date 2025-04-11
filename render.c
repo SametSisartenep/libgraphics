@@ -86,12 +86,22 @@ isvisible(Point3 p)
 static int
 isfacingback(Primitive *p)
 {
-	double sa;	/* signed area */
+	double sa;	/* signed double area */
 
 	sa = p->v[0].p.x * p->v[1].p.y - p->v[0].p.y * p->v[1].p.x +
 	     p->v[1].p.x * p->v[2].p.y - p->v[1].p.y * p->v[2].p.x +
 	     p->v[2].p.x * p->v[0].p.y - p->v[2].p.y * p->v[0].p.x;
-	return sa <= 0;
+	return sa <= 0;	/* 0 - CCW, 1 - CW */
+}
+
+static int
+istoporleft(Point2 *e0, Point2 *e1)
+{
+	Point2 e01;
+
+	e01 = subpt2(*e1, *e0);
+	return e01.y > 0			/* left */
+		|| (e01.y == 0 && e01.x < 0);	/* top */
 }
 
 static void
@@ -147,21 +157,6 @@ squashAbuf(Framebuf *fb, int blend)
 		/* write to the depth buffer as well */
 		putdepth(zr, stk->p, stk->items[0].z);
 	}
-}
-
-static Point3
-_barycoords(Triangle2 t, Point2 p)
-{
-	Point2 p0p1 = subpt2(t.p1, t.p0);
-	Point2 p0p2 = subpt2(t.p2, t.p0);
-	Point2 pp0  = subpt2(t.p0, p);
-
-	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
-
-	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
-	if(fabs(v.z) < ε1)
-		return Pt3(-1,-1,-1,1);
-	return Pt3(1 - (v.x + v.y)/v.z, v.y/v.z, v.x/v.z, 1);
 }
 
 static void
@@ -306,12 +301,29 @@ discard:
 	}
 }
 
+static Point3
+_barycoords(Triangle2 t, Point2 p)
+{
+	Point2 p0p1 = subpt2(t.p1, t.p0);
+	Point2 p0p2 = subpt2(t.p2, t.p0);
+	Point2 pp0  = subpt2(t.p0, p);
+
+	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
+
+	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
+	if(fabs(v.z) < ε1)
+		return Pt3(-1,-1,-1,1);
+	/* barycoords and signed double area */
+	return Pt3(1 - (v.x + v.y)/v.z, v.y/v.z, v.x/v.z, v.z);
+}
+
 static void
 rasterizetri(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
 	Primitive *prim;
+	pGradient ∇bc;
 	Triangle2 t;
 	Point p;
 	Point3 bc;
@@ -331,32 +343,53 @@ rasterizetri(Rastertask *task)
 	t.p1 = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
 	t.p2 = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
 
-	_perspdiv(prim->v+0, prim->v[0].p.w);
-	_perspdiv(prim->v+1, prim->v[1].p.w);
-	_perspdiv(prim->v+2, prim->v[2].p.w);
+	∇bc.p0 = _barycoords(t, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
+	∇bc.dx = divpt3((Point3){t.p2.y - t.p1.y, t.p0.y - t.p2.y, t.p1.y - t.p0.y, 0}, ∇bc.p0.w);
+	∇bc.dy = divpt3((Point3){t.p1.x - t.p2.x, t.p2.x - t.p0.x, t.p0.x - t.p1.x, 0}, ∇bc.p0.w);
 
-	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++)
+	/* TODO find a good method to apply the fill rule */
+//	if(istoporleft(&t.p1, &t.p2)){
+//		∇bc.p0.x -= 1/∇bc.p0.w;
+//		∇bc.dx.x -= 1/∇bc.p0.w;
+//		∇bc.dy.x -= 1/∇bc.p0.w;
+//	}
+//	if(istoporleft(&t.p2, &t.p0)){
+//		∇bc.p0.y -= 1/∇bc.p0.w;
+//		∇bc.dx.y -= 1/∇bc.p0.w;
+//		∇bc.dy.y -= 1/∇bc.p0.w;
+//	}
+//	if(istoporleft(&t.p0, &t.p1)){
+//		∇bc.p0.z -= 1/∇bc.p0.w;
+//		∇bc.dx.z -= 1/∇bc.p0.w;
+//		∇bc.dy.z -= 1/∇bc.p0.w;
+//	}
+
+	/* perspective divide vertex attributes */
+	_mulvertex(prim->v+0, prim->v[0].p.w);
+	_mulvertex(prim->v+1, prim->v[1].p.w);
+	_mulvertex(prim->v+2, prim->v[2].p.w);
+
+	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++){
+		bc = ∇bc.p0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
-		bc = _barycoords(t, (Point2){p.x+0.5,p.y+0.5,1});
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
-			continue;
+			goto discard;
 
 		z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
 		if((ropts & RODepth) && z <= getdepth(zr, p))
-			continue;
+			goto discard;
 
 		/* interpolate z⁻¹ and get actual z */
 		pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
 		pcz = 1.0/(pcz < ε1? ε1: pcz);
 
 		/* perspective-correct attribute interpolation  */
-		bc = mulpt3(bc, pcz);
-		_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, bc);
+		_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, mulpt3(bc, pcz));
 
 		task->fsp->p = p;
 		c = params->stab->fs(task->fsp);
 		if(c.a == 0)			/* discard non-colors */
-			continue;
+			goto discard;
 		if(ropts & RODepth)
 			putdepth(zr, p, z);
 		if(ropts & ROAbuff)
@@ -371,6 +404,10 @@ rasterizetri(Rastertask *task)
 			task->clipr->min = minpt(task->clipr->min, p);
 			task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 		}
+discard:
+		bc = addpt3(bc, ∇bc.dx);
+	}
+		∇bc.p0 = addpt3(∇bc.p0, ∇bc.dy);
 	}
 }
 
@@ -619,8 +656,14 @@ tiler(void *arg)
 
 					/* culling */
 					switch(params->camera->cullmode){
-					case CullFront: if(!isfacingback(p)) goto skiptri; break;
-					case CullBack: if(isfacingback(p)) goto skiptri; break;
+					case CullFront:
+						if(!isfacingback(p))
+							goto skiptri;
+						break;
+					case CullBack:
+						if(isfacingback(p))
+							goto skiptri;
+						break;
 					}
 
 					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
