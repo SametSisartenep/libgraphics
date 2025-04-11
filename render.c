@@ -313,8 +313,8 @@ _barycoords(Triangle2 t, Point2 p)
 	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
 	if(fabs(v.z) < ε1)
 		return Pt3(-1,-1,-1,1);
-	/* barycoords and signed double area */
-	return Pt3(1 - (v.x + v.y)/v.z, v.y/v.z, v.x/v.z, v.z);
+	/* barycoords and inverse signed double area (for the gradients) */
+	return mulpt3((Point3){v.z - v.x - v.y, v.y, v.x, 1}, 1/v.z);
 }
 
 static void
@@ -344,24 +344,24 @@ rasterizetri(Rastertask *task)
 	t.p2 = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
 
 	∇bc.p0 = _barycoords(t, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
-	∇bc.dx = divpt3((Point3){t.p2.y - t.p1.y, t.p0.y - t.p2.y, t.p1.y - t.p0.y, 0}, ∇bc.p0.w);
-	∇bc.dy = divpt3((Point3){t.p1.x - t.p2.x, t.p2.x - t.p0.x, t.p0.x - t.p1.x, 0}, ∇bc.p0.w);
+	∇bc.dx = mulpt3((Point3){t.p2.y - t.p1.y, t.p0.y - t.p2.y, t.p1.y - t.p0.y, 0}, ∇bc.p0.w);
+	∇bc.dy = mulpt3((Point3){t.p1.x - t.p2.x, t.p2.x - t.p0.x, t.p0.x - t.p1.x, 0}, ∇bc.p0.w);
 
 	/* TODO find a good method to apply the fill rule */
 //	if(istoporleft(&t.p1, &t.p2)){
-//		∇bc.p0.x -= 1/∇bc.p0.w;
-//		∇bc.dx.x -= 1/∇bc.p0.w;
-//		∇bc.dy.x -= 1/∇bc.p0.w;
+//		∇bc.p0.x -= ∇bc.p0.w;
+//		∇bc.dx.x -= ∇bc.p0.w;
+//		∇bc.dy.x -= ∇bc.p0.w;
 //	}
 //	if(istoporleft(&t.p2, &t.p0)){
-//		∇bc.p0.y -= 1/∇bc.p0.w;
-//		∇bc.dx.y -= 1/∇bc.p0.w;
-//		∇bc.dy.y -= 1/∇bc.p0.w;
+//		∇bc.p0.y -= ∇bc.p0.w;
+//		∇bc.dx.y -= ∇bc.p0.w;
+//		∇bc.dy.y -= ∇bc.p0.w;
 //	}
 //	if(istoporleft(&t.p0, &t.p1)){
-//		∇bc.p0.z -= 1/∇bc.p0.w;
-//		∇bc.dx.z -= 1/∇bc.p0.w;
-//		∇bc.dy.z -= 1/∇bc.p0.w;
+//		∇bc.p0.z -= ∇bc.p0.w;
+//		∇bc.dx.z -= ∇bc.p0.w;
+//		∇bc.dy.z -= ∇bc.p0.w;
 //	}
 
 	/* perspective divide vertex attributes */
