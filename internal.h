@@ -8,6 +8,7 @@ typedef struct Entityparam Entityparam;
 typedef struct Tilerparam Tilerparam;
 typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
+typedef struct fGradient fGradient;
 typedef struct pGradient pGradient;
 typedef struct vGradient vGradient;
 
@@ -46,6 +47,13 @@ struct Rastertask
 	Rectangle wr;		/* working rect */
 	Rectangle *clipr;
 	Primitive p;
+};
+
+struct fGradient
+{
+	double f0;
+	double dx;
+	double dy;
 };
 
 struct pGradient
@@ -88,6 +96,7 @@ void _rmfbctl(Framebufctl*);
 
 /* vertex */
 Vertex _dupvertex(Vertex*);
+void _loadvertex(Vertex*, Vertex*);
 void _lerpvertex(Vertex*, Vertex*, Vertex*, double);
 void _berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
 void _addvertex(Vertex*, Vertex*);

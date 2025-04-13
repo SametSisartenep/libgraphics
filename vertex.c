@@ -44,6 +44,18 @@ _dupvertex(Vertex *v)
 	return nv;
 }
 
+void
+_loadvertex(Vertex *d, Vertex *s)
+{
+	d->p = s->p;
+	d->n = s->n;
+	d->c = s->c;
+	d->uv = s->uv;
+	d->tangent = s->tangent;
+	d->mtl = s->mtl;
+	copyvattrs(d, s);
+}
+
 /*
  * linear attribute interpolation
  */

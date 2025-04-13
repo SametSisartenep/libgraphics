@@ -324,6 +324,9 @@ rasterizetri(Rastertask *task)
 	Raster *cr, *zr;
 	Primitive *prim;
 	pGradient ∇bc;
+//	vGradient ∇v;
+//	fGradient ∇z, ∇pcz;
+//	Vertex v, *vp;
 	Triangle2 t;
 	Point p;
 	Point3 bc;
@@ -339,6 +342,9 @@ rasterizetri(Rastertask *task)
 
 	ropts = params->camera->rendopts;
 
+//	memset(&v, 0, sizeof v);
+//	vp = &v;
+
 	t.p0 = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
 	t.p1 = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
 	t.p2 = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
@@ -347,7 +353,7 @@ rasterizetri(Rastertask *task)
 	∇bc.dx = mulpt3((Point3){t.p2.y - t.p1.y, t.p0.y - t.p2.y, t.p1.y - t.p0.y, 0}, ∇bc.p0.w);
 	∇bc.dy = mulpt3((Point3){t.p1.x - t.p2.x, t.p2.x - t.p0.x, t.p0.x - t.p1.x, 0}, ∇bc.p0.w);
 
-	/* TODO find a good method to apply the fill rule */
+//	/* TODO find a good method to apply the fill rule */
 //	if(istoporleft(&t.p1, &t.p2)){
 //		∇bc.p0.x -= ∇bc.p0.w;
 //		∇bc.dx.x -= ∇bc.p0.w;
@@ -369,8 +375,24 @@ rasterizetri(Rastertask *task)
 	_mulvertex(prim->v+1, prim->v[1].p.w);
 	_mulvertex(prim->v+2, prim->v[2].p.w);
 
+//	memset(&∇v, 0, sizeof ∇v);
+//	_berpvertex(&∇v.v0, prim->v+0, prim->v+1, prim->v+2, ∇bc.p0);
+//	_berpvertex(&∇v.dx, prim->v+0, prim->v+1, prim->v+2, ∇bc.dx);
+//	_berpvertex(&∇v.dy, prim->v+0, prim->v+1, prim->v+2, ∇bc.dy);
+//
+//	∇z.f0 = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.p0);
+//	∇z.dx = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.dx);
+//	∇z.dy = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.dy);
+//
+//	∇pcz.f0 = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.p0);
+//	∇pcz.dx = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.dx);
+//	∇pcz.dy = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.dy);
+
 	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++){
 		bc = ∇bc.p0;
+//		*task->fsp->v = ∇v.v0;
+//		z = ∇z.f0;
+//		pcz = ∇pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
@@ -386,8 +408,13 @@ rasterizetri(Rastertask *task)
 		/* perspective-correct attribute interpolation  */
 		_berpvertex(task->fsp->v, prim->v+0, prim->v+1, prim->v+2, mulpt3(bc, pcz));
 
+//		_loadvertex(vp, task->fsp->v);
+//		_mulvertex(vp, 1/(pcz < ε1? ε1: pcz));
+
+//		SWAP(Vertex*, &vp, &task->fsp->v);
 		task->fsp->p = p;
 		c = params->stab->fs(task->fsp);
+//		SWAP(Vertex*, &vp, &task->fsp->v);
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
@@ -406,9 +433,19 @@ rasterizetri(Rastertask *task)
 		}
 discard:
 		bc = addpt3(bc, ∇bc.dx);
+//		_addvertex(task->fsp->v, &∇v.dx);
+//		z += ∇z.dx;
+//		pcz += ∇pcz.dx;
 	}
 		∇bc.p0 = addpt3(∇bc.p0, ∇bc.dy);
+//		_addvertex(&∇v.v0, &∇v.dy);
+//		∇z.f0 += ∇z.dy;
+//		∇pcz.f0 += ∇pcz.dy;
 	}
+
+//	_delvattrs(vp);
+//	_delvattrs(&∇v.dx);
+//	_delvattrs(&∇v.dy);
 }
 
 static void
