@@ -105,6 +105,16 @@ istoporleft(Point2 *e0, Point2 *e1)
 }
 
 static void
+initAbuf(Framebuf *fb)
+{
+	if(fb->abuf.stk != nil)
+		return;
+
+	fb->abuf.stk = _emalloc(Dx(fb->r)*Dy(fb->r)*sizeof(Astk));
+	memset(fb->abuf.stk, 0, Dx(fb->r)*Dy(fb->r)*sizeof(Astk));
+}
+
+static void
 pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 {
 	Abuf *buf;
@@ -519,8 +529,9 @@ rasterizer(void *arg)
 		(*rasterfn[task->p.type])(task);
 
 		_delvattrs(&v);
-		for(i = 0; i < task->p.type+1; i++)
-			_delvattrs(&task->p.v[i]);
+		if(task->p.type != PPoint)
+			for(i = 0; i < task->p.type+1; i++)
+				_delvattrs(&task->p.v[i]);
 		free(params);
 		free(task);
 	}
@@ -867,11 +878,8 @@ renderer(void *arg)
 			continue;
 		}
 
-		/* initialize the A-buffer */
-		if((job->camera->rendopts & ROAbuff) && job->fb->abuf.stk == nil){
-			job->fb->abuf.stk = _emalloc(Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
-			memset(job->fb->abuf.stk, 0, Dx(job->fb->r)*Dy(job->fb->r)*sizeof(Astk));
-		}
+		if((job->camera->rendopts & ROAbuff))
+			initAbuf(job->fb);
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
 			params = _emalloc(sizeof *params);
