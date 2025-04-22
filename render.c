@@ -472,8 +472,7 @@ rasterizer(void *arg)
 	Renderjob *job;
 	Vertex v;
 	Shaderparams fsp;
-	uvlong t0;
-	int i;
+	int i, off, stride;
 
 	rp = arg;
 	threadsetname("rasterizer %d", rp->id);
@@ -487,15 +486,25 @@ rasterizer(void *arg)
 	fsp.toraster = sparams_toraster;
 
 	while((task = recvp(rp->taskc)) != nil){
-		t0 = nanosec();
-
 		params = task->params;
 		job = params->job;
 		if(job->rctl->doprof && job->times.Rn[rp->id].t0 == 0)
-			job->times.Rn[rp->id].t0 = t0;
+			job->times.Rn[rp->id].t0 = nanosec();
 
-		/* end of job */
-		if(params->entity == nil){
+		if(params->op == OP_END){
+//			if(job->camera->rendopts & ROAbuff){
+//				stride = job->fb->abuf.nact / job->rctl->nprocs;
+//				if(rp->id < job->fb->abuf.nact % job->rctl->nprocs)
+//					stride++;
+//				if(stride > 0){
+//					off = 0;
+//					for(i = 0; i < rp->id; i++)
+//						off += i < job->fb->abuf.nact % job->rctl->nprocs?
+//							stride+1 : stride;
+//					squashAbuf(job->fb, off, stride, job->camera->rendopts & ROBlend);
+//				}
+//			}
+
 			if(decref(job) < 1){
 				if(job->camera->rendopts & ROAbuff)
 					squashAbuf(job->fb, job->camera->rendopts & ROBlend);
@@ -549,7 +558,6 @@ tiler(void *arg)
 	Channel **taskchans;
 	ulong Δy, nproc;
 	int i, np;
-	uvlong t0;
 
 	tp = arg;
 	threadsetname("tiler %d", tp->id);
@@ -566,16 +574,31 @@ tiler(void *arg)
 	vsp.toraster = nil;
 
 	while((params = recvp(tp->paramsc)) != nil){
-		t0 = nanosec();
-		if(params->job->rctl->doprof &&
-		   params->job->times.Tn[tp->id].t0 == 0)
-			params->job->times.Tn[tp->id].t0 = t0;
+		if(params->job->rctl->doprof
+		&& params->job->times.Tn[tp->id].t0 == 0)
+			params->job->times.Tn[tp->id].t0 = nanosec();
 
-		/* end of job */
-		if(params->entity == nil){
+		if(params->op == OP_END){
 			if(params->job->rctl->doprof)
 				params->job->times.Tn[tp->id].t1 = nanosec();
 			if(decref(params->job) < 1){
+//				/*
+//				 * make sure the rasterizers are done before signalling ending.
+//				 * this way they have the correct number of active stacks in the
+//				 * a-buffer and can organize themselves to squash it.
+//				 */
+//				if(params->job->camera->rendopts & ROAbuff){
+//					for(i = 0; i < nproc; i++){
+//						task = _emalloc(sizeof *task);
+//						memset(task, 0, sizeof *task);
+//						params->op = OP_SYNC;
+//						task->params = params;
+//						/* TODO the channel is buffered, find another way to sync */
+//						sendp(taskchans[i], task);
+//					}
+//					params->op = OP_END;
+//				}
+
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
 					task = _emalloc(sizeof *task);
@@ -625,6 +648,7 @@ tiler(void *arg)
 					if(rectXrect(bbox, wr[i])){
 						newparams = _emalloc(sizeof *newparams);
 						*newparams = *params;
+						newparams->op = OP_RASTER;
 						task = _emalloc(sizeof *task);
 						task->params = newparams;
 						task->clipr = &params->job->cliprects[i];
@@ -668,6 +692,7 @@ tiler(void *arg)
 					if(rectXrect(bbox, wr[i])){
 						newparams = _emalloc(sizeof *newparams);
 						*newparams = *params;
+						newparams->op = OP_RASTER;
 						task = _emalloc(sizeof *task);
 						task->params = newparams;
 						task->wr = wr[i];
@@ -727,6 +752,7 @@ tiler(void *arg)
 						if(rectXrect(bbox, wr[i])){
 							newparams = _emalloc(sizeof *newparams);
 							*newparams = *params;
+							newparams->op = OP_RASTER;
 							task = _emalloc(sizeof *task);
 							task->params = newparams;
 							task->wr = bbox;
@@ -762,7 +788,6 @@ entityproc(void *arg)
 	Primitive *eb, *ee;
 	ulong stride, nprims, nproc, nworkers;
 	int i;
-	uvlong t0;
 
 	threadsetname("entityproc");
 
@@ -792,9 +817,8 @@ entityproc(void *arg)
 	}
 
 	while((params = recvp(paramsin)) != nil){
-		t0 = nanosec();
 		if(params->job->rctl->doprof && params->job->times.E.t0 == 0)
-			params->job->times.E.t0 = t0;
+			params->job->times.E.t0 = nanosec();
 
 		/* prof: initialize timing slots for the next stages */
 		if(params->job->rctl->doprof && params->job->times.Tn == nil){
@@ -805,8 +829,7 @@ entityproc(void *arg)
 			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
 		}
 
-		/* end of job */
-		if(params->entity == nil){
+		if(params->op == OP_END){
 			params->job->ref = nproc;
 			for(i = 0; i < nproc; i++)
 				sendp(paramsout[i], params);
@@ -839,6 +862,7 @@ entityproc(void *arg)
 		for(i = 0; i < nworkers; i++){
 			newparams = _emalloc(sizeof *newparams);
 			*newparams = *params;
+			newparams->op = OP_PRIMS;
 			newparams->eb = eb + i*stride;
 			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
 			sendp(paramsout[i], newparams);
@@ -856,7 +880,7 @@ renderer(void *arg)
 	Entity *ent;
 	SUparams *params;
 	Entityparam *ep;
-	uvlong time, lastid;
+	uvlong lastid;
 
 	threadsetname("renderer");
 
@@ -869,8 +893,9 @@ renderer(void *arg)
 	proccreate(entityproc, ep, mainstacksize);
 
 	while((job = recvp(rctl->jobq)) != nil){
-		time = nanosec();
-		if(job->rctl->doprof) job->times.R.t0 = time;
+		if(job->rctl->doprof)
+			job->times.R.t0 = nanosec();
+
 		job->id = lastid++;
 		sc = job->camera->scene;
 		if(sc->nents < 1){
@@ -878,7 +903,7 @@ renderer(void *arg)
 			continue;
 		}
 
-		if((job->camera->rendopts & ROAbuff))
+		if(job->camera->rendopts & ROAbuff)
 			initAbuf(job->fb);
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
@@ -889,12 +914,14 @@ renderer(void *arg)
 			params->job = job;
 			params->camera = job->camera;
 			params->entity = ent;
+			params->op = OP_ENTITY;
 			sendp(ep->paramsc, params);
 		}
+
 		/* mark end of job */
 		params = _emalloc(sizeof *params);
-		memset(params, 0, sizeof *params);
 		params->job = job;
+		params->op = OP_END;
 		sendp(ep->paramsc, params);
 
 		if(job->rctl->doprof) job->times.R.t1 = nanosec();

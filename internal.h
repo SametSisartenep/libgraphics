@@ -1,6 +1,13 @@
 enum {
 	ε1 = 1e-5,
 	ε2 = 1e-6,
+
+	/* shader unit operations */
+	OP_ENTITY = 0,
+	OP_PRIMS,
+	OP_RASTER,
+	OP_SYNC,
+	OP_END,
 };
 
 typedef struct Polygon Polygon;

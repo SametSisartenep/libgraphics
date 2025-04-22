@@ -237,6 +237,7 @@ struct SUparams
 	Renderjob *job;
 	Camera *camera;
 	Entity *entity;
+	int op;
 	Primitive *eb, *ee;
 };
 
