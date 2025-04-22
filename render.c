@@ -590,7 +590,6 @@ tiler(void *arg)
 //				if(params->job->camera->rendopts & ROAbuff){
 //					for(i = 0; i < nproc; i++){
 //						task = _emalloc(sizeof *task);
-//						memset(task, 0, sizeof *task);
 //						params->op = OP_SYNC;
 //						task->params = params;
 //						/* TODO the channel is buffered, find another way to sync */
@@ -602,7 +601,6 @@ tiler(void *arg)
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
 					task = _emalloc(sizeof *task);
-					memset(task, 0, sizeof *task);
 					task->params = params;
 					sendp(taskchans[i], task);
 				}
@@ -842,8 +840,8 @@ entityproc(void *arg)
 			params->job->cliprects = _emalloc(nproc*sizeof(Rectangle));
 			params->job->ncliprects = nproc;
 			for(i = 0; i < nproc; i++){
-				params->job->cliprects[i].min = Pt(-1,-1);
-				params->job->cliprects[i].max = Pt(-1,-1);
+				params->job->cliprects[i].min = (Point){-1,-1};
+				params->job->cliprects[i].max = (Point){-1,-1};
 			}
 		}
 

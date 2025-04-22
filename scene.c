@@ -302,11 +302,16 @@ void
 clearscene(Scene *s)
 {
 	Entity *e, *ne;
+	LightSource *l, *nl;
 
 	for(e = s->ents.next; e != &s->ents; e = ne){
 		ne = e->next;
 		s->delent(s, e);
 		delentity(e);
+	}
+	for(l = s->lights.next; l != &s->lights; l = nl){
+		nl = l->next;
+		dellight(l);
 	}
 	freecubemap(s->skybox);
 }
