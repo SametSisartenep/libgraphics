@@ -19,8 +19,9 @@ addvattr(Vertexattrs *v, Vertexattr *va)
 			v->attrs[i] = *va;
 			return;
 		}
-	v->attrs = _erealloc(v->attrs, ++v->nattrs*sizeof(*va));
-	v->attrs[v->nattrs-1] = *va;
+	if(v->nattrs % 8 == 0)
+		v->attrs = _erealloc(v->attrs, (v->nattrs + 8)*sizeof(*va));
+	v->attrs[v->nattrs++] = *va;
 }
 
 static void

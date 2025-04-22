@@ -1,11 +1,7 @@
 #include <u.h>
 #include <libc.h>
-#include <thread.h>
 #include <draw.h>
 #include <memdraw.h>
-#include <geometry.h>
-#include "graphics.h"
-#include "internal.h"
 
 void *
 _emalloc(ulong n)
