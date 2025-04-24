@@ -553,7 +553,7 @@ tiler(void *arg)
 	SUparams *params, *newparams;
 	Rastertask *task;
 	Shaderparams vsp;
-	Primitive *ep, *cp, *p;		/* primitives to raster */
+	Primitive *ep, *cp, *p, prim;	/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
 	ulong Δy, nproc;
@@ -620,7 +620,8 @@ tiler(void *arg)
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			p = ep;
+			prim = *ep;
+			p = &prim;
 			switch(p->type){
 			case PPoint:
 				p->v[0].mtl = p->mtl;
