@@ -238,7 +238,8 @@ shootcamera(Camera *c, Shadertab *s)
 	Renderjob *job;
 	uvlong t0, t1;
 
-	assert(c->view != nil && c->rctl != nil && c->scene != nil && s != nil);
+	assert(c != nil && s != nil
+		&& c->view != nil && c->rctl != nil && c->scene != nil);
 
 	fbctl = c->view->fbctl;
 

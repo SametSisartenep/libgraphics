@@ -123,47 +123,49 @@ pushtoAbuf(Framebuf *fb, Point p, Color c, float z)
 
 	buf = &fb->abuf;
 	stk = &buf->stk[p.y*Dx(fb->r) + p.x];
-	if(stk->nitems == stk->size){
-		stk->size += 8;
-		stk->items = _erealloc(stk->items, stk->size*sizeof(*stk->items));
-		memset(&stk->items[stk->size-8], 0, 8*sizeof(*stk->items));
+	if(stk->size % 16 == 0){
+		stk->items = _erealloc(stk->items, (stk->size + 16)*sizeof(*stk->items));
+		memset(&stk->items[stk->size], 0, 16*sizeof(*stk->items));
 	}
-	stk->nitems++;
 
-	for(i = 0; i < stk->nitems-1; i++)
+	/* TODO don't push pixels that are behind opaque fragments */
+	for(i = 0; i < stk->size; i++)
 		if(z > stk->items[i].z)
 			break;
 
-	if(i < stk->nitems-1)
-		memmove(&stk->items[i+1], &stk->items[i], (stk->nitems-1 - i)*sizeof(*stk->items));
+	if(i < stk->size)
+		memmove(&stk->items[i+1], &stk->items[i], (stk->size - i)*sizeof(*stk->items));
 	stk->items[i] = (Fragment){c, z};
 
-	if(!stk->active){
-		stk->active++;
+	if(stk->size++ < 1){
 		stk->p = p;
 		qlock(buf);
-		buf->act = _erealloc(buf->act, ++buf->nact*sizeof(*buf->act));
-		buf->act[buf->nact-1] = stk;
+		if(buf->nact % 64 == 0)
+			buf->act = _erealloc(buf->act, (buf->nact + 64)*sizeof(*buf->act));
+		buf->act[buf->nact++] = stk;
 		qunlock(buf);
 	}
 }
 
 static void
-squashAbuf(Framebuf *fb, int blend)
+squashAbuf(Framebuf *fb, Rectangle *wr, int blend)
 {
 	Abuf *buf;
 	Astk *stk;
 	Raster *cr, *zr;
-	int i, j;
+	int x, y, ss;
 
 	buf = &fb->abuf;
 	cr = fb->rasters;
 	zr = cr->next;
-	for(i = 0; i < buf->nact; i++){
-		stk = buf->act[i];
-		j = stk->size;
-		while(j--)
-			pixel(cr, stk->p, stk->items[j].c, blend);
+	for(y = wr->min.y; y < wr->max.y; y++)
+	for(x = wr->min.x; x < wr->max.x; x++){
+		stk = &buf->stk[y*Dx(*wr) + x];
+		ss = stk->size;
+		if(ss < 1)
+			continue;
+		while(ss--)
+			pixel(cr, stk->p, stk->items[ss].c, blend);
 		/* write to the depth buffer as well */
 		putdepth(zr, stk->p, stk->items[0].z);
 	}
@@ -472,7 +474,7 @@ rasterizer(void *arg)
 	Renderjob *job;
 	Vertex v;
 	Shaderparams fsp;
-	int i, off, stride;
+	int i;
 
 	rp = arg;
 	threadsetname("rasterizer %d", rp->id);
@@ -492,23 +494,10 @@ rasterizer(void *arg)
 			job->times.Rn[rp->id].t0 = nanosec();
 
 		if(params->op == OP_END){
-//			if(job->camera->rendopts & ROAbuff){
-//				stride = job->fb->abuf.nact / job->rctl->nprocs;
-//				if(rp->id < job->fb->abuf.nact % job->rctl->nprocs)
-//					stride++;
-//				if(stride > 0){
-//					off = 0;
-//					for(i = 0; i < rp->id; i++)
-//						off += i < job->fb->abuf.nact % job->rctl->nprocs?
-//							stride+1 : stride;
-//					squashAbuf(job->fb, off, stride, job->camera->rendopts & ROBlend);
-//				}
-//			}
+			if(job->camera->rendopts & ROAbuff)
+				squashAbuf(job->fb, &task->wr, job->camera->rendopts & ROBlend);
 
 			if(decref(job) < 1){
-				if(job->camera->rendopts & ROAbuff)
-					squashAbuf(job->fb, job->camera->rendopts & ROBlend);
-
 				/* set the clipr to the union of bboxes from the rasterizers */
 				for(i = 1; i < job->ncliprects; i++){
 					if(job->cliprects[i].min.x < 0)
@@ -547,6 +536,20 @@ rasterizer(void *arg)
 }
 
 static void
+initworkrects(Rectangle *wr, int nwr, Rectangle *fbr)
+{
+	int i, Δy;
+
+	wr[0] = *fbr;
+	Δy = Dy(wr[0])/nwr;
+	wr[0].max.y = wr[0].min.y + Δy;
+	for(i = 1; i < nwr; i++)
+		wr[i] = rectaddpt(wr[i-1], Pt(0,Δy));
+	if(wr[nwr-1].max.y < fbr->max.y)
+		wr[nwr-1].max.y = fbr->max.y;
+}
+
+static void
 tiler(void *arg)
 {
 	Tilerparam *tp;
@@ -556,7 +559,7 @@ tiler(void *arg)
 	Primitive *ep, *cp, *p, prim;	/* primitives to raster */
 	Rectangle *wr, bbox;
 	Channel **taskchans;
-	ulong Δy, nproc;
+	ulong nproc;
 	int i, np;
 
 	tp = arg;
@@ -581,27 +584,17 @@ tiler(void *arg)
 		if(params->op == OP_END){
 			if(params->job->rctl->doprof)
 				params->job->times.Tn[tp->id].t1 = nanosec();
+
 			if(decref(params->job) < 1){
-//				/*
-//				 * make sure the rasterizers are done before signalling ending.
-//				 * this way they have the correct number of active stacks in the
-//				 * a-buffer and can organize themselves to squash it.
-//				 */
-//				if(params->job->camera->rendopts & ROAbuff){
-//					for(i = 0; i < nproc; i++){
-//						task = _emalloc(sizeof *task);
-//						params->op = OP_SYNC;
-//						task->params = params;
-//						/* TODO the channel is buffered, find another way to sync */
-//						sendp(taskchans[i], task);
-//					}
-//					params->op = OP_END;
-//				}
+				if(params->job->camera->rendopts & ROAbuff)
+					initworkrects(wr, nproc, &params->job->fb->r);
 
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
 					task = _emalloc(sizeof *task);
 					task->params = params;
+					if(params->job->camera->rendopts & ROAbuff)
+						task->wr = wr[i];
 					sendp(taskchans[i], task);
 				}
 			}
@@ -609,13 +602,7 @@ tiler(void *arg)
 		}
 		vsp.su = params;
 
-		wr[0] = params->fb->r;
-		Δy = Dy(wr[0])/nproc;
-		wr[0].max.y = wr[0].min.y + Δy;
-		for(i = 1; i < nproc; i++)
-			wr[i] = rectaddpt(wr[i-1], Pt(0,Δy));
-		if(wr[nproc-1].max.y < params->fb->r.max.y)
-			wr[nproc-1].max.y = params->fb->r.max.y;
+		initworkrects(wr, nproc, &params->fb->r);
 
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
@@ -923,7 +910,8 @@ renderer(void *arg)
 		params->op = OP_END;
 		sendp(ep->paramsc, params);
 
-		if(job->rctl->doprof) job->times.R.t1 = nanosec();
+		if(job->rctl->doprof)
+			job->times.R.t1 = nanosec();
 	}
 }
 
