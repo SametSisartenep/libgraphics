@@ -3,7 +3,7 @@
 - [ ] Make the camera just another Entity (?)
 - [ ] Implement shadows (hard, soft, CCS?)
 - [ ] Implement mip-mapping (read about pixel shader derivatives)
-	I added gradients for incremental rasterization, could they be used for this?
+	- I added gradients for incremental rasterization, could they be used for this?
 - [ ] Try to compress the raster before doing a loadimage(2)
 - [ ] Avoid writing the same texture multiple times under different names in exportmodel(2)
 - [ ] Add wireframe rendering by a reasonable interface and method
