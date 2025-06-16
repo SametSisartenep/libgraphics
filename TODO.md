@@ -1,0 +1,15 @@
+- [ ] Scene description format
+- [ ] Make a better Viewport interface
+- [ ] Make the camera just another Entity (?)
+- [ ] Implement shadows (hard, soft, CCS?)
+- [ ] Implement mip-mapping (read about pixel shader derivatives)
+	I added gradients for incremental rasterization, could they be used for this?
+- [ ] Try to compress the raster before doing a loadimage(2)
+- [ ] Avoid writing the same texture multiple times under different names in exportmodel(2)
+- [ ] Add wireframe rendering by a reasonable interface and method
+- [ ] Find out why the A-buffer takes so much memory (enough to run OOM on a 32GB term!)
+- [ ] Review the idea of using indexed properties for the vertices
+- [ ] See if prims can be ordered front-to-back before rasterizing (quick Z-buffer discard)
+	- It might be better to add it as a Camera.rendopts flag, for
+	  transparency rendering without the A-buffer.
+- [ ] Implement decals
