@@ -714,16 +714,9 @@ tiler(void *arg)
 					p->v[2].p = clip2ndc(p->v[2].p);
 
 					/* culling */
-					switch(params->camera->cullmode){
-					case CullFront:
-						if(!isfacingback(p))
-							goto skiptri;
-						break;
-					case CullBack:
-						if(isfacingback(p))
-							goto skiptri;
-						break;
-					}
+					if((params->camera->cullmode == CullFront && !isfacingback(p))
+					|| (params->camera->cullmode == CullBack && isfacingback(p)))
+						goto skiptri;
 
 					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
 					p->v[1].p = ndc2viewport(params->fb, p->v[1].p);

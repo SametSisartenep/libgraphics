@@ -144,7 +144,7 @@ perspective(Matrix3 m, double fovy, double a, double n, double f)
 	double cotan;
 
 	cotan = 1/tan(fovy/2);
-	memset(m, 0, 4*4*sizeof(double));
+	memset(m, 0, sizeof(Matrix3));
 	m[0][0] =  cotan/a;
 	m[1][1] =  cotan;
 	m[2][2] =  (f+n)/(f-n);
