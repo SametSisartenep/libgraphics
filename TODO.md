@@ -9,6 +9,12 @@
 - [ ] Add wireframe rendering by a reasonable interface and method
 - [ ] Find out why the A-buffer takes so much memory (enough to run OOM on a 32GB term!)
 - [ ] Review the idea of using indexed properties for the vertices
+	- This has become a more pressing matter with 3dee/toobj (the
+	  Model to OBJ conversion tool) because its quite inefficient
+	  and generates very large .obj files with unnecessary
+	  redundancy: e.g., with a box, where instead of storing one
+	  normal per every face, we store the same normal on the six
+	  vertices (three per triangle) that make up the face.
 - [ ] See if prims can be ordered front-to-back before rasterizing (quick Z-buffer discard)
 	- It might be better to add it as a Camera.rendopts flag, for
 	  transparency rendering without the A-buffer.
