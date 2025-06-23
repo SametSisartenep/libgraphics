@@ -17,10 +17,15 @@ enum {
 static void
 mulsdm(double r[6], double m[6][4], Point3 p)
 {
-	int i;
+	double px, py, pz, pw;
 
-	for(i = 0; i < 6; i++)
-		r[i] = m[i][0]*p.x + m[i][1]*p.y + m[i][2]*p.z + m[i][3]*p.w;
+	px = p.x; py = p.y; pz = p.z; pw = p.w;
+	r[0] = m[0][0]*px + m[0][1]*py + m[0][2]*pz + m[0][3]*pw;
+	r[1] = m[1][0]*px + m[1][1]*py + m[1][2]*pz + m[1][3]*pw;
+	r[2] = m[2][0]*px + m[2][1]*py + m[2][2]*pz + m[2][3]*pw;
+	r[3] = m[3][0]*px + m[3][1]*py + m[3][2]*pz + m[3][3]*pw;
+	r[4] = m[4][0]*px + m[4][1]*py + m[4][2]*pz + m[4][3]*pw;
+	r[5] = m[5][0]*px + m[5][1]*py + m[5][2]*pz + m[5][3]*pw;
 }
 
 static int
