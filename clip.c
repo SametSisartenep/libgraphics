@@ -29,7 +29,7 @@ mulsdm(double r[6], double m[6][4], Point3 p)
 }
 
 static int
-addvert(Polygon *p, Vertex v)
+addvert(Polygon *p, BVertex v)
 {
 	if(++p->n > p->cap)
 		p->v = _erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
@@ -63,7 +63,7 @@ fprintpoly(int fd, Polygon *p)
  * 	- https://github.com/aap/librw/blob/14dab85dcae6f3762fb2b1eda4d58d8e67541330/tools/playground/tl_tests.cpp#L522
  */
 int
-_clipprimitive(Primitive *p, Primitive *cp)
+_clipprimitive(BPrimitive *p, BPrimitive *cp)
 {
 	/* signed distance from each clipping plane */
 	static double sdm[6][4] = {
@@ -77,7 +77,7 @@ _clipprimitive(Primitive *p, Primitive *cp)
 	double sd0[6], sd1[6];
 	double d0, d1, perc;
 	Polygon Vinp, Voutp, *Vin, *Vout;
-	Vertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
+	BVertex *v0, *v1, v;	/* edge verts and new vertex (line-plane intersection) */
 	int i, j, np;
 
 	np = 0;
@@ -184,9 +184,9 @@ outcode(Point p, Rectangle r)
 
 /* lerp vertex attributes to match the new positions */
 static void
-adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
+adjustverts(Point *p0, Point *p1, BVertex *v0, BVertex *v1)
 {
-	Vertex v[2];
+	BVertex v[2];
 	Point3 dp;
 	Point Δp;
 	double len, perc;
@@ -214,7 +214,7 @@ adjustverts(Point *p0, Point *p1, Vertex *v0, Vertex *v1)
  * Cohen-Sutherland rectangle-line clipping
  */
 int
-_rectclipline(Rectangle r, Point *p0, Point *p1, Vertex *v0, Vertex *v1)
+_rectclipline(Rectangle r, Point *p0, Point *p1, BVertex *v0, BVertex *v1)
 {
 	int code0, code1;
 	int Δx, Δy;
@@ -237,7 +237,7 @@ _rectclipline(Rectangle r, Point *p0, Point *p1, Vertex *v0, Vertex *v1)
 		if(ptisinside(code0)){
 			SWAP(Point, p0, p1);
 			SWAP(int, &code0, &code1);
-			SWAP(Vertex, v0, v1);
+			SWAP(BVertex, v0, v1);
 		}
 
 		if(code0 & CLIPL){

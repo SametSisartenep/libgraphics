@@ -84,7 +84,7 @@ isvisible(Point3 p)
 }
 
 static int
-isfacingback(Primitive *p)
+isfacingback(BPrimitive *p)
 {
 	double sa;	/* signed double area */
 
@@ -176,7 +176,7 @@ rasterizept(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
-	Primitive *prim;
+	BPrimitive *prim;
 	Point p;
 	Color c;
 	float z;
@@ -222,7 +222,7 @@ rasterizeline(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
-	Primitive *prim;
+	BPrimitive *prim;
 	Point p, dp, Δp, p0, p1;
 	Color c;
 	double dplen, perc;
@@ -255,7 +255,7 @@ rasterizeline(Rastertask *task)
 	/* make them left-to-right */
 	if(p0.x > p1.x){
 		SWAP(Point, &p0, &p1);
-		SWAP(Vertex, prim->v+0, prim->v+1);
+		SWAP(BVertex, prim->v+0, prim->v+1);
 	}
 
 	dp = subpt(p1, p0);
@@ -334,11 +334,11 @@ rasterizetri(Rastertask *task)
 {
 	SUparams *params;
 	Raster *cr, *zr;
-	Primitive *prim;
+	BPrimitive *prim;
 	pGradient ∇bc;
 //	vGradient ∇v;
 //	fGradient ∇z, ∇pcz;
-//	Vertex v, *vp;
+//	BVertex v, *vp;
 	Triangle2 t;
 	Point p;
 	Point3 bc;
@@ -423,10 +423,10 @@ rasterizetri(Rastertask *task)
 //		_loadvertex(vp, task->fsp->v);
 //		_mulvertex(vp, 1/(pcz < ε1? ε1: pcz));
 
-//		SWAP(Vertex*, &vp, &task->fsp->v);
+//		SWAP(BVertex*, &vp, &task->fsp->v);
 		task->fsp->p = p;
 		c = params->stab->fs(task->fsp);
-//		SWAP(Vertex*, &vp, &task->fsp->v);
+//		SWAP(BVertex*, &vp, &task->fsp->v);
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
@@ -472,7 +472,7 @@ rasterizer(void *arg)
 	Rastertask *task;
 	SUparams *params;
 	Renderjob *job;
-	Vertex v;
+	BVertex v;
 	Shaderparams fsp;
 	int i;
 
@@ -556,7 +556,8 @@ tiler(void *arg)
 	SUparams *params, *newparams;
 	Rastertask *task;
 	Shaderparams vsp;
-	Primitive *ep, *cp, *p, prim;	/* primitives to raster */
+	Primitive *ep;			/* primitives to raster */
+	BPrimitive prim, *p, *cp;
 	Rectangle *wr, bbox;
 	Channel **taskchans;
 	ulong nproc;
@@ -565,7 +566,7 @@ tiler(void *arg)
 	tp = arg;
 	threadsetname("tiler %d", tp->id);
 
-	cp = _emalloc(sizeof(*cp)*16);
+	cp = _emalloc(16*sizeof(*cp));
 	taskchans = tp->taskchans;
 	nproc = tp->nproc;
 	wr = _emalloc(nproc*sizeof(Rectangle));
@@ -607,7 +608,11 @@ tiler(void *arg)
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			prim = *ep;
+			prim.type = ep->type;
+			for(i = 0; i < prim.type+1; i++)
+				prim.v[i].Vertex = ep->v[i];
+			prim.mtl = ep->mtl;
+			prim.tangent = ep->tangent;
 			p = &prim;
 			switch(p->type){
 			case PPoint:

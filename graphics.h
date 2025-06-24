@@ -58,6 +58,7 @@ typedef struct Cubemap Cubemap;
 typedef struct Vertexattr Vertexattr;
 typedef struct Vertexattrs Vertexattrs;
 typedef struct Vertex Vertex;
+typedef struct BVertex BVertex;
 typedef struct LightSource LightSource;
 typedef struct Material Material;
 typedef struct Primitive Primitive;
@@ -141,6 +142,16 @@ struct Vertex
 	Point3 n;		/* surface normal */
 	Color c;		/* shading color */
 	Point2 uv;		/* texture coordinate */
+};
+
+/*
+ * BVertex is only used internally in the rasterizer, but it's
+ * presented to the user by the Shaderparams so its definition must be
+ * publicly available.
+ */
+struct BVertex
+{
+	Vertex;
 	Material *mtl;
 	Point3 tangent;
 	Vertexattrs;		/* attributes (varyings) */
@@ -219,7 +230,7 @@ struct Scene
 struct Shaderparams
 {
 	SUparams *su;
-	Vertex *v;
+	BVertex *v;
 	Point p;	/* fragment position (fshader-only) */
 	uint idx;	/* vertex index (vshader-only) */
 

@@ -25,7 +25,7 @@ addvattr(Vertexattrs *v, Vertexattr *va)
 }
 
 static void
-copyvattrs(Vertex *d, Vertex *s)
+copyvattrs(BVertex *d, BVertex *s)
 {
 	int i;
 
@@ -33,10 +33,10 @@ copyvattrs(Vertex *d, Vertex *s)
 		addvattr(d, &s->attrs[i]);
 }
 
-Vertex
-_dupvertex(Vertex *v)
+BVertex
+_dupvertex(BVertex *v)
 {
-	Vertex nv;
+	BVertex nv;
 
 	nv = *v;
 	nv.attrs = nil;
@@ -46,7 +46,7 @@ _dupvertex(Vertex *v)
 }
 
 void
-_loadvertex(Vertex *d, Vertex *s)
+_loadvertex(BVertex *d, BVertex *s)
 {
 	d->p = s->p;
 	d->n = s->n;
@@ -61,7 +61,7 @@ _loadvertex(Vertex *d, Vertex *s)
  * linear attribute interpolation
  */
 void
-_lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
+_lerpvertex(BVertex *v, BVertex *v0, BVertex *v1, double t)
 {
 	Vertexattr va;
 	int i;
@@ -87,7 +87,7 @@ _lerpvertex(Vertex *v, Vertex *v0, Vertex *v1, double t)
  * barycentric attribute interpolation
  */
 void
-_berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
+_berpvertex(BVertex *v, BVertex *v0, BVertex *v1, BVertex *v2, Point3 bc)
 {
 	Vertexattr va;
 	int i;
@@ -110,7 +110,7 @@ _berpvertex(Vertex *v, Vertex *v0, Vertex *v1, Vertex *v2, Point3 bc)
 }
 
 void
-_addvertex(Vertex *a, Vertex *b)
+_addvertex(BVertex *a, BVertex *b)
 {
 	Vertexattr *va, *vb;
 
@@ -128,7 +128,7 @@ _addvertex(Vertex *a, Vertex *b)
 }
 
 void
-_mulvertex(Vertex *v, double s)
+_mulvertex(BVertex *v, double s)
 {
 	Vertexattr *va;
 
@@ -171,7 +171,7 @@ _getvattr(Vertexattrs *v, char *id)
 }
 
 void
-_delvattrs(Vertex *v)
+_delvattrs(BVertex *v)
 {
 	free(v->attrs);
 	v->attrs= nil;
@@ -179,7 +179,7 @@ _delvattrs(Vertex *v)
 }
 
 void
-_fprintvattrs(int fd, Vertex *v)
+_fprintvattrs(int fd, BVertex *v)
 {
 	int i;
 

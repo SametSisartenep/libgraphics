@@ -10,6 +10,7 @@ enum {
 	OP_END,
 };
 
+typedef struct BPrimitive BPrimitive;
 typedef struct Polygon Polygon;
 typedef struct Entityparam Entityparam;
 typedef struct Tilerparam Tilerparam;
@@ -19,9 +20,17 @@ typedef struct fGradient fGradient;
 typedef struct pGradient pGradient;
 typedef struct vGradient vGradient;
 
+struct BPrimitive
+{
+	int type;
+	BVertex v[3];
+	Material *mtl;
+	Point3 tangent;		/* used for normal mapping */
+};
+
 struct Polygon
 {
-	Vertex *v;
+	BVertex *v;
 	ulong n;
 	ulong cap;
 };
@@ -53,7 +62,7 @@ struct Rastertask
 	Shaderparams *fsp;
 	Rectangle wr;		/* working rect */
 	Rectangle *clipr;
-	Primitive p;
+	BPrimitive p;
 };
 
 struct fGradient
@@ -72,9 +81,9 @@ struct pGradient
 
 struct vGradient
 {
-	Vertex v0;
-	Vertex dx;
-	Vertex dy;
+	BVertex v0;
+	BVertex dx;
+	BVertex dy;
 };
 
 /* alloc */
@@ -102,20 +111,20 @@ Framebufctl *_mkfbctl(Rectangle);
 void _rmfbctl(Framebufctl*);
 
 /* vertex */
-Vertex _dupvertex(Vertex*);
-void _loadvertex(Vertex*, Vertex*);
-void _lerpvertex(Vertex*, Vertex*, Vertex*, double);
-void _berpvertex(Vertex*, Vertex*, Vertex*, Vertex*, Point3);
-void _addvertex(Vertex*, Vertex*);
-void _mulvertex(Vertex*, double);
-void _delvattrs(Vertex*);
-void _fprintvattrs(int, Vertex*);
+BVertex _dupvertex(BVertex*);
+void _loadvertex(BVertex*, BVertex*);
+void _lerpvertex(BVertex*, BVertex*, BVertex*, double);
+void _berpvertex(BVertex*, BVertex*, BVertex*, BVertex*, Point3);
+void _addvertex(BVertex*, BVertex*);
+void _mulvertex(BVertex*, double);
+void _delvattrs(BVertex*);
+void _fprintvattrs(int, BVertex*);
 void _addvattr(Vertexattrs*, char*, int, void*);
 Vertexattr *_getvattr(Vertexattrs*, char*);
 
 /* clip */
-int _clipprimitive(Primitive*, Primitive*);
-int _rectclipline(Rectangle, Point*, Point*, Vertex*, Vertex*);
+int _clipprimitive(BPrimitive*, BPrimitive*);
+int _rectclipline(Rectangle, Point*, Point*, BVertex*, BVertex*);
 
 /* util */
 void _memsetl(void*, ulong, usize);
