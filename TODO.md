@@ -15,7 +15,7 @@
 	  redundancy: e.g., with a box, where instead of storing one
 	  normal per every face, we store the same normal on the six
 	  vertices (three per triangle) that make up the face.
-- [ ] Create an internal Vertex type
+- [+] Create an internal Vertex type
 	- I want to get rid of the Vertex.(Vertexattrs|mtl|tangent)
 	  properties, as they are only used during rasterization.
 	  This will affect the Primitive as well, so it will probably
