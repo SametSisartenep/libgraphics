@@ -7,6 +7,24 @@
 #include "graphics.h"
 #include "internal.h"
 
+Vertex
+mkvert(void)
+{
+	return (Vertex){NaI, NaI, NaI, NaI};
+}
+
+Primitive
+mkprim(int type)
+{
+	Primitive prim;
+
+	prim.type = type;
+	prim.v[0] = prim.v[1] = prim.v[2] = NaI;
+	prim.tangent = NaI;
+	prim.mtl = nil;
+	return prim;
+}
+
 Material *
 newmaterial(char *name)
 {
@@ -35,12 +53,46 @@ delmaterial(Material *mtl)
 	free(mtl->name);
 }
 
-static int
-model_addprim(Model *m, Primitive p)
+static usize
+model_addposition(Model *m, Point3 p)
 {
-	m->prims = _erealloc(m->prims, ++m->nprims*sizeof(*m->prims));
-	m->prims[m->nprims-1] = p;
-	return m->nprims-1;
+	return itemarrayadd(m->positions, &p, 0);
+}
+
+static usize
+model_addnormal(Model *m, Point3 n)
+{
+	return itemarrayadd(m->normals, &n, 0);
+}
+
+static usize
+model_addtexcoord(Model *m, Point2 t)
+{
+	return itemarrayadd(m->texcoords, &t, 0);
+}
+
+static usize
+model_addcolor(Model *m, Color c)
+{
+	return itemarrayadd(m->colors, &c, 0);
+}
+
+static usize
+model_addtangent(Model *m, Point3 T)
+{
+	return itemarrayadd(m->tangents, &T, 0);
+}
+
+static usize
+model_addvert(Model *m, Vertex v)
+{
+	return itemarrayadd(m->verts, &v, 0);
+}
+
+static usize
+model_addprim(Model *m, Primitive P)
+{
+	return itemarrayadd(m->prims, &P, 0);
 }
 
 static int
@@ -69,6 +121,19 @@ newmodel(void)
 
 	m = _emalloc(sizeof *m);
 	memset(m, 0, sizeof *m);
+	m->positions = mkitemarray(sizeof(Point3));
+	m->normals = mkitemarray(sizeof(Point3));
+	m->texcoords = mkitemarray(sizeof(Point2));
+	m->colors = mkitemarray(sizeof(Color));
+	m->tangents = mkitemarray(sizeof(Point3));
+	m->verts = mkitemarray(sizeof(Vertex));
+	m->prims = mkitemarray(sizeof(Primitive));
+	m->addposition = model_addposition;
+	m->addnormal = model_addnormal;
+	m->addtexcoord = model_addtexcoord;
+	m->addcolor = model_addcolor;
+	m->addtangent = model_addtangent;
+	m->addvert = model_addvert;
 	m->addprim = model_addprim;
 	m->addmaterial = model_addmaterial;
 	m->getmaterial = model_getmaterial;
@@ -79,6 +144,7 @@ Model *
 dupmodel(Model *m)
 {
 	Model *nm;
+	Primitive *prim, *nprim;
 	int i;
 
 	if(m == nil)
@@ -98,13 +164,18 @@ dupmodel(Model *m)
 				sysfatal("strdup: %r");
 		}
 	}
-	if(m->nprims > 0){
-		nm->nprims = m->nprims;
-		nm->prims = _emalloc(nm->nprims*sizeof(*nm->prims));
-		for(i = 0; i < m->nprims; i++){
-			nm->prims[i] = m->prims[i];
-			if(nm->nmaterials > 0 && m->prims[i].mtl != nil)
-				nm->prims[i].mtl = &nm->materials[m->prims[i].mtl - m->materials];
+	nm->positions = dupitemarray(m->positions);
+	nm->normals = dupitemarray(m->normals);
+	nm->texcoords = dupitemarray(m->texcoords);
+	nm->colors = dupitemarray(m->colors);
+	nm->tangents = dupitemarray(m->tangents);
+	nm->verts = dupitemarray(m->verts);
+	nm->prims = dupitemarray(m->prims);
+	for(i = 0; i < m->prims->nitems && nm->nmaterials > 0; i++){
+		prim = itemarrayget(m->prims, i);
+		if(prim->mtl != nil){
+			nprim = itemarrayget(nm->prims, i);
+			nprim->mtl = &nm->materials[prim->mtl - m->materials];
 		}
 	}
 	return nm;
@@ -119,7 +190,13 @@ delmodel(Model *m)
 	while(m->nmaterials--)
 		delmaterial(&m->materials[m->nmaterials]);
 	free(m->materials);
-	free(m->prims);
+	rmitemarray(m->positions);
+	rmitemarray(m->normals);
+	rmitemarray(m->texcoords);
+	rmitemarray(m->colors);
+	rmitemarray(m->tangents);
+	rmitemarray(m->verts);
+	rmitemarray(m->prims);
 	free(m);
 }
 

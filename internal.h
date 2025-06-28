@@ -24,8 +24,8 @@ struct BPrimitive
 {
 	int type;
 	BVertex v[3];
-	Material *mtl;
 	Point3 tangent;		/* used for normal mapping */
+	Material *mtl;
 };
 
 struct Polygon

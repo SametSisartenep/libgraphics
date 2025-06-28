@@ -549,6 +549,30 @@ initworkrects(Rectangle *wr, int nwr, Rectangle *fbr)
 		wr[nwr-1].max.y = fbr->max.y;
 }
 
+static BPrimitive *
+assembleprim(BPrimitive *d, Primitive *s, Model *m)
+{
+	Vertex *v;
+	void *vp;
+	int i;
+
+	d->type = s->type;
+	for(i = 0; i < s->type+1; i++){
+		v = itemarrayget(m->verts, s->v[i]);
+		d->v[i].p = *(Point3*)itemarrayget(m->positions, v->p);
+		vp = itemarrayget(m->normals, v->n);
+		d->v[i].n = vp != nil? *(Point3*)vp: ZP3;
+		vp = itemarrayget(m->colors, v->c);
+		d->v[i].c = vp != nil? *(Color*)vp: ZP3;
+		vp = itemarrayget(m->texcoords, v->uv);
+		d->v[i].uv = vp != nil? *(Point2*)vp: ZP2;
+	}
+	vp = itemarrayget(m->tangents, s->tangent);
+	d->tangent = vp != nil? *(Point3*)vp: ZP3;
+	d->mtl = s->mtl;
+	return d;
+}
+
 static void
 tiler(void *arg)
 {
@@ -608,12 +632,8 @@ tiler(void *arg)
 		for(ep = params->eb; ep != params->ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			prim.type = ep->type;
-			for(i = 0; i < prim.type+1; i++)
-				prim.v[i].Vertex = ep->v[i];
-			prim.mtl = ep->mtl;
-			prim.tangent = ep->tangent;
-			p = &prim;
+			p = assembleprim(&prim, ep, params->entity->mdl);
+
 			switch(p->type){
 			case PPoint:
 				p->v[0].mtl = p->mtl;
@@ -831,8 +851,8 @@ entityproc(void *arg)
 			}
 		}
 
-		eb = params->entity->mdl->prims;
-		nprims = params->entity->mdl->nprims;
+		eb = params->entity->mdl->prims->items;
+		nprims = params->entity->mdl->prims->nitems;
 		ee = eb + nprims;
 
 		if(nprims <= nproc){

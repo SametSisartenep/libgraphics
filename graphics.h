@@ -50,8 +50,12 @@ enum {
 	/* vertex attribute types */
 	VAPoint = 0,
 	VANumber,
+
+	/* itemarray */
+	NaI	= ~0ULL,	/* not an index */
 };
 
+typedef struct ItemArray ItemArray;
 typedef struct Color Color;
 typedef struct Texture Texture;
 typedef struct Cubemap Cubemap;
@@ -79,6 +83,13 @@ typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
 typedef struct Viewport Viewport;
 typedef struct Camera Camera;
+
+struct ItemArray
+{
+	void *items;
+	usize nitems;
+	usize itemsize;
+};
 
 struct Color
 {
@@ -138,10 +149,10 @@ struct Vertexattrs
 
 struct Vertex
 {
-	Point3 p;		/* position */
-	Point3 n;		/* surface normal */
-	Color c;		/* shading color */
-	Point2 uv;		/* texture coordinate */
+	usize p;		/* position */
+	usize n;		/* surface normal */
+	usize uv;		/* texture coordinate */
+	usize c;		/* shading color */
 };
 
 /*
@@ -151,7 +162,10 @@ struct Vertex
  */
 struct BVertex
 {
-	Vertex;
+	Point3 p;		/* position */
+	Point3 n;		/* surface normal */
+	Point2 uv;		/* texture coordinate */
+	Color c;		/* shading color */
 	Material *mtl;
 	Point3 tangent;
 	Vertexattrs;		/* attributes (varyings) */
@@ -186,19 +200,30 @@ struct Material
 struct Primitive
 {
 	int type;
-	Vertex v[3];
+	usize v[3];
+	usize tangent;		/* used for normal mapping */
 	Material *mtl;
-	Point3 tangent;		/* used for normal mapping */
 };
 
 struct Model
 {
-	Primitive *prims;
-	ulong nprims;
+	ItemArray *positions;
+	ItemArray *normals;
+	ItemArray *texcoords;
+	ItemArray *colors;
+	ItemArray *tangents;
+	ItemArray *verts;
+	ItemArray *prims;
 	Material *materials;
 	ulong nmaterials;
 
-	int (*addprim)(Model*, Primitive);
+	usize (*addposition)(Model*, Point3);
+	usize (*addnormal)(Model*, Point3);
+	usize (*addtexcoord)(Model*, Point2);
+	usize (*addcolor)(Model*, Color);
+	usize (*addtangent)(Model*, Point3);
+	usize (*addvert)(Model*, Vertex);
+	usize (*addprim)(Model*, Primitive);
 	int (*addmaterial)(Model*, Material);
 	Material *(*getmaterial)(Model*, char*);
 };
@@ -428,10 +453,12 @@ void orthographic(Matrix3, double, double, double, double, double, double);
 
 /* marshal */
 Model *readmodel(int);
-usize writemodel(int, Model*, int);
-int exportmodel(char*, Model*, int);
+usize writemodel(int, Model*);
+int exportmodel(char*, Model*);
 
 /* scene */
+Vertex mkvert(void);
+Primitive mkprim(int);
 Material *newmaterial(char*);
 void delmaterial(Material*);
 Model *newmodel(void);
@@ -475,6 +502,14 @@ Point3 maxpt3(Point3, Point3);
 int eqpt3(Point3, Point3);
 Memimage *rgba(ulong);
 Memimage *dupmemimage(Memimage*);
+
+/* itemarray */
+ItemArray *mkitemarray(usize);
+usize itemarrayadd(ItemArray*, void*, int);
+void *itemarrayget(ItemArray*, usize);
+usize copyitemarray(ItemArray*, ItemArray*);
+ItemArray *dupitemarray(ItemArray*);
+void rmitemarray(ItemArray*);
 
 /* color */
 ulong col2ul(Color);

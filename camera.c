@@ -40,36 +40,59 @@ skyboxfs(Shaderparams *sp)
 static Model *
 mkskyboxmodel(void)
 {
-	static Point3 axes[3] = {{0,1,0,0}, {1,0,0,0}, {0,0,1,0}};
-	static Point3 center = {0,0,0,1};
+	static int indices[] = {
+		/* front */
+		0, 1, 4+1,	0, 4+1, 4+0,
+		/* right */
+		1, 2, 4+2,	1, 4+2, 4+1,
+		/* bottom */
+		0, 3, 2,	0, 2, 1,
+		/* back */
+		3, 4+3, 4+2,	3, 4+2, 2,
+		/* left */
+		0, 4+0, 4+3,	0, 4+3, 3,
+		/* top */
+		4+0, 4+1, 4+2,	4+0, 4+2, 4+3,
+	};
 	Model *m;
-	Primitive t[2];
-	Point3 p, v1, v2;
-	int i, j, k;
+	Primitive t;
+	Vertex v;
+	Point3 p;
+	int i, k;
+//	int f, j;
 
 	m = newmodel();
-	memset(t, 0, sizeof t);
-	t[0].type = t[1].type = PTriangle;
+	t = mkprim(PTriangle);
+	v = mkvert();
 
-	p = Vec3(-0.5,-0.5,0.5);
-	v1 = Vec3(1,0,0);
-	v2 = Vec3(0,1,0);
-	t[0].v[0].p = addpt3(center, p);
-	t[0].v[1].p = addpt3(center, addpt3(p, v1));
-	t[0].v[2].p = addpt3(center, addpt3(p, addpt3(v1, v2)));
-	t[1].v[0] = t[0].v[0];
-	t[1].v[1] = t[0].v[2];
-	t[1].v[2].p = addpt3(center, addpt3(p, v2));
-
-	for(i = 0; i < 6; i++){
-		for(j = 0; j < 2; j++)
-			for(k = 0; k < 3; k++)
-				if(i > 0)
-					t[j].v[k].p = qrotate(t[j].v[k].p, axes[i%3], PI/2);
-
-		m->addprim(m, t[0]);
-		m->addprim(m, t[1]);
+	/* build bottom and top quads around y-axis */
+	p = Pt3(-0.5,-0.5,0.5,1);
+	for(i = 0; i < 8; i++){
+		if(i == 4)
+			p.y++;
+		v.p = m->addposition(m, p);
+		m->addvert(m, v);
+		p = qrotate(p, Vec3(0,1,0), PI/2);
 	}
+
+	for(i = 0; i < nelem(indices); i++){
+//		f = i/6 % 6;
+//		j = i/3 % 2;
+		k = i % 3;
+		t.v[k] = indices[i];
+		if(k == 3-1){
+			m->addprim(m, t);
+
+//			Point3 p0, p1;
+//			for(k = 0; k < 3; k++){
+//				p0 = *(Point3*)itemarrayget(m->positions, t.v[k]);
+//				p1 = *(Point3*)itemarrayget(m->positions, t.v[(k+1)%3]);
+//				if(eqpt3(p0, p1))
+//					fprint(2, "face %d disfigured (tri #%d, verts %d %V and %d %V)\n", f, j, k, p0, k+1, p1);
+//			}
+		}
+	}
+
 	return m;
 }
 

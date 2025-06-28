@@ -9,7 +9,6 @@
 #include "internal.h"
 
 enum {
-	NaI = ~0ULL,	/* not an index */
 	MTLHTSIZ = 17,
 };
 
@@ -20,31 +19,8 @@ struct Curline
 	usize line;
 };
 
-typedef struct IArray IArray;
-typedef struct Wirevert Wirevert;
-typedef struct Wireprim Wireprim;
 typedef struct Mtlentry Mtlentry;
 typedef struct Mtltab Mtltab;
-
-struct IArray
-{
-	void *items;
-	usize nitems;
-	usize itemsize;
-};
-
-struct Wirevert
-{
-	usize p, n, t, c;
-};
-
-struct Wireprim
-{
-	int nv;
-	usize v[3];
-	usize T;
-	char *mtlname;
-};
 
 struct Mtlentry
 {
@@ -83,58 +59,6 @@ error(Curline *l, char *fmt, ...)
 	va_end(va);
 
 	werrstr("%s", buf);
-}
-
-static IArray *
-mkitemarray(usize is)
-{
-	IArray *a;
-
-	a = _emalloc(sizeof *a);
-	memset(a, 0, sizeof *a);
-	a->itemsize = is;
-	return a;
-}
-
-static usize
-itemarrayadd(IArray *a, void *i, int dedup)
-{
-	char *p;
-	usize idx;
-
-	if(dedup){
-		p = a->items;
-		for(idx = 0; idx < a->nitems; idx++)
-			if(memcmp(i, &p[idx*a->itemsize], a->itemsize) == 0)
-				return idx;
-	}
-
-	idx = a->nitems;
-	a->items = _erealloc(a->items, ++a->nitems * a->itemsize);
-	p = a->items;
-	p += idx*a->itemsize;
-	memmove(p, i, a->itemsize);
-	return idx;
-}
-
-static void *
-itemarrayget(IArray *a, usize idx)
-{
-	char *p;
-
-	if(idx >= a->nitems)
-		return nil;
-
-	p = a->items;
-	p += idx*a->itemsize;
-	return p;
-}
-
-static void
-rmitemarray(IArray *a)
-{
-	free(a->items);
-	free(a);
 }
 
 static uint
@@ -239,14 +163,14 @@ Model *
 readmodel(int fd)
 {
 	Curline curline;
-	IArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
+	ItemArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
 	Mtltab *mtltab;
 	Mtlentry *me;
 	Point3 p, n, T;
 	Point2 t;
 	Color c;
 	Vertex v;
-	Primitive P;
+	Primitive P, *prim;
 	Material mtl;
 	Model *m;
 	Memimage *mi;
@@ -254,7 +178,6 @@ readmodel(int fd)
 	void *vp;
 	char *line, *f[10], *s, assets[200], buf[256];
 	usize idx, i;
-	ulong primidx;
 	int nf, nv, inamaterial, texfd;
 
 	n.w = T.w = 0;
@@ -278,9 +201,9 @@ readmodel(int fd)
 	if(fd2path(fd, curline.file, sizeof curline.file) != 0)
 		sysfatal("fd2path: %r");
 	if((s = strrchr(curline.file, '/')) != nil){
-		*s = 0;
+		*s++ = 0;
 		snprint(assets, sizeof assets, "%s", curline.file);
-		memmove(curline.file, s+1, strlen(s+1) + 1);
+		memmove(curline.file, s, strlen(s) + 1);
 	}else{
 		assets[0] = '.';
 		assets[1] = 0;
@@ -477,7 +400,7 @@ notexture:
 				error(&curline, "no position at idx %llud", idx);
 				goto getout;
 			}
-			v.p = *(Point3*)vp;
+			v.p = idx;
 
 			if(strcmp(f[2], "-") != 0){
 				idx = strtoul(f[2], nil, 10);
@@ -486,7 +409,7 @@ notexture:
 					error(&curline, "no normal at idx %llud", idx);
 					goto getout;
 				}
-				v.n = *(Point3*)vp;
+				v.n = idx;
 			}
 
 			if(strcmp(f[3], "-") != 0){
@@ -496,7 +419,7 @@ notexture:
 					error(&curline, "no texture at idx %llud", idx);
 					goto getout;
 				}
-				v.uv = *(Point2*)vp;
+				v.uv = idx;
 			}
 
 			if(strcmp(f[4], "-") != 0){
@@ -506,7 +429,7 @@ notexture:
 					error(&curline, "no color at idx %llud", idx);
 					goto getout;
 				}
-				v.c = *(Color*)vp;
+				v.c = idx;
 			}
 
 			itemarrayadd(va, &v, 0);
@@ -529,7 +452,7 @@ novertex:
 					error(&curline, "no vertex at idx %llud", idx);
 					goto getout;
 				}
-				P.v[0] = *(Vertex*)vp;
+				P.v[0] = idx;
 
 				/* ignore 4th field (nf == 4) */
 
@@ -548,7 +471,7 @@ novertex:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				P.v[0] = *(Vertex*)vp;
+				P.v[0] = idx;
 
 				if(nf < 4){
 notenough:
@@ -559,7 +482,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				P.v[1] = *(Vertex*)vp;
+				P.v[1] = idx;
 
 				/* ignore 5th field (nf == 5) */
 
@@ -578,7 +501,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				P.v[0] = *(Vertex*)vp;
+				P.v[0] = idx;
 
 				if(nf < 4)
 					goto notenough;
@@ -586,7 +509,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				P.v[1] = *(Vertex*)vp;
+				P.v[1] = idx;
 
 				if(nf < 5)
 					goto notenough;
@@ -594,7 +517,7 @@ notenough:
 				vp = itemarrayget(va, idx);
 				if(vp == nil)
 					goto novertex;
-				P.v[2] = *(Vertex*)vp;
+				P.v[2] = idx;
 
 				if(nf < 6){
 					error(&curline, "missing triangle tangent field");
@@ -607,7 +530,7 @@ notenough:
 						error(&curline, "no tangent at idx %llud", idx);
 						goto getout;
 					}
-					P.tangent = *(Point3*)vp;
+					P.tangent = idx;
 				}
 
 				if(nf == 7){
@@ -646,11 +569,18 @@ notenough:
 
 	m = newmodel();
 	mtltabloadmodel(m, mtltab);
+	copyitemarray(m->positions, pa);
+	copyitemarray(m->normals, na);
+	copyitemarray(m->texcoords, ta);
+	copyitemarray(m->colors, ca);
+	copyitemarray(m->tangents, Ta);
+	copyitemarray(m->verts, va);
+	copyitemarray(m->prims, Pa);
 	for(i = 0; i < Pa->nitems; i++){
-		primidx = m->addprim(m, *(Primitive*)itemarrayget(Pa, i));
-		if(m->prims[primidx].mtl != nil){
-			me = mtltabget(mtltab, m->prims[primidx].mtl->name);
-			m->prims[primidx].mtl = &m->materials[me->idx];
+		prim = itemarrayget(m->prims, i);
+		if(prim->mtl != nil){
+			me = mtltabget(mtltab, prim->mtl->name);
+			prim->mtl = &m->materials[me->idx];
 		}
 	}
 
@@ -756,30 +686,30 @@ Bprintidx(Biobuf *b, usize idx)
 }
 
 static int
-Bprintv(Biobuf *b, Wirevert *v)
+Bprintv(Biobuf *b, Vertex *v)
 {
 	int n;
 
 	n = Bprint(b, "v %llud", v->p);
 	n += Bprintidx(b, v->n);
-	n += Bprintidx(b, v->t);
+	n += Bprintidx(b, v->uv);
 	n += Bprintidx(b, v->c);
 	n += Bprint(b, "\n");
 	return n;
 }
 
 static int
-BprintP(Biobuf *b, Wireprim *p)
+BprintP(Biobuf *b, Primitive *p)
 {
 	char *s;
 	int n, i;
 
-	n = Bprint(b, "P %d", p->nv);
-	for(i = 0; i < p->nv; i++)
+	n = Bprint(b, "P %d", p->type+1);
+	for(i = 0; i < p->type+1; i++)
 		n += Bprintidx(b, p->v[i]);
-	n += Bprintidx(b, p->T);
-	if(p->mtlname != nil){
-		s = quotestrdup(p->mtlname);
+	n += Bprintidx(b, p->tangent);
+	if(p->mtl != nil){
+		s = quotestrdup(p->mtl->name);
 		if(s == nil)
 			sysfatal("quotestrdup: %r");
 		n += Bprint(b, " %s", s);
@@ -844,79 +774,34 @@ Bprintmtl(Biobuf *b, Material *m)
 }
 
 usize
-writemodel(int fd, Model *m, int dedup)
+writemodel(int fd, Model *m)
 {
-	IArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
-	Wirevert v;
-	Wireprim P;
-	Primitive *p, *ep;
 	Biobuf *out;
-	usize n;
-	int i;
+	usize n, i;
 
 	out = Bfdopen(fd, OWRITE);
 	if(out == nil)
 		sysfatal("Bfdopen: %r");
 
-	pa = mkitemarray(sizeof(Point3));
-	na = mkitemarray(sizeof(Point3));
-	ta = mkitemarray(sizeof(Point2));
-	ca = mkitemarray(sizeof(Color));
-	Ta = mkitemarray(sizeof(Point3));
-	va = mkitemarray(sizeof(Wirevert));
-	Pa = mkitemarray(sizeof(Wireprim));
-
 	n = 0;
-	p = m->prims;
-	ep = p + m->nprims;
-
-	while(p < ep){
-		memset(&P, 0, sizeof P);
-
-		P.nv = p->type+1;
-		for(i = 0; i < P.nv; i++){
-			v.p = itemarrayadd(pa, &p->v[i].p, dedup);
-			v.n = eqpt3(p->v[i].n, ZP3)?
-				NaI: itemarrayadd(na, &p->v[i].n, dedup);
-			v.t = p->v[i].uv.w != 1?
-				NaI: itemarrayadd(ta, &p->v[i].uv, dedup);
-			v.c = p->v[i].c.a == 0?
-				NaI: itemarrayadd(ca, &p->v[i].c, dedup);
-			P.v[i] = itemarrayadd(va, &v, dedup);
-		}
-		P.T = eqpt3(p->tangent, ZP3)?
-			NaI: itemarrayadd(Ta, &p->tangent, dedup);
-		P.mtlname = p->mtl != nil? p->mtl->name: nil;
-
-		itemarrayadd(Pa, &P, 0);
-		p++;
-	}
-
 	for(i = 0; i < m->nmaterials; i++)
 		n += Bprintmtl(out, &m->materials[i]);
 
-	for(i = 0; i < pa->nitems; i++)
-		n += Bprintp(out, itemarrayget(pa, i));
-	for(i = 0; i < na->nitems; i++)
-		n += Bprintn(out, itemarrayget(na, i));
-	for(i = 0; i < ta->nitems; i++)
-		n += Bprintt(out, itemarrayget(ta, i));
-	for(i = 0; i < ca->nitems; i++)
-		n += Bprintc(out, itemarrayget(ca, i));
-	for(i = 0; i < Ta->nitems; i++)
-		n += BprintT(out, itemarrayget(Ta, i));
-	for(i = 0; i < va->nitems; i++)
-		n += Bprintv(out, itemarrayget(va, i));
-	for(i = 0; i < Pa->nitems; i++)
-		n += BprintP(out, itemarrayget(Pa, i));
+	for(i = 0; i < m->positions->nitems; i++)
+		n += Bprintp(out, itemarrayget(m->positions, i));
+	for(i = 0; i < m->normals->nitems; i++)
+		n += Bprintn(out, itemarrayget(m->normals, i));
+	for(i = 0; i < m->texcoords->nitems; i++)
+		n += Bprintt(out, itemarrayget(m->texcoords, i));
+	for(i = 0; i < m->colors->nitems; i++)
+		n += Bprintc(out, itemarrayget(m->colors, i));
+	for(i = 0; i < m->tangents->nitems; i++)
+		n += BprintT(out, itemarrayget(m->tangents, i));
+	for(i = 0; i < m->verts->nitems; i++)
+		n += Bprintv(out, itemarrayget(m->verts, i));
+	for(i = 0; i < m->prims->nitems; i++)
+		n += BprintP(out, itemarrayget(m->prims, i));
 
-	rmitemarray(pa);
-	rmitemarray(na);
-	rmitemarray(ta);
-	rmitemarray(ca);
-	rmitemarray(Ta);
-	rmitemarray(va);
-	rmitemarray(Pa);
 	Bterm(out);
 	return n;
 }
@@ -941,7 +826,7 @@ exporttexture(char *path, Texture *t)
 }
 
 int
-exportmodel(char *path, Model *m, int dedup)
+exportmodel(char *path, Model *m)
 {
 	static char Esmallbuf[] = "buf too small to hold path";
 	Material *mtl;
@@ -1004,7 +889,7 @@ exportmodel(char *path, Model *m, int dedup)
 		werrstr("create: %r");
 		return -1;
 	}
-	if(writemodel(fd, m, dedup) == 0){
+	if(writemodel(fd, m) == 0){
 		close(fd);
 		werrstr("writemodel: %r");
 		return -1;
