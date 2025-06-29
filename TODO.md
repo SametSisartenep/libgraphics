@@ -15,3 +15,4 @@
 	  transparency rendering without the A-buffer.
 - [ ] Implement decals
 - [ ] Implement Model deduplication/compaction routine
+- [ ] Turn the Vertexattrs into a dynamic hash table
