@@ -553,22 +553,17 @@ static BPrimitive *
 assembleprim(BPrimitive *d, Primitive *s, Model *m)
 {
 	Vertex *v;
-	void *vp;
 	int i;
 
 	d->type = s->type;
 	for(i = 0; i < s->type+1; i++){
 		v = itemarrayget(m->verts, s->v[i]);
 		d->v[i].p = *(Point3*)itemarrayget(m->positions, v->p);
-		vp = itemarrayget(m->normals, v->n);
-		d->v[i].n = vp != nil? *(Point3*)vp: ZP3;
-		vp = itemarrayget(m->colors, v->c);
-		d->v[i].c = vp != nil? *(Color*)vp: ZP3;
-		vp = itemarrayget(m->texcoords, v->uv);
-		d->v[i].uv = vp != nil? *(Point2*)vp: ZP2;
+		d->v[i].n = v->n == NaI? ZP3: *(Point3*)itemarrayget(m->normals, v->n);
+		d->v[i].uv = v->uv == NaI? ZP2: *(Point2*)itemarrayget(m->texcoords, v->uv);
+		d->v[i].c = v->c == NaI? ZP3: *(Color*)itemarrayget(m->colors, v->c);
 	}
-	vp = itemarrayget(m->tangents, s->tangent);
-	d->tangent = vp != nil? *(Point3*)vp: ZP3;
+	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);
 	d->mtl = s->mtl;
 	return d;
 }
