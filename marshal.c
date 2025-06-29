@@ -388,7 +388,7 @@ notexture:
 				error(&curline, "syntax error");
 				goto getout;
 			}
-			memset(&v, 0, sizeof v);
+			v = mkvert();
 
 			if(strcmp(f[1], "-") == 0){
 				error(&curline, "vertex has no position");
@@ -438,7 +438,7 @@ notexture:
 				error(&curline, "syntax error");
 				goto getout;
 			}
-			memset(&P, 0, sizeof P);
+			P = mkprim(-1);
 
 			nv = strtoul(f[1], nil, 10);
 			switch(nv-1){
