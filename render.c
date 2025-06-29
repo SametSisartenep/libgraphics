@@ -174,7 +174,6 @@ squashAbuf(Framebuf *fb, Rectangle *wr, int blend)
 static void
 rasterizept(Rastertask *task)
 {
-	SUparams *params;
 	Raster *cr, *zr;
 	BPrimitive *prim;
 	Point p;
@@ -182,13 +181,12 @@ rasterizept(Rastertask *task)
 	float z;
 	uint ropts;
 
-	params = task->params;
 	prim = &task->p;
 
-	cr = params->fb->rasters;
+	cr = task->fb->rasters;
 	zr = cr->next;
 
-	ropts = params->camera->rendopts;
+	ropts = task->camera->rendopts;
 
 	p = (Point){prim->v[0].p.x, prim->v[0].p.y};
 
@@ -198,13 +196,13 @@ rasterizept(Rastertask *task)
 
 	*task->fsp->v = prim->v[0];
 	task->fsp->p = p;
-	c = params->stab->fs(task->fsp);
+	c = task->stab->fs(task->fsp);
 	if(c.a == 0)			/* discard non-colors */
 		return;
 	if(ropts & RODepth)
 		putdepth(zr, p, z);
 	if(ropts & ROAbuff)
-		pushtoAbuf(params->fb, p, c, z);
+		pushtoAbuf(task->fb, p, c, z);
 	else
 		pixel(cr, p, c, ropts & ROBlend);
 
@@ -220,7 +218,6 @@ rasterizept(Rastertask *task)
 static void
 rasterizeline(Rastertask *task)
 {
-	SUparams *params;
 	Raster *cr, *zr;
 	BPrimitive *prim;
 	Point p, dp, Δp, p0, p1;
@@ -230,13 +227,12 @@ rasterizeline(Rastertask *task)
 	uint ropts;
 	int steep, Δe, e, Δy;
 
-	params = task->params;
 	prim = &task->p;
 
-	cr = params->fb->rasters;
+	cr = task->fb->rasters;
 	zr = cr->next;
 
-	ropts = params->camera->rendopts;
+	ropts = task->camera->rendopts;
 
 	p0 = (Point){prim->v[0].p.x, prim->v[0].p.y};
 	p1 = (Point){prim->v[1].p.x, prim->v[1].p.y};
@@ -272,7 +268,7 @@ rasterizeline(Rastertask *task)
 
 		z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 		/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-		if(!ptinrect(p, params->fb->r) ||
+		if(!ptinrect(p, task->fb->r) ||
 		   ((ropts & RODepth) && z <= getdepth(zr, p)))
 			goto discard;
 
@@ -285,13 +281,13 @@ rasterizeline(Rastertask *task)
 		_lerpvertex(task->fsp->v, prim->v+0, prim->v+1, perc);
 
 		task->fsp->p = p;
-		c = params->stab->fs(task->fsp);
+		c = task->stab->fs(task->fsp);
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
 			putdepth(zr, p, z);
 		if(ropts & ROAbuff)
-			pushtoAbuf(params->fb, p, c, z);
+			pushtoAbuf(task->fb, p, c, z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
 
@@ -332,7 +328,6 @@ _barycoords(Triangle2 t, Point2 p)
 static void
 rasterizetri(Rastertask *task)
 {
-	SUparams *params;
 	Raster *cr, *zr;
 	BPrimitive *prim;
 	pGradient ∇bc;
@@ -346,13 +341,12 @@ rasterizetri(Rastertask *task)
 	float z, pcz;
 	uint ropts;
 
-	params = task->params;
 	prim = &task->p;
 
-	cr = params->fb->rasters;
+	cr = task->fb->rasters;
 	zr = cr->next;
 
-	ropts = params->camera->rendopts;
+	ropts = task->camera->rendopts;
 
 //	memset(&v, 0, sizeof v);
 //	vp = &v;
@@ -425,14 +419,14 @@ rasterizetri(Rastertask *task)
 
 //		SWAP(BVertex*, &vp, &task->fsp->v);
 		task->fsp->p = p;
-		c = params->stab->fs(task->fsp);
+		c = task->stab->fs(task->fsp);
 //		SWAP(BVertex*, &vp, &task->fsp->v);
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
 			putdepth(zr, p, z);
 		if(ropts & ROAbuff)
-			pushtoAbuf(params->fb, p, c, z);
+			pushtoAbuf(task->fb, p, c, z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
 
@@ -470,7 +464,6 @@ rasterizer(void *arg)
 	};
 	Rasterparam *rp;
 	Rastertask *task;
-	SUparams *params;
 	Renderjob *job;
 	BVertex v;
 	Shaderparams fsp;
@@ -488,12 +481,11 @@ rasterizer(void *arg)
 	fsp.toraster = sparams_toraster;
 
 	while((task = recvp(rp->taskc)) != nil){
-		params = task->params;
-		job = params->job;
+		job = task->job;
 		if(job->rctl->doprof && job->times.Rn[rp->id].t0 == 0)
 			job->times.Rn[rp->id].t0 = nanosec();
 
-		if(params->op == OP_END){
+		if(task->op == OP_END){
 			if(job->camera->rendopts & ROAbuff)
 				squashAbuf(job->fb, &task->wr, job->camera->rendopts & ROBlend);
 
@@ -515,14 +507,13 @@ rasterizer(void *arg)
 					job->times.Rn[rp->id].t1 = nanosec();
 
 				nbsend(job->donec, nil);
-				free(params);
 			}else if(job->rctl->doprof)
 				job->times.Rn[rp->id].t1 = nanosec();
 			free(task);
 			continue;
 		}
 
-		fsp.su = params;
+		fsp.su = &task->SUparams;
 		task->fsp = &fsp;
 		(*rasterfn[task->p.type])(task);
 
@@ -530,7 +521,6 @@ rasterizer(void *arg)
 		if(task->p.type != PPoint)
 			for(i = 0; i < task->p.type+1; i++)
 				_delvattrs(&task->p.v[i]);
-		free(params);
 		free(task);
 	}
 }
@@ -572,7 +562,7 @@ static void
 tiler(void *arg)
 {
 	Tilerparam *tp;
-	SUparams *params, *newparams;
+	SUparams *params;
 	Rastertask *task;
 	Shaderparams vsp;
 	Primitive *ep;			/* primitives to raster */
@@ -612,11 +602,12 @@ tiler(void *arg)
 				params->job->ref = nproc;
 				for(i = 0; i < nproc; i++){
 					task = _emalloc(sizeof *task);
-					task->params = params;
+					task->SUparams = *params;
 					if(params->job->camera->rendopts & ROAbuff)
 						task->wr = wr[i];
 					sendp(taskchans[i], task);
 				}
+				free(params);
 			}
 			continue;
 		}
@@ -647,16 +638,12 @@ tiler(void *arg)
 
 				bbox.min.x = p->v[0].p.x;
 				bbox.min.y = p->v[0].p.y;
-				bbox.max.x = p->v[0].p.x+1;
-				bbox.max.y = p->v[0].p.y+1;
 
 				for(i = 0; i < nproc; i++)
-					if(rectXrect(bbox, wr[i])){
-						newparams = _emalloc(sizeof *newparams);
-						*newparams = *params;
-						newparams->op = OP_RASTER;
+					if(ptinrect(bbox.min, wr[i])){
 						task = _emalloc(sizeof *task);
-						task->params = newparams;
+						task->SUparams = *params;
+						task->op = OP_RASTER;
 						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
 						task->p.v[0] = _dupvertex(&p->v[0]);
@@ -696,11 +683,9 @@ tiler(void *arg)
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox, wr[i])){
-						newparams = _emalloc(sizeof *newparams);
-						*newparams = *params;
-						newparams->op = OP_RASTER;
 						task = _emalloc(sizeof *task);
-						task->params = newparams;
+						task->SUparams = *params;
+						task->op = OP_RASTER;
 						task->wr = wr[i];
 						task->clipr = &params->job->cliprects[i];
 						task->p = *p;
@@ -749,11 +734,9 @@ tiler(void *arg)
 
 					for(i = 0; i < nproc; i++)
 						if(rectXrect(bbox, wr[i])){
-							newparams = _emalloc(sizeof *newparams);
-							*newparams = *params;
-							newparams->op = OP_RASTER;
 							task = _emalloc(sizeof *task);
-							task->params = newparams;
+							task->SUparams = *params;
+							task->op = OP_RASTER;
 							task->wr = bbox;
 							rectclip(&task->wr, wr[i]);
 							task->clipr = &params->job->cliprects[i];
