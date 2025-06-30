@@ -124,7 +124,8 @@ Vertexattr *_getvattr(Vertexattrs*, char*);
 
 /* clip */
 int _clipprimitive(BPrimitive*, BPrimitive*);
-int _rectclipline(Rectangle, Point*, Point*, BVertex*, BVertex*);
+void _adjustlineverts(Point*, Point*, BVertex*, BVertex*);
+int _rectclipline(Rectangle, Point*, Point*);
 
 /* util */
 void _memsetl(void*, ulong, usize);

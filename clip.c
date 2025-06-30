@@ -183,24 +183,25 @@ outcode(Point p, Rectangle r)
 }
 
 /* lerp vertex attributes to match the new positions */
-static void
-adjustverts(Point *p0, Point *p1, BVertex *v0, BVertex *v1)
+void
+_adjustlineverts(Point *p0, Point *p1, BVertex *v0, BVertex *v1)
 {
 	BVertex v[2];
 	Point3 dp;
-	Point Δp;
+	Point v0p, Δp;
 	double len, perc;
 
 	memset(v, 0, sizeof v);
 
 	dp = subpt3(v1->p, v0->p);
 	len = hypot(dp.x, dp.y);
+	v0p = (Point){v0->p.x, v0->p.y};
 
-	Δp = subpt((Point){v0->p.x, v0->p.y}, *p0);
+	Δp = subpt(v0p, *p0);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	_lerpvertex(&v[0], v0, v1, perc);
 
-	Δp = subpt((Point){v0->p.x, v0->p.y}, *p1);
+	Δp = subpt(v0p, *p1);
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	_lerpvertex(&v[1], v0, v1, perc);
 
@@ -214,7 +215,7 @@ adjustverts(Point *p0, Point *p1, BVertex *v0, BVertex *v1)
  * Cohen-Sutherland rectangle-line clipping
  */
 int
-_rectclipline(Rectangle r, Point *p0, Point *p1, BVertex *v0, BVertex *v1)
+_rectclipline(Rectangle r, Point *p0, Point *p1)
 {
 	int code0, code1;
 	int Δx, Δy;
@@ -228,16 +229,14 @@ _rectclipline(Rectangle r, Point *p0, Point *p1, BVertex *v0, BVertex *v1)
 		code0 = outcode(*p0, r);
 		code1 = outcode(*p1, r);
 
-		if(lineisinside(code0, code1)){
-			adjustverts(p0, p1, v0, v1);
+		if(lineisinside(code0, code1))
 			return 0;
-		}else if(lineisoutside(code0, code1))
+		else if(lineisoutside(code0, code1))
 			return -1;
 
 		if(ptisinside(code0)){
 			SWAP(Point, p0, p1);
 			SWAP(int, &code0, &code1);
-			SWAP(BVertex, v0, v1);
 		}
 
 		if(code0 & CLIPL){

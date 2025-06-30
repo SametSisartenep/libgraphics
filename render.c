@@ -237,8 +237,10 @@ rasterizeline(Rastertask *task)
 	p0 = (Point){prim->v[0].p.x, prim->v[0].p.y};
 	p1 = (Point){prim->v[1].p.x, prim->v[1].p.y};
 	/* clip it against our wr */
-	if(_rectclipline(task->wr, &p0, &p1, prim->v+0, prim->v+1) < 0)
+	if(_rectclipline(task->wr, &p0, &p1) < 0)
 		return;
+
+	_adjustlineverts(&p0, &p1, prim->v+0, prim->v+1);
 
 	steep = 0;
 	/* transpose the points */
