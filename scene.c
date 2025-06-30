@@ -37,7 +37,7 @@ newmaterial(char *name)
 
 	mtl = _emalloc(sizeof *mtl);
 	memset(mtl, 0, sizeof *mtl);
-	mtl->name = strdup(name);
+	mtl->name = _estrdup(name);
 	mtl->ambient = Pt3(1,1,1,1);
 	mtl->diffuse = Pt3(1,1,1,1);
 	mtl->specular = Pt3(1,1,1,1);
@@ -159,9 +159,7 @@ dupmodel(Model *m)
 			nm->materials[i].diffusemap = duptexture(m->materials[i].diffusemap);
 			nm->materials[i].specularmap = duptexture(m->materials[i].specularmap);
 			nm->materials[i].normalmap = duptexture(m->materials[i].normalmap);
-			nm->materials[i].name = strdup(m->materials[i].name);
-			if(nm->materials[i].name == nil)
-				sysfatal("strdup: %r");
+			nm->materials[i].name = _estrdup(m->materials[i].name);
 		}
 	}
 	nm->positions = dupitemarray(m->positions);
@@ -263,7 +261,7 @@ newentity(char *name, Model *m)
 	e->bx = Vec3(1,0,0);
 	e->by = Vec3(0,1,0);
 	e->bz = Vec3(0,0,1);
-	e->name = name == nil? nil: strdup(name);
+	e->name = name == nil? nil: _estrdup(name);
 	e->mdl = m;
 	e->prev = e->next = nil;
 	return e;
@@ -280,7 +278,7 @@ dupentity(Entity *e)
 	ne = newentity(nil, nil);
 	*ne = *e;
 	if(e->name != nil)
-		ne->name = strdup(e->name);
+		ne->name = _estrdup(e->name);
 	ne->mdl = dupmodel(e->mdl);
 	ne->prev = ne->next = nil;
 	return ne;
@@ -343,7 +341,7 @@ newscene(char *name)
 	Scene *s;
 
 	s = _emalloc(sizeof *s);
-	s->name = name == nil? nil: strdup(name);
+	s->name = name == nil? nil: _estrdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;
 	s->lights.prev = s->lights.next = &s->lights;

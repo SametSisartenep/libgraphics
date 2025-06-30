@@ -35,17 +35,6 @@ struct Mtltab
 	int loaded;			/* was the table loaded into a model already? */
 };
 
-static char *
-estrdup(char *s)
-{
-	char *t;
-
-	if((t = strdup(s)) == nil)
-		sysfatal("strdup: %r");
-	setmalloctag(t, getcallerpc(&s));
-	return t;
-}
-
 static void
 error(Curline *l, char *fmt, ...)
 {
@@ -554,7 +543,7 @@ notenough:
 			}
 			memset(&mtl, 0, sizeof mtl);
 
-			mtl.name = estrdup(f[1]);
+			mtl.name = _estrdup(f[1]);
 			inamaterial++;
 		}else{
 			error(&curline, "syntax error");
@@ -709,9 +698,7 @@ BprintP(Biobuf *b, Primitive *p)
 		n += Bprintidx(b, p->v[i]);
 	n += Bprintidx(b, p->tangent);
 	if(p->mtl != nil){
-		s = quotestrdup(p->mtl->name);
-		if(s == nil)
-			sysfatal("quotestrdup: %r");
+		s = _equotestrdup(p->mtl->name);
 		n += Bprint(b, " %s", s);
 		free(s);
 	}
@@ -725,9 +712,7 @@ Bprintmtl(Biobuf *b, Material *m)
 	char *s;
 	int n;
 
-	s = quotestrdup(m->name);
-	if(s == nil)
-		sysfatal("quotestrdup: %r");
+	s = _equotestrdup(m->name);
 	n = Bprint(b, "mtl %s {\n", s);
 	free(s);
 
@@ -855,7 +840,7 @@ exportmodel(char *path, Model *m)
 				fprint(2, "warning: %r\n");
 
 //			if(mtl->diffusemap->file == nil)
-				mtl->diffusemap->file = estrdup(strrchr(buf, '/')+1);
+				mtl->diffusemap->file = _estrdup(strrchr(buf, '/')+1);
 		}
 
 		if(mtl->specularmap != nil){
@@ -866,7 +851,7 @@ exportmodel(char *path, Model *m)
 				fprint(2, "warning: %r\n");
 
 //			if(mtl->specularmap->file == nil)
-				mtl->specularmap->file = estrdup(strrchr(buf, '/')+1);
+				mtl->specularmap->file = _estrdup(strrchr(buf, '/')+1);
 		}
 
 		if(mtl->normalmap != nil){
@@ -877,7 +862,7 @@ exportmodel(char *path, Model *m)
 				fprint(2, "warning: %r\n");
 
 //			if(mtl->normalmap->file == nil)
-				mtl->normalmap->file = estrdup(strrchr(buf, '/')+1);
+				mtl->normalmap->file = _estrdup(strrchr(buf, '/')+1);
 		}
 	}
 

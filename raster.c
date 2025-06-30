@@ -16,7 +16,7 @@ _allocraster(char *name, Rectangle rr, ulong chan)
 
 	r = _emalloc(sizeof *r);
 	memset(r, 0, sizeof *r);
-	if(name != nil && (r->name = strdup(name)) == nil)
+	if(name != nil && (r->name = _estrdup(name)) == nil)
 		sysfatal("strdup: %r");
 	r->chan = chan;
 	r->r = rr;

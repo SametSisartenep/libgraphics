@@ -192,7 +192,7 @@ dupcubemap(Cubemap *cm)
 	ncm = _emalloc(sizeof *ncm);
 	memset(ncm, 0, sizeof *ncm);
 	if(cm->name != nil)
-		ncm->name = strdup(cm->name);
+		ncm->name = _estrdup(cm->name);
 	for(i = 0; i < 6; i++)
 		ncm->faces[i] = duptexture(cm->faces[i]);
 	return ncm;

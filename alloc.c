@@ -33,6 +33,30 @@ _erealloc(void *p, ulong n)
 	return np;
 }
 
+char *
+_estrdup(char *s)
+{
+	char *ns;
+
+	ns = strdup(s);
+	if(ns == nil)
+		sysfatal("strdup: %r");
+	setmalloctag(ns, getcallerpc(&s));
+	return ns;
+}
+
+char *
+_equotestrdup(char *s)
+{
+	char *ns;
+
+	ns = quotestrdup(s);
+	if(ns == nil)
+		sysfatal("quotestrdup: %r");
+	setmalloctag(ns, getcallerpc(&s));
+	return ns;
+}
+
 Memimage *
 _eallocmemimage(Rectangle r, ulong chan)
 {

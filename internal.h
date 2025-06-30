@@ -89,6 +89,8 @@ struct vGradient
 /* alloc */
 void *_emalloc(ulong);
 void *_erealloc(void*, ulong);
+char *_estrdup(char*);
+char *_equotestrdup(char*);
 Memimage *_eallocmemimage(Rectangle, ulong);
 
 /* raster */
