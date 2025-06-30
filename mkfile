@@ -8,6 +8,7 @@ OFILES=\
 	clip.$O\
 	xform.$O\
 	scene.$O\
+	model.$O\
 	vertex.$O\
 	texture.$O\
 	alloc.$O\
