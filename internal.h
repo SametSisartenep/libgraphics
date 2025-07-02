@@ -120,7 +120,7 @@ void _berpvertex(BVertex*, BVertex*, BVertex*, BVertex*, Point3);
 void _addvertex(BVertex*, BVertex*);
 void _mulvertex(BVertex*, double);
 void _delvattrs(BVertex*);
-void _fprintvattrs(int, BVertex*);
+void _fprintvattrs(int, Vertexattrs*);
 void _addvattr(Vertexattrs*, char*, int, void*);
 Vertexattr *_getvattr(Vertexattrs*, char*);
 

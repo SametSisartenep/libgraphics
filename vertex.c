@@ -179,11 +179,23 @@ _delvattrs(BVertex *v)
 }
 
 void
-_fprintvattrs(int fd, BVertex *v)
+_fprintvattrs(int fd, Vertexattrs *v)
 {
-	int i;
+	static char *idtype[] = {
+	 [VAPoint]	"point",
+	 [VANumber]	"number",
+	};
+	Vertexattr *va;
 
-	for(i = 0; i < v->nattrs; i++)
-		fprint(fd, "id %s type %d v %g\n",
-			v->attrs[i].id, v->attrs[i].type, v->attrs[i].n);
+	for(va = v->attrs; va < v->attrs + v->nattrs; va++){
+		fprint(fd, "id %s type %s", va->id, idtype[va->type]);
+		switch(va->type){
+		case VAPoint:
+			fprint(fd, " %V\n", va->p);
+			break;
+		case VANumber:
+			fprint(fd, " %g\n", va->n);
+			break;
+		}
+	}
 }
