@@ -335,7 +335,7 @@ notexture:
 			p.y = strtod(f[2], nil);
 			p.z = strtod(f[3], nil);
 			p.w = nf == 5? strtod(f[4], nil): 1;
-			itemarrayadd(pa, &p, 0);
+			itemarrayadd(pa, &p);
 		}else if(strcmp(f[0], "n") == 0){
 			if(nf != 4){
 				error(&curline, "syntax error");
@@ -344,7 +344,7 @@ notexture:
 			n.x = strtod(f[1], nil);
 			n.y = strtod(f[2], nil);
 			n.z = strtod(f[3], nil);
-			itemarrayadd(na, &n, 0);
+			itemarrayadd(na, &n);
 		}else if(strcmp(f[0], "t") == 0){
 			if(nf != 3){
 				error(&curline, "syntax error");
@@ -352,7 +352,7 @@ notexture:
 			}
 			t.x = strtod(f[1], nil);
 			t.y = strtod(f[2], nil);
-			itemarrayadd(ta, &t, 0);
+			itemarrayadd(ta, &t);
 		}else if(strcmp(f[0], "c") == 0){
 			if(nf != 4 && nf != 5){
 				error(&curline, "syntax error");
@@ -362,7 +362,7 @@ notexture:
 			c.g = strtod(f[2], nil);
 			c.b = strtod(f[3], nil);
 			c.a = nf == 5? strtod(f[4], nil): 1;
-			itemarrayadd(ca, &c, 0);
+			itemarrayadd(ca, &c);
 		}else if(strcmp(f[0], "T") == 0){
 			if(nf != 4){
 				error(&curline, "syntax error");
@@ -371,7 +371,7 @@ notexture:
 			T.x = strtod(f[1], nil);
 			T.y = strtod(f[2], nil);
 			T.z = strtod(f[3], nil);
-			itemarrayadd(Ta, &T, 0);
+			itemarrayadd(Ta, &T);
 		}else if(strcmp(f[0], "v") == 0){
 			if(nf != 5){
 				error(&curline, "syntax error");
@@ -421,7 +421,7 @@ notexture:
 				v.c = idx;
 			}
 
-			itemarrayadd(va, &v, 0);
+			itemarrayadd(va, &v);
 		}else if(strcmp(f[0], "P") == 0){
 			if(nf < 3 || nf > 7){
 				error(&curline, "syntax error");
@@ -535,7 +535,7 @@ notenough:
 				goto getout;
 			}
 
-			itemarrayadd(Pa, &P, 0);
+			itemarrayadd(Pa, &P);
 		}else if(strcmp(f[0], "mtl") == 0){
 			if(nf != 3 || strcmp(f[2], "{") != 0){
 				error(&curline, "syntax error");

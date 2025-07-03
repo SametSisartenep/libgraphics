@@ -20,17 +20,10 @@ mkitemarray(usize is)
 }
 
 usize
-itemarrayadd(ItemArray *a, void *i, int dedup)
+itemarrayadd(ItemArray *a, void *i)
 {
 	char *p;
 	usize idx;
-
-	if(dedup){
-		p = a->items;
-		for(idx = 0; idx < a->nitems; idx++)
-			if(memcmp(i, &p[idx*a->itemsize], a->itemsize) == 0)
-				return idx;
-	}
 
 	idx = a->nitems;
 	a->items = _erealloc(a->items, ++a->nitems * a->itemsize);

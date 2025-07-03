@@ -457,13 +457,6 @@ usize writemodel(int, Model*);
 int exportmodel(char*, Model*);
 
 /* scene */
-Vertex mkvert(void);
-Primitive mkprim(int);
-Material *newmaterial(char*);
-void delmaterial(Material*);
-Model *newmodel(void);
-Model *dupmodel(Model*);
-void delmodel(Model*);
 LightSource *newpointlight(Point3, Color);
 LightSource *newdireclight(Point3, Point3, Color);
 LightSource *newspotlight(Point3, Point3, Color, double, double);
@@ -476,6 +469,16 @@ Scene *newscene(char*);
 Scene *dupscene(Scene*);
 void delscene(Scene*);
 void clearscene(Scene*);
+
+/* model */
+Vertex mkvert(void);
+Primitive mkprim(int);
+Material *newmaterial(char*);
+void delmaterial(Material*);
+Model *newmodel(void);
+Model *dupmodel(Model*);
+void delmodel(Model*);
+void compactmodel(Model*);
 
 /* texture */
 Texture *alloctexture(int, Memimage*);
@@ -505,7 +508,7 @@ Memimage *dupmemimage(Memimage*);
 
 /* itemarray */
 ItemArray *mkitemarray(usize);
-usize itemarrayadd(ItemArray*, void*, int);
+usize itemarrayadd(ItemArray*, void*);
 void *itemarrayget(ItemArray*, usize);
 usize copyitemarray(ItemArray*, ItemArray*);
 ItemArray *dupitemarray(ItemArray*);
