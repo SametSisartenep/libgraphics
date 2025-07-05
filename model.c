@@ -198,192 +198,188 @@ delmodel(Model *m)
 	free(m);
 }
 
+/*
+ * sequential reindexing table
+ *
+ * the tables are processed in order (hence the sequence) for every
+ * vertex attribute.  if the attribute equals the old index, it's
+ * replaced by the new one; if it's bigger, it's decreased by one.
+ * otherwise it stays the same.
+ */
+typedef struct Reidx Reidx;
+typedef struct Reidxtab Reidxtab;
+
+struct Reidx
+{
+	usize old;
+	usize new;
+};
+
+struct Reidxtab
+{
+	Reidx *tab;
+	usize len;
+	usize cap;
+};
+
+static void
+reidxtabadd(Reidxtab *t, Reidx r)
+{
+	if(t->len == t->cap){
+		t->cap += 8;
+		t->tab = _erealloc(t->tab, t->cap * sizeof(Reidx));
+	}
+	t->tab[t->len++] = r;
+}
+
+static void
+freereidxtab(Reidxtab *t)
+{
+	free(t->tab);
+	memset(t, 0, sizeof(*t));
+}
+
+static void
+reindexverts(ItemArray *verts, Reidxtab *t, int aoff)
+{
+	Reidx *reidx;
+	Vertex *v, *vb, *ve;
+	usize *attr;
+
+	if(t->len == 0)
+		return;
+
+	vb = verts->items;
+	ve = vb + verts->nitems;
+
+	for(v = vb; v < ve; v++){
+		attr = (usize*)((char*)v + aoff);
+		for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
+			if(*attr == reidx->old)
+				*attr = reidx->new;
+			else if(*attr > reidx->old)
+				(*attr)--;
+	}
+}
+
+static void
+reindexprimtans(ItemArray *prims, Reidxtab *t)
+{
+	Reidx *reidx;
+	Primitive *P, *Pb, *Pe;
+
+	if(t->len == 0)
+		return;
+
+	Pb = prims->items;
+	Pe = Pb + prims->nitems;
+
+	for(P = Pb; P < Pe; P++)
+	for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
+		if(P->tangent == reidx->old)
+			P->tangent = reidx->new;
+		else if(P->tangent > reidx->old)
+			P->tangent--;
+}
+
+static void
+reindexprimverts(ItemArray *prims, Reidxtab *t)
+{
+	Reidx *reidx;
+	Primitive *P, *Pb, *Pe;
+	usize i;
+
+	if(t->len == 0)
+		return;
+
+	Pb = prims->items;
+	Pe = Pb + prims->nitems;
+
+	for(P = Pb; P < Pe; P++)
+	for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
+		for(i = 0; i < P->type+1; i++)
+			if(P->v[i] == reidx->old)
+				P->v[i] = reidx->new;
+			else if(P->v[i] > reidx->old)
+				P->v[i]--;
+}
+
+static void
+dedupitemarray(ItemArray *a, Reidxtab *t)
+{
+	char *p1, *p2, *pb, *pe;
+	void *vp;
+	usize nitems0, i, j;
+
+	pb = a->items;
+	pe = pb + a->nitems*a->itemsize;
+
+	if(t != nil){
+		for(p1 = pb, i = 0; p1 < pe; p1 += a->itemsize, i++)
+		for(p2 = p1+a->itemsize, j = i+1; p2 < pe; p2 += a->itemsize, j++)
+			if(memcmp(p1, p2, a->itemsize) == 0){
+				reidxtabadd(t, (Reidx){j, i});
+
+				pe -= a->itemsize;
+				if(p2 < pe){
+					memmove(p2, p2+a->itemsize, pe - p2);
+					p2 -= a->itemsize;
+					j--;
+				}
+			}
+	}else{
+		for(p1 = pb; p1 < pe; p1 += a->itemsize)
+		for(p2 = p1+a->itemsize; p2 < pe; p2 += a->itemsize)
+			if(memcmp(p1, p2, a->itemsize) == 0){
+				pe -= a->itemsize;
+				if(p2 < pe){
+					memmove(p2, p2+a->itemsize, pe - p2);
+					p2 -= a->itemsize;
+				}
+			}
+	}
+
+	nitems0 = a->nitems;
+	a->nitems = (pe - pb)/a->itemsize;
+	if(a->nitems != nitems0){
+		/* try to shrink it */
+		vp = realloc(a->items, a->nitems * a->itemsize);
+		if(vp != nil)
+			a->items = vp;
+	}
+}
+
 void
 compactmodel(Model *m)
 {
-	ItemArray *a1, *a2;
-	Point3 *p1, *p2, *pb, *pe;
-	Point2 *t1, *t2, *tb, *te;
-	Vertex *v, *v1, *v2, *vb, *ve;
-	Primitive *P, *P1, *P2, *Pb, *Pe;
-	void *vp;
-	usize len0, i, j, k;
+	Reidxtab itab;
 
-	a1 = m->positions;
-	pb = a1->items;
-	pe = pb + a1->nitems;
-	len0 = a1->nitems;
-	a2 = m->verts;
-	vb = a2->items;
-	ve = vb + a2->nitems;
+	memset(&itab, 0, sizeof(itab));
 
-	for(p1 = pb, i = 0; p1 < pe; p1++, i++)
-	for(p2 = p1+1, j = i+1; p2 < pe; p2++, j++)
-		if(memcmp(p1, p2, sizeof(Point3)) == 0){
-			if(p2 < --pe)
-				memmove(p2, p2+1, (pe - p2)*sizeof(Point3));
-			/* reindex verts */
-			for(v = vb; v < ve; v++)
-				if(v->p == j)
-					v->p = i;
-				else if(v->p > j)
-					v->p--;
-		}
-	a1->nitems = pe - pb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink positions array.\n");
-		else
-			a1->items = vp;
-	}
+	dedupitemarray(m->positions, &itab);
+	reindexverts(m->verts, &itab, offsetof(Vertex, p));
+	itab.len = 0;
 
-	a1 = m->normals;
-	pb = a1->items;
-	pe = pb + a1->nitems;
-	len0 = a1->nitems;
+	dedupitemarray(m->normals, &itab);
+	reindexverts(m->verts, &itab, offsetof(Vertex, n));
+	itab.len = 0;
 
-	for(p1 = pb, i = 0; p1 < pe; p1++, i++)
-	for(p2 = p1+1, j = i+1; p2 < pe; p2++, j++)
-		if(memcmp(p1, p2, sizeof(Point3)) == 0){
-			if(p2 < --pe)
-				memmove(p2, p2+1, (pe - p2)*sizeof(Point3));
-			/* reindex verts */
-			for(v = vb; v < ve; v++)
-				if(v->n == j)
-					v->n = i;
-				else if(v->n > j)
-					v->n--;
-		}
-	a1->nitems = pe - pb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink normals array.\n");
-		else
-			a1->items = vp;
-	}
+	dedupitemarray(m->texcoords, &itab);
+	reindexverts(m->verts, &itab, offsetof(Vertex, uv));
+	itab.len = 0;
 
-	a1 = m->texcoords;
-	tb = a1->items;
-	te = tb + a1->nitems;
-	len0 = a1->nitems;
+	dedupitemarray(m->colors, &itab);
+	reindexverts(m->verts, &itab, offsetof(Vertex, c));
+	itab.len = 0;
 
-	for(t1 = tb, i = 0; t1 < te; t1++, i++)
-	for(t2 = t1+1, j = i+1; t2 < te; t2++, j++)
-		if(memcmp(t1, t2, sizeof(Point2)) == 0){
-			if(t2 < --te)
-				memmove(t2, t2+1, (te - t2)*sizeof(Point2));
-			/* reindex verts */
-			for(v = vb; v < ve; v++)
-				if(v->uv == j)
-					v->uv = i;
-				else if(v->uv > j)
-					v->uv--;
-		}
-	a1->nitems = te - tb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink texcoords array.\n");
-		else
-			a1->items = vp;
-	}
+	dedupitemarray(m->tangents, &itab);
+	reindexprimtans(m->prims, &itab);
+	itab.len = 0;
 
-	a1 = m->colors;
-	pb = a1->items;
-	pe = pb + a1->nitems;
-	len0 = a1->nitems;
+	dedupitemarray(m->verts, &itab);
+	reindexprimverts(m->prims, &itab);
 
-	for(p1 = pb, i = 0; p1 < pe; p1++, i++)
-	for(p2 = p1+1, j = i+1; p2 < pe; p2++, j++)
-		if(memcmp(p1, p2, sizeof(Point3)) == 0){
-			if(p2 < --pe)
-				memmove(p2, p2+1, (pe - p2)*sizeof(Point3));
-			/* reindex verts */
-			for(v = vb; v < ve; v++)
-				if(v->c == j)
-					v->c = i;
-				else if(v->c > j)
-					v->c--;
-		}
-	a1->nitems = pe - pb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink colors array.\n");
-		else
-			a1->items = vp;
-	}
+	dedupitemarray(m->prims, nil);
 
-	a1 = m->tangents;
-	pb = a1->items;
-	pe = pb + a1->nitems;
-	len0 = a1->nitems;
-	a2 = m->prims;
-	Pb = a2->items;
-	Pe = Pb + a2->nitems;
-
-	for(p1 = pb, i = 0; p1 < pe; p1++, i++)
-	for(p2 = p1+1, j = i+1; p2 < pe; p2++, j++)
-		if(memcmp(p1, p2, sizeof(Point3)) == 0){
-			if(p2 < --pe)
-				memmove(p2, p2+1, (pe - p2)*sizeof(Point3));
-			/* reindex prims */
-			for(P = Pb; P < Pe; P++)
-				if(P->tangent == j)
-					P->tangent = i;
-				else if(P->tangent > j)
-					P->tangent--;
-		}
-	a1->nitems = pe - pb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink tangents array.\n");
-		else
-			a1->items = vp;
-	}
-
-	a1 = m->verts;
-	vb = a1->items;
-	ve = vb + a1->nitems;
-	len0 = a1->nitems;
-
-	for(v1 = vb, i = 0; v1 < ve; v1++, i++)
-	for(v2 = v1+1, j = i+1; v2 < ve; v2++, j++)
-		if(memcmp(v1, v2, sizeof(Vertex)) == 0){
-			if(v2 < --ve)
-				memmove(v2, v2+1, (ve - v2)*sizeof(Vertex));
-			/* reindex prims */
-			for(P = Pb; P < Pe; P++)
-				for(k = 0; k < P->type+1; k++)
-					if(P->v[k] == j)
-						P->v[k] = i;
-					else if(P->v[k] > j)
-						P->v[k]--;
-		}
-	a1->nitems = ve - vb;
-	if(a1->nitems != len0){
-		vp = realloc(a1->items, a1->nitems * a1->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink vertex array.\n");
-		else
-			a1->items = vp;
-	}
-
-	len0 = a2->nitems;
-	for(P1 = Pb, i = 0; P1 < Pe; P1++, i++)
-	for(P2 = P1+1, j = i+1; P2 < Pe; P2++, j++)
-		if(memcmp(P1, P2, sizeof(Primitive)) == 0)
-			if(P2 < --Pe)
-				memmove(P2, P2+1, (Pe - P2)*sizeof(Primitive));
-	a2->nitems = Pe - Pb;
-	if(a2->nitems != len0){
-		vp = realloc(a2->items, a2->nitems * a2->itemsize);
-		if(vp == nil)
-			fprint(2, "not enough memory to shrink vertex array.\n");
-		else
-			a2->items = vp;
-	}
+	freereidxtab(&itab);
 }
