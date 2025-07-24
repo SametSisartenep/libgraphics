@@ -1,2 +1,2 @@
 #!/bin/rc
-B *.[hc] mkfile readme doc/*.ms
+B *.[hcs] mkfile readme doc/*.ms TODO*
