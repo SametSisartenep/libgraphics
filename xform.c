@@ -103,7 +103,7 @@ ndc2vcs(Camera *c, Point3 p)
 	Matrix3 invproj;
 	Point3 np;
 
-	memmove(invproj, c->proj, 4*4*sizeof(double));
+	memmove(invproj, c->proj, sizeof(Matrix3));
 	invm3(invproj);
 	np = xform3(p, invproj);
 	np.w = np.w == 0? 0: 1.0/np.w;
