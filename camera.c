@@ -187,6 +187,9 @@ reloadcamera(Camera *c)
 		break;
 	default: sysfatal("unknown projection type");
 	}
+
+	memmove(c->invproj, c->proj, sizeof(Matrix3));
+	invm3(c->invproj);
 }
 
 void

@@ -403,8 +403,9 @@ struct Camera
 	struct {
 		double n, f;	/* near and far clipping planes */
 	} clip;
-	Matrix3 proj;		/* VCS to clip space xform */
 	Projection projtype;
+	Matrix3 proj;		/* VCS to clip space xform */
+	Matrix3 invproj;	/* clip space to VCS xform */
 	int cullmode;
 	uint rendopts;
 
