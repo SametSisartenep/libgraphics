@@ -138,6 +138,9 @@ world2model(Entity *e, Point3 p)
 	return rframexform3(p, *e);
 }
 
+/*
+ * adapted from the equations in https://www.songho.ca/opengl/gl_projectionmatrix.html#perspective
+ */
 void
 perspective(Matrix3 m, double fovy, double a, double n, double f)
 {
@@ -152,6 +155,9 @@ perspective(Matrix3 m, double fovy, double a, double n, double f)
 	m[3][2] = -1;
 }
 
+/*
+ * adapted from the equations in https://www.songho.ca/opengl/gl_projectionmatrix.html#ortho
+ */
 void
 orthographic(Matrix3 m, double l, double r, double b, double t, double n, double f)
 {
