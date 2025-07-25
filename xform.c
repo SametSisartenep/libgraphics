@@ -161,5 +161,5 @@ orthographic(Matrix3 m, double l, double r, double b, double t, double n, double
 	m[2][2] =  2/(f-n);
 	m[0][3] = -(r+l)/(r-l);
 	m[1][3] = -(t+b)/(t-b);
-	m[2][3] = -(f+n)/(f-n);
+	m[2][3] =  (f+n)/(f-n);
 }
