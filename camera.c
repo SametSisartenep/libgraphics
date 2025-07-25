@@ -113,7 +113,7 @@ verifycfg(Camera *c)
 {
 	assert(c->view != nil);
 	if(c->projtype == PERSPECTIVE)
-		assert(c->fov > 0 && c->fov < 360*DEG);
+		assert(c->fov > 0 && c->fov < 180*DEG);
 	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
 }
 
