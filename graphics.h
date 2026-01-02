@@ -535,5 +535,3 @@ Color getscenecolor(Scene*, Point3, Point3);
 uvlong nanosec(void);
 
 extern Rectangle UR;	/* unit rectangle */
-extern Point2 ZP2;
-extern Point3 ZP3;

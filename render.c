@@ -312,11 +312,11 @@ discard:
 }
 
 static Point3
-_barycoords(Triangle2 t, Point2 p)
+_barycoords(Point2 p0, Point2 p1, Point2 p2, Point2 p)
 {
-	Point2 p0p1 = subpt2(t.p1, t.p0);
-	Point2 p0p2 = subpt2(t.p2, t.p0);
-	Point2 pp0  = subpt2(t.p0, p);
+	Point2 p0p1 = subpt2(p1, p0);
+	Point2 p0p2 = subpt2(p2, p0);
+	Point2 pp0  = subpt2(p0, p);
 
 	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
 
@@ -336,8 +336,8 @@ rasterizetri(Rastertask *task)
 //	vGradient ∇v;
 //	fGradient ∇z, ∇pcz;
 //	BVertex v, *vp;
-	Triangle2 t;
 	Point p;
+	Point2 t[3];
 	Point3 bc;
 	Color c;
 	float z, pcz;
@@ -353,26 +353,26 @@ rasterizetri(Rastertask *task)
 //	memset(&v, 0, sizeof v);
 //	vp = &v;
 
-	t.p0 = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
-	t.p1 = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
-	t.p2 = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
+	t[0] = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
+	t[1] = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
+	t[2] = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
 
-	∇bc.p0 = _barycoords(t, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
-	∇bc.dx = mulpt3((Point3){t.p2.y - t.p1.y, t.p0.y - t.p2.y, t.p1.y - t.p0.y, 0}, ∇bc.p0.w);
-	∇bc.dy = mulpt3((Point3){t.p1.x - t.p2.x, t.p2.x - t.p0.x, t.p0.x - t.p1.x, 0}, ∇bc.p0.w);
+	∇bc.p0 = _barycoords(t[0], t[1], t[2], (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
+	∇bc.dx = mulpt3((Point3){t[2].y - t[1].y, t[0].y - t[2].y, t[1].y - t[0].y, 0}, ∇bc.p0.w);
+	∇bc.dy = mulpt3((Point3){t[1].x - t[2].x, t[2].x - t[0].x, t[0].x - t[1].x, 0}, ∇bc.p0.w);
 
 //	/* TODO find a good method to apply the fill rule */
-//	if(istoporleft(&t.p1, &t.p2)){
+//	if(istoporleft(&t[1], &t[2])){
 //		∇bc.p0.x -= ∇bc.p0.w;
 //		∇bc.dx.x -= ∇bc.p0.w;
 //		∇bc.dy.x -= ∇bc.p0.w;
 //	}
-//	if(istoporleft(&t.p2, &t.p0)){
+//	if(istoporleft(&t[2], &t[0])){
 //		∇bc.p0.y -= ∇bc.p0.w;
 //		∇bc.dx.y -= ∇bc.p0.w;
 //		∇bc.dy.y -= ∇bc.p0.w;
 //	}
-//	if(istoporleft(&t.p0, &t.p1)){
+//	if(istoporleft(&t[0], &t[1])){
 //		∇bc.p0.z -= ∇bc.p0.w;
 //		∇bc.dx.z -= ∇bc.p0.w;
 //		∇bc.dy.z -= ∇bc.p0.w;

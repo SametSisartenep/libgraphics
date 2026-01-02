@@ -8,8 +8,6 @@
 #include "internal.h"
 
 Rectangle UR = {0,0,1,1};
-Point2 ZP2;
-Point3 ZP3;
 
 Point
 minpt(Point a, Point b)
