@@ -465,7 +465,7 @@ rasterizer(void *arg)
 	 [PTriangle]	rasterizetri,
 	};
 	Rasterparam *rp;
-	Rastertask *task;
+	Rastertask task;
 	Renderjob *job;
 	BVertex v;
 	Shaderparams fsp;
@@ -482,14 +482,14 @@ rasterizer(void *arg)
 	fsp.setattr = nil;
 	fsp.toraster = sparams_toraster;
 
-	while((task = recvp(rp->taskc)) != nil){
-		job = task->job;
+	while(recv(rp->taskc, &task) > 0){
+		job = task.job;
 		if(job->rctl->doprof && job->times.Rn[rp->id].t0 == 0)
 			job->times.Rn[rp->id].t0 = nanosec();
 
-		if(task->op == OP_END){
+		if(task.op == OP_END){
 			if(job->camera->rendopts & ROAbuff)
-				squashAbuf(job->fb, &task->wr, job->camera->rendopts & ROBlend);
+				squashAbuf(job->fb, &task.wr, job->camera->rendopts & ROBlend);
 
 			if(decref(job) < 1){
 				/* set the clipr to the union of bboxes from the rasterizers */
@@ -511,19 +511,17 @@ rasterizer(void *arg)
 				nbsend(job->donec, nil);
 			}else if(job->rctl->doprof)
 				job->times.Rn[rp->id].t1 = nanosec();
-			free(task);
 			continue;
 		}
 
-		fsp.su = &task->SUparams;
-		task->fsp = &fsp;
-		(*rasterfn[task->p.type])(task);
+		fsp.su = &task.SUparams;
+		task.fsp = &fsp;
+		(*rasterfn[task.p.type])(&task);
 
 		_delvattrs(&v);
-		if(task->p.type != PPoint)
-			for(i = 0; i < task->p.type+1; i++)
-				_delvattrs(&task->p.v[i]);
-		free(task);
+		if(task.p.type != PPoint)
+			for(i = 0; i < task.p.type+1; i++)
+				_delvattrs(&task.p.v[i]);
 	}
 }
 
@@ -564,8 +562,8 @@ static void
 tiler(void *arg)
 {
 	Tilerparam *tp;
-	SUparams *params;
-	Rastertask *task;
+	SUparams params;
+	Rastertask task;
 	Shaderparams vsp;
 	Primitive *ep;			/* primitives to raster */
 	BPrimitive prim, *p, *cp;
@@ -588,39 +586,39 @@ tiler(void *arg)
 	vsp.setattr = sparams_setattr;
 	vsp.toraster = nil;
 
-	while((params = recvp(tp->paramsc)) != nil){
-		if(params->job->rctl->doprof
-		&& params->job->times.Tn[tp->id].t0 == 0)
-			params->job->times.Tn[tp->id].t0 = nanosec();
+	while(recv(tp->paramsc, &params) > 0){
+		if(params.job->rctl->doprof
+		&& params.job->times.Tn[tp->id].t0 == 0)
+			params.job->times.Tn[tp->id].t0 = nanosec();
 
-		if(params->op == OP_END){
-			if(params->job->rctl->doprof)
-				params->job->times.Tn[tp->id].t1 = nanosec();
+		if(params.op == OP_END){
+			if(params.job->rctl->doprof)
+				params.job->times.Tn[tp->id].t1 = nanosec();
 
-			if(decref(params->job) < 1){
-				if(params->job->camera->rendopts & ROAbuff)
-					initworkrects(wr, nproc, &params->job->fb->r);
+			if(decref(params.job) < 1){
+				if(params.job->camera->rendopts & ROAbuff)
+					initworkrects(wr, nproc, &params.job->fb->r);
 
-				params->job->ref = nproc;
+				params.job->ref = nproc;
 				for(i = 0; i < nproc; i++){
-					task = _emalloc(sizeof *task);
-					task->SUparams = *params;
-					if(params->job->camera->rendopts & ROAbuff)
-						task->wr = wr[i];
-					sendp(taskchans[i], task);
+					task.SUparams = params;
+					if(params.job->camera->rendopts & ROAbuff)
+						task.wr = wr[i];
+					send(taskchans[i], &task);
 				}
-				free(params);
 			}
 			continue;
 		}
-		vsp.su = params;
+		vsp.su = &params;
+		task.SUparams = params;
+		task.op = OP_RASTER;
 
-		initworkrects(wr, nproc, &params->fb->r);
+		initworkrects(wr, nproc, &params.fb->r);
 
-		for(ep = params->eb; ep != params->ee; ep++){
+		for(ep = params.eb; ep != params.ee; ep++){
 			np = 1;	/* start with one. after clipping it might change */
 
-			p = assembleprim(&prim, ep, params->entity->mdl);
+			p = assembleprim(&prim, ep, params.entity->mdl);
 
 			switch(p->type){
 			case PPoint:
@@ -630,26 +628,23 @@ tiler(void *arg)
 
 				vsp.v = &p->v[0];
 				vsp.idx = 0;
-				p->v[0].p = params->stab->vs(&vsp);
+				p->v[0].p = params.stab->vs(&vsp);
 
 				if(!isvisible(p->v[0].p))
 					break;
 
 				p->v[0].p = clip2ndc(p->v[0].p);
-				p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
+				p->v[0].p = ndc2viewport(params.fb, p->v[0].p);
 
 				bbox.min.x = p->v[0].p.x;
 				bbox.min.y = p->v[0].p.y;
 
 				for(i = 0; i < nproc; i++)
 					if(ptinrect(bbox.min, wr[i])){
-						task = _emalloc(sizeof *task);
-						task->SUparams = *params;
-						task->op = OP_RASTER;
-						task->clipr = &params->job->cliprects[i];
-						task->p = *p;
-						task->p.v[0] = _dupvertex(&p->v[0]);
-						sendp(taskchans[i], task);
+						task.clipr = &params.job->cliprects[i];
+						task.p = *p;
+						task.p.v[0] = _dupvertex(&p->v[0]);
+						send(taskchans[i], &task);
 						break;
 					}
 				_delvattrs(&p->v[0]);
@@ -662,7 +657,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->stab->vs(&vsp);
+					p->v[i].p = params.stab->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
@@ -675,8 +670,8 @@ tiler(void *arg)
 
 				p->v[0].p = clip2ndc(p->v[0].p);
 				p->v[1].p = clip2ndc(p->v[1].p);
-				p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
-				p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
+				p->v[0].p = ndc2viewport(params.fb, p->v[0].p);
+				p->v[1].p = ndc2viewport(params.fb, p->v[1].p);
 
 				bbox.min.x = min(p->v[0].p.x, p->v[1].p.x);
 				bbox.min.y = min(p->v[0].p.y, p->v[1].p.y);
@@ -685,15 +680,12 @@ tiler(void *arg)
 
 				for(i = 0; i < nproc; i++)
 					if(rectXrect(bbox, wr[i])){
-						task = _emalloc(sizeof *task);
-						task->SUparams = *params;
-						task->op = OP_RASTER;
-						task->wr = wr[i];
-						task->clipr = &params->job->cliprects[i];
-						task->p = *p;
-						task->p.v[0] = _dupvertex(&p->v[0]);
-						task->p.v[1] = _dupvertex(&p->v[1]);
-						sendp(taskchans[i], task);
+						task.wr = wr[i];
+						task.clipr = &params.job->cliprects[i];
+						task.p = *p;
+						task.p.v[0] = _dupvertex(&p->v[0]);
+						task.p.v[1] = _dupvertex(&p->v[1]);
+						send(taskchans[i], &task);
 					}
 				_delvattrs(&p->v[0]);
 				_delvattrs(&p->v[1]);
@@ -707,7 +699,7 @@ tiler(void *arg)
 
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = params->stab->vs(&vsp);
+					p->v[i].p = params.stab->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){
@@ -721,13 +713,13 @@ tiler(void *arg)
 					p->v[2].p = clip2ndc(p->v[2].p);
 
 					/* culling */
-					if((params->camera->cullmode == CullFront && !isfacingback(p))
-					|| (params->camera->cullmode == CullBack && isfacingback(p)))
+					if((params.camera->cullmode == CullFront && !isfacingback(p))
+					|| (params.camera->cullmode == CullBack && isfacingback(p)))
 						goto skiptri;
 
-					p->v[0].p = ndc2viewport(params->fb, p->v[0].p);
-					p->v[1].p = ndc2viewport(params->fb, p->v[1].p);
-					p->v[2].p = ndc2viewport(params->fb, p->v[2].p);
+					p->v[0].p = ndc2viewport(params.fb, p->v[0].p);
+					p->v[1].p = ndc2viewport(params.fb, p->v[1].p);
+					p->v[2].p = ndc2viewport(params.fb, p->v[2].p);
 
 					bbox.min.x = min(min(p->v[0].p.x, p->v[1].p.x), p->v[2].p.x);
 					bbox.min.y = min(min(p->v[0].p.y, p->v[1].p.y), p->v[2].p.y);
@@ -736,17 +728,14 @@ tiler(void *arg)
 
 					for(i = 0; i < nproc; i++)
 						if(rectXrect(bbox, wr[i])){
-							task = _emalloc(sizeof *task);
-							task->SUparams = *params;
-							task->op = OP_RASTER;
-							task->wr = bbox;
-							rectclip(&task->wr, wr[i]);
-							task->clipr = &params->job->cliprects[i];
-							task->p = *p;
-							task->p.v[0] = _dupvertex(&p->v[0]);
-							task->p.v[1] = _dupvertex(&p->v[1]);
-							task->p.v[2] = _dupvertex(&p->v[2]);
-							sendp(taskchans[i], task);
+							task.wr = bbox;
+							rectclip(&task.wr, wr[i]);
+							task.clipr = &params.job->cliprects[i];
+							task.p = *p;
+							task.p.v[0] = _dupvertex(&p->v[0]);
+							task.p.v[1] = _dupvertex(&p->v[1]);
+							task.p.v[2] = _dupvertex(&p->v[2]);
+							send(taskchans[i], &task);
 						}
 skiptri:
 					_delvattrs(&p->v[0]);
@@ -757,7 +746,6 @@ skiptri:
 			default: sysfatal("alien primitive detected");
 			}
 		}
-		free(params);
 	}
 }
 
@@ -768,7 +756,7 @@ entityproc(void *arg)
 	Channel *paramsin, **paramsout, **taskchans;
 	Tilerparam *tp;
 	Rasterparam *rp;
-	SUparams *params, *newparams;
+	SUparams params;
 	Primitive *eb, *ee;
 	ulong stride, nprims, nproc, nworkers;
 	int i;
@@ -785,7 +773,7 @@ entityproc(void *arg)
 	paramsout = _emalloc(nproc*sizeof(*paramsout));
 	taskchans = _emalloc(nproc*sizeof(*taskchans));
 	for(i = 0; i < nproc; i++){
-		paramsout[i] = chancreate(sizeof(SUparams*), 256);
+		paramsout[i] = chancreate(sizeof(SUparams), 256);
 		tp = _emalloc(sizeof *tp);
 		tp->id = i;
 		tp->paramsc = paramsout[i];
@@ -796,43 +784,43 @@ entityproc(void *arg)
 	for(i = 0; i < nproc; i++){
 		rp = _emalloc(sizeof *rp);
 		rp->id = i;
-		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask*), 512);
+		rp->taskc = taskchans[i] = chancreate(sizeof(Rastertask), 2048);
 		proccreate(rasterizer, rp, mainstacksize);
 	}
 
-	while((params = recvp(paramsin)) != nil){
-		if(params->job->rctl->doprof && params->job->times.E.t0 == 0)
-			params->job->times.E.t0 = nanosec();
+	while(recv(paramsin, &params) > 0){
+		if(params.job->rctl->doprof && params.job->times.E.t0 == 0)
+			params.job->times.E.t0 = nanosec();
 
 		/* prof: initialize timing slots for the next stages */
-		if(params->job->rctl->doprof && params->job->times.Tn == nil){
-			assert(params->job->times.Rn == nil);
-			params->job->times.Tn = _emalloc(nproc*sizeof(Rendertime));
-			params->job->times.Rn = _emalloc(nproc*sizeof(Rendertime));
-			memset(params->job->times.Tn, 0, nproc*sizeof(Rendertime));
-			memset(params->job->times.Rn, 0, nproc*sizeof(Rendertime));
+		if(params.job->rctl->doprof && params.job->times.Tn == nil){
+			assert(params.job->times.Rn == nil);
+			params.job->times.Tn = _emalloc(nproc*sizeof(Rendertime));
+			params.job->times.Rn = _emalloc(nproc*sizeof(Rendertime));
+			memset(params.job->times.Tn, 0, nproc*sizeof(Rendertime));
+			memset(params.job->times.Rn, 0, nproc*sizeof(Rendertime));
 		}
 
-		if(params->op == OP_END){
-			params->job->ref = nproc;
+		if(params.op == OP_END){
+			params.job->ref = nproc;
 			for(i = 0; i < nproc; i++)
-				sendp(paramsout[i], params);
-			if(params->job->rctl->doprof)
-				params->job->times.E.t1 = nanosec();
+				send(paramsout[i], &params);
+			if(params.job->rctl->doprof)
+				params.job->times.E.t1 = nanosec();
 			continue;
 		}
 
-		if(params->job->cliprects == nil){
-			params->job->cliprects = _emalloc(nproc*sizeof(Rectangle));
-			params->job->ncliprects = nproc;
+		if(params.job->cliprects == nil){
+			params.job->cliprects = _emalloc(nproc*sizeof(Rectangle));
+			params.job->ncliprects = nproc;
 			for(i = 0; i < nproc; i++){
-				params->job->cliprects[i].min = (Point){-1,-1};
-				params->job->cliprects[i].max = (Point){-1,-1};
+				params.job->cliprects[i].min = (Point){-1,-1};
+				params.job->cliprects[i].max = (Point){-1,-1};
 			}
 		}
 
-		eb = params->entity->mdl->prims->items;
-		nprims = params->entity->mdl->prims->nitems;
+		eb = params.entity->mdl->prims->items;
+		nprims = params.entity->mdl->prims->nitems;
 		ee = eb + nprims;
 
 		if(nprims <= nproc){
@@ -843,15 +831,12 @@ entityproc(void *arg)
 			stride = nprims/nproc;
 		}
 
+		params.op = OP_PRIMS;
 		for(i = 0; i < nworkers; i++){
-			newparams = _emalloc(sizeof *newparams);
-			*newparams = *params;
-			newparams->op = OP_PRIMS;
-			newparams->eb = eb + i*stride;
-			newparams->ee = i == nworkers-1? ee: newparams->eb + stride;
-			sendp(paramsout[i], newparams);
+			params.eb = eb + i*stride;
+			params.ee = i == nworkers-1? ee: params.eb + stride;
+			send(paramsout[i], &params);
 		}
-		free(params);
 	}
 }
 
@@ -862,7 +847,7 @@ renderer(void *arg)
 	Renderjob *job;
 	Scene *sc;
 	Entity *ent;
-	SUparams *params;
+	SUparams params;
 	Entityparam *ep;
 	uvlong lastid;
 
@@ -873,7 +858,7 @@ renderer(void *arg)
 
 	ep = _emalloc(sizeof *ep);
 	ep->rctl = rctl;
-	ep->paramsc = chancreate(sizeof(SUparams*), 256);
+	ep->paramsc = chancreate(sizeof(SUparams), 256);
 	proccreate(entityproc, ep, mainstacksize);
 
 	while((job = recvp(rctl->jobq)) != nil){
@@ -891,22 +876,19 @@ renderer(void *arg)
 			initAbuf(job->fb);
 
 		for(ent = sc->ents.next; ent != &sc->ents; ent = ent->next){
-			params = _emalloc(sizeof *params);
-			memset(params, 0, sizeof *params);
-			params->fb = job->fb;
-			params->stab = job->shaders;
-			params->job = job;
-			params->camera = job->camera;
-			params->entity = ent;
-			params->op = OP_ENTITY;
-			sendp(ep->paramsc, params);
+			params.fb = job->fb;
+			params.stab = job->shaders;
+			params.job = job;
+			params.camera = job->camera;
+			params.entity = ent;
+			params.op = OP_ENTITY;
+			send(ep->paramsc, &params);
 		}
 
 		/* mark end of job */
-		params = _emalloc(sizeof *params);
-		params->job = job;
-		params->op = OP_END;
-		sendp(ep->paramsc, params);
+		params.job = job;
+		params.op = OP_END;
+		send(ep->paramsc, &params);
 
 		if(job->rctl->doprof)
 			job->times.R.t1 = nanosec();
