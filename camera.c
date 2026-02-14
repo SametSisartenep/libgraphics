@@ -19,8 +19,8 @@ skyboxvs(Shaderparams *sp)
 	sp->setattr(sp, "dir", VAPoint, &sp->v->p);
 	/* only rotate along with the camera */
 	p = sp->v->p;
-	p.w = 0; p = world2vcs(sp->su->camera, p);
-	p.w = 1; p = vcs2clip(sp->su->camera, p);
+	p.w = 0; p = world2vcs(sp->camera, p);
+	p.w = 1; p = vcs2clip(sp->camera, p);
 	/* force the cube to always be on the far plane */
 	p.z = -p.w;
 	return p;
@@ -33,7 +33,7 @@ skyboxfs(Shaderparams *sp)
 	Color c;
 
 	va = sp->getattr(sp, "dir");
-	c = samplecubemap(sp->su->camera->scene->skybox, va->p, neartexsampler);
+	c = samplecubemap(sp->scene->skybox, va->p, neartexsampler);
 	return c;
 }
 

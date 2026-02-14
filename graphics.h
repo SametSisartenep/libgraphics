@@ -70,7 +70,6 @@ typedef struct Model Model;
 typedef struct Entity Entity;
 typedef struct Scene Scene;
 typedef struct Shaderparams Shaderparams;
-typedef struct SUparams SUparams;
 typedef struct Shadertab Shadertab;
 typedef struct Rendertime Rendertime;
 typedef struct Renderer Renderer;
@@ -254,7 +253,11 @@ struct Scene
 
 struct Shaderparams
 {
-	SUparams *su;
+	Framebuf *fb;
+	Shadertab *stab;
+	Camera *camera;
+	Entity *entity;
+	Scene *scene;
 	BVertex *v;
 	Point p;	/* fragment position (fshader-only) */
 	uint idx;	/* vertex index (vshader-only) */
@@ -263,18 +266,6 @@ struct Shaderparams
 	Vertexattr *(*getattr)(Shaderparams*, char*);
 	void (*setattr)(Shaderparams*, char*, int, void*);
 	void (*toraster)(Shaderparams*, char*, void*);
-};
-
-/* shader unit params */
-struct SUparams
-{
-	Framebuf *fb;
-	Shadertab *stab;
-	Renderjob *job;
-	Camera *camera;
-	Entity *entity;
-	int op;
-	Primitive *eb, *ee;
 };
 
 struct Shadertab

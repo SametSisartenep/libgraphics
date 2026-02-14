@@ -1,19 +1,15 @@
 enum {
 	ε1 = 1e-5,
 	ε2 = 1e-6,
-
-	/* shader unit operations */
-	OP_ENTITY = 0,
-	OP_PRIMS,
-	OP_RASTER,
-	OP_SYNC,
-	OP_END,
 };
 
 typedef struct BPrimitive BPrimitive;
 typedef struct Polygon Polygon;
+typedef struct Commontask Commontask;
 typedef struct Entityparam Entityparam;
+typedef struct Entitytask Entitytask;
 typedef struct Tilerparam Tilerparam;
+typedef struct Tilertask Tilertask;
 typedef struct Rasterparam Rasterparam;
 typedef struct Rastertask Rastertask;
 typedef struct fGradient fGradient;
@@ -35,19 +31,38 @@ struct Polygon
 	ulong cap;
 };
 
+/* common task params */
+struct Commontask
+{
+	Renderjob *job;
+	Entity *entity;
+	int islast;
+};
+
 struct Entityparam
 {
 	Renderer *rctl;
-	Channel *paramsc;
+	Channel *taskc;
+};
+
+struct Entitytask
+{
+	Commontask;
 };
 
 struct Tilerparam
 {
 	int id;
-	Channel *paramsc;
+	Channel *taskc;
 	Channel **taskchans;	/* Channel*[nproc] */
 	Rectangle *wr;		/* Rectangle[nproc] */
 	ulong nproc;
+};
+
+struct Tilertask
+{
+	Commontask;
+	Primitive *eb, *ee;
 };
 
 struct Rasterparam
@@ -58,7 +73,7 @@ struct Rasterparam
 
 struct Rastertask
 {
-	SUparams;
+	Commontask;
 	Shaderparams *fsp;
 	Rectangle wr;		/* working rect */
 	Rectangle *clipr;
