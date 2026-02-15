@@ -13,7 +13,7 @@
  * see https://www.scale2x.it/algorithm
  */
 static void
-scale2x_filter(ulong *dst, Raster *fb, Point sp, ulong)
+scale2x_filter(ulong *dst, Raster *fb, Point sp, Point, ulong dx)
 {
 	ulong B, D, E, F, H;
 
@@ -24,16 +24,18 @@ scale2x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 	H = sp.y == fb->r.max.y? E: getpixel(fb, addpt(sp, Pt( 0, 1)));
 
 	if(B != H && D != F){
-		dst[0] = D == B? D: E;
-		dst[1] = B == F? F: E;
-		dst[2] = D == H? D: E;
-		dst[3] = H == F? F: E;
-	}else
-		_memsetl(dst, E, 4);
+		dst[0*dx+0] = D == B? D: E;
+		dst[0*dx+1] = B == F? F: E;
+		dst[1*dx+0] = D == H? D: E;
+		dst[1*dx+1] = H == F? F: E;
+	}else{
+		_memsetl(dst + 0*dx, E, 2);
+		_memsetl(dst + 1*dx, E, 2);
+	}
 }
 
 static void
-scale3x_filter(ulong *dst, Raster *fb, Point sp, ulong)
+scale3x_filter(ulong *dst, Raster *fb, Point sp, Point, ulong dx)
 {
 	ulong A, B, C, D, E, F, G, H, I;
 
@@ -56,17 +58,20 @@ scale3x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 		getpixel(fb, addpt(sp, Pt( 1, 1)));
 
 	if(B != H && D != F){
-		dst[0] = D == B? D: E;
-		dst[1] = (D == B && E != C) || (B == F && E != A)? B: E;
-		dst[2] = B == F? F: E;
-		dst[3] = (D == B && E != G) || (D == H && E != A)? D: E;
-		dst[4] = E;
-		dst[5] = (B == F && E != I) || (H == F && E != C)? F: E;
-		dst[6] = D == H? D: E;
-		dst[7] = (D == H && E != I) || (H == F && E != G)? H: E;
-		dst[8] = H == F? F: E;
-	}else
-		_memsetl(dst, E, 9);
+		dst[0*dx+0] = D == B? D: E;
+		dst[0*dx+1] = (D == B && E != C) || (B == F && E != A)? B: E;
+		dst[0*dx+2] = B == F? F: E;
+		dst[1*dx+0] = (D == B && E != G) || (D == H && E != A)? D: E;
+		dst[1*dx+1] = E;
+		dst[1*dx+2] = (B == F && E != I) || (H == F && E != C)? F: E;
+		dst[2*dx+0] = D == H? D: E;
+		dst[2*dx+1] = (D == H && E != I) || (H == F && E != G)? H: E;
+		dst[2*dx+2] = H == F? F: E;
+	}else{
+		_memsetl(dst + 0*dx, E, 3);
+		_memsetl(dst + 1*dx, E, 3);
+		_memsetl(dst + 2*dx, E, 3);
+	}
 }
 
 //static void
@@ -76,9 +81,14 @@ scale3x_filter(ulong *dst, Raster *fb, Point sp, ulong)
 //}
 
 static void
-ident_filter(ulong *dst, Raster *fb, Point sp, ulong len)
+ident_filter(ulong *dst, Raster *fb, Point sp, Point s, ulong dx)
 {
-	_memsetl(dst, getpixel(fb, sp), len);
+	ulong c;
+	int y;
+
+	c = getpixel(fb, sp);
+	for(y = 0; y < s.y; y++)
+		_memsetl(dst + y*dx, c, s.x);
 }
 
 /* convert a float raster to a greyscale color one */
@@ -138,15 +148,17 @@ premulalpha(Raster *r)
 static void
 upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 {
-	void (*filterfn)(ulong*, Raster*, Point, ulong);
+	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
 	Rectangle blkr;
 	Point sp, dp;
 	Image *tmp;
-	ulong *blk;
+	ulong *blk, *blkp;
+	int dx;
 
 	filterfn = nil;
-	blk = _emalloc(scale.x*scale.y*4);
-	blkr = Rect(0,0,scale.x,scale.y);
+	dx = Dx(fb->r);
+	blk = _emalloc(scale.x*dx*scale.y*4);
+	blkr = Rect(0,0,scale.x*dx,scale.y);
 	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
 	if(tmp == nil)
 		sysfatal("allocimage: %r");
@@ -160,13 +172,16 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 		if(scale.x == scale.y && scale.y == 3)
 			filterfn = scale3x_filter;
 		break;
-	default: filterfn = ident_filter;
+	default:
+		filterfn = ident_filter;
 	}
 
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		filterfn(blk, fb, sp, scale.x*scale.y);
-		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+	dp.x = dst->r.min.x+off.x;
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y){
+	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
+		filterfn(blkp, fb, sp, scale, scale.x*dx);
+	}
+		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*dx*scale.y*4);
 	}
 	draw(dst, dst->r, tmp, nil, tmp->r.min);
 	freeimage(tmp);
@@ -236,7 +251,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 static void
 upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 {
-	void (*filterfn)(ulong*, Raster*, Point, ulong);
+	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
 	Rectangle blkr;
 	Point sp, dp;
 	Memimage *tmp;
@@ -258,12 +273,13 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 		if(scale.x == scale.y && scale.y == 3)
 			filterfn = scale3x_filter;
 		break;
-	default: filterfn = ident_filter;
+	default:
+		filterfn = ident_filter;
 	}
 
 	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
 	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		filterfn(blk, fb, sp, scale.x*scale.y);
+		filterfn(blk, fb, sp, scale, scale.x);
 		loadmemimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, S);
