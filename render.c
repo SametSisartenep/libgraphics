@@ -208,13 +208,8 @@ rasterizept(Rastertask *task)
 	else
 		pixel(cr, p, c, ropts & ROBlend);
 
-	if(task->clipr->min.x < 0){
-		task->clipr->min = p;
-		task->clipr->max = addpt(p, (Point){1,1});
-	}else{
-		task->clipr->min = minpt(task->clipr->min, p);
-		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
-	}
+	task->clipr->min = minpt(task->clipr->min, p);
+	task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 }
 
 static void
@@ -297,13 +292,8 @@ rasterizeline(Rastertask *task)
 		else
 			pixel(cr, p, c, ropts & ROBlend);
 
-		if(task->clipr->min.x < 0){
-			task->clipr->min = p;
-			task->clipr->max = addpt(p, (Point){1,1});
-		}else{
-			task->clipr->min = minpt(task->clipr->min, p);
-			task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
-		}
+		task->clipr->min = minpt(task->clipr->min, p);
+		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 discard:
 		if(steep) SWAP(int, &p.x, &p.y);
 
@@ -438,13 +428,8 @@ rasterizetri(Rastertask *task)
 		else
 			pixel(cr, p, c, ropts & ROBlend);
 
-		if(task->clipr->min.x < 0){
-			task->clipr->min = p;
-			task->clipr->max = addpt(p, (Point){1,1});
-		}else{
-			task->clipr->min = minpt(task->clipr->min, p);
-			task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
-		}
+		task->clipr->min = minpt(task->clipr->min, p);
+		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
 discard:
 		bc = addpt3(bc, ∇bc.dx);
 //		_addvertex(sp->v, &∇v.dx);
@@ -500,14 +485,8 @@ rasterizer(void *arg)
 			if(decref(job) < 1){
 				/* set the clipr to the union of bboxes from the rasterizers */
 				for(i = 1; i < job->ncliprects; i++){
-					if(job->cliprects[i].min.x < 0)
-						continue;
-					job->cliprects[0].min = job->cliprects[0].min.x < 0?
-						job->cliprects[i].min:
-						minpt(job->cliprects[0].min, job->cliprects[i].min);
-					job->cliprects[0].max = job->cliprects[0].max.x < 0?
-						job->cliprects[i].max:
-						maxpt(job->cliprects[0].max, job->cliprects[i].max);
+					job->cliprects[0].min = minpt(job->cliprects[0].min, job->cliprects[i].min);
+					job->cliprects[0].max = maxpt(job->cliprects[0].max, job->cliprects[i].max);
 				}
 				job->fb->clipr = job->cliprects[0];
 
@@ -828,8 +807,8 @@ entityproc(void *arg)
 			task.job->cliprects = _emalloc(nproc*sizeof(Rectangle));
 			task.job->ncliprects = nproc;
 			for(i = 0; i < nproc; i++){
-				task.job->cliprects[i].min = (Point){-1,-1};
-				task.job->cliprects[i].max = (Point){-1,-1};
+				task.job->cliprects[i].min = (Point){ 1000000, 1000000};
+				task.job->cliprects[i].max = (Point){-1000000,-1000000};
 			}
 		}
 
