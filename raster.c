@@ -16,8 +16,8 @@ _allocraster(char *name, Rectangle rr, ulong chan)
 
 	r = _emalloc(sizeof *r);
 	memset(r, 0, sizeof *r);
-	if(name != nil && (r->name = _estrdup(name)) == nil)
-		sysfatal("strdup: %r");
+	if(name != nil)
+		r->name = _estrdup(name);
 	r->chan = chan;
 	r->r = rr;
 	r->data = _emalloc(Dx(rr)*Dy(rr)*sizeof(*r->data));
@@ -27,7 +27,7 @@ _allocraster(char *name, Rectangle rr, ulong chan)
 void
 _clearraster(Raster *r, ulong v)
 {
-	_memsetl(r->data, *(ulong*)&v, Dx(r->r)*Dy(r->r));
+	_memsetl(r->data, v, Dx(r->r)*Dy(r->r));
 }
 
 void
