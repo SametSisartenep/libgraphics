@@ -10,13 +10,13 @@
 ulong
 col2ul(Color c)
 {
-	uchar cbuf[4];
+	ulong l;
 
-	cbuf[0] = fclamp(c.a, 0, 1)*0xFF;
-	cbuf[1] = fclamp(c.b, 0, 1)*0xFF;
-	cbuf[2] = fclamp(c.g, 0, 1)*0xFF;
-	cbuf[3] = fclamp(c.r, 0, 1)*0xFF;
-	return cbuf[3]<<24 | cbuf[2]<<16 | cbuf[1]<<8 | cbuf[0];
+	l  = (int)(fclamp(c.a, 0, 1)*0xFF);
+	l |= (int)(fclamp(c.b, 0, 1)*0xFF) << 8;
+	l |= (int)(fclamp(c.g, 0, 1)*0xFF) << 16;
+	l |= (int)(fclamp(c.r, 0, 1)*0xFF) << 24;
+	return l;
 }
 
 Color
@@ -126,7 +126,7 @@ static uchar linear2srgbtab[] = {
  * Equations 5.32 and 5.30 from “Display Encoding”, Real-Time Rendering 4th ed. § 5.6
  */
 //static double
-//_srgb2linear(double c)
+//srgb2linear1(double c)
 //{
 //	if(c > 0.04045)
 //		return pow((c + 0.055)/1.055, 2.4);
@@ -134,7 +134,7 @@ static uchar linear2srgbtab[] = {
 //}
 //
 //static double
-//_linear2srgb(double c)
+//linear2srgb1(double c)
 //{
 //	if(c > 0.0031308)
 //		return 1.055*pow(c, 1.0/2.4) - 0.055;
@@ -142,14 +142,14 @@ static uchar linear2srgbtab[] = {
 //}
 
 static double
-_srgb2linear(double c)
+srgb2linear1(double c)
 {
 	c = fclamp(c, 0, 1);
 	return srgb2lineartab[(int)(c*255)]/255.0;
 }
 
 static double
-_linear2srgb(double c)
+linear2srgb1(double c)
 {
 	c = fclamp(c, 0, 1);
 	return linear2srgbtab[(int)(c*255)]/255.0;
@@ -158,18 +158,18 @@ _linear2srgb(double c)
 Color
 srgb2linear(Color c)
 {
-	c.r = _srgb2linear(c.r);
-	c.g = _srgb2linear(c.g);
-	c.b = _srgb2linear(c.b);
+	c.r = srgb2linear1(c.r);
+	c.g = srgb2linear1(c.g);
+	c.b = srgb2linear1(c.b);
 	return c;
 }
 
 Color
 linear2srgb(Color c)
 {
-	c.r = _linear2srgb(c.r);
-	c.g = _linear2srgb(c.g);
-	c.b = _linear2srgb(c.b);
+	c.r = linear2srgb1(c.r);
+	c.g = linear2srgb1(c.g);
+	c.b = linear2srgb1(c.b);
 	return c;
 }
 
@@ -181,7 +181,7 @@ linear2srgb(Color c)
  * https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
  */
 static double
-_aces(double value)
+aces1(double value)
 {
 	double a = 2.51;
 	double b = 0.03;
@@ -195,9 +195,9 @@ _aces(double value)
 Color
 aces(Color c)
 {
-	c.r = _aces(c.r);
-	c.g = _aces(c.g);
-	c.b = _aces(c.b);
+	c.r = aces1(c.r);
+	c.g = aces1(c.g);
+	c.b = aces1(c.b);
 	return c;
 }
 

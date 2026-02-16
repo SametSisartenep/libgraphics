@@ -31,6 +31,23 @@ sparams_setattr(Shaderparams *sp, char *id, int type, void *val)
 	_addvattr(sp->v, id, type, val);
 }
 
+#define mulalpha1(a, v, tmp)	(tmp=(a)*(v)+128, (tmp+(tmp>>8))>>8)
+
+static ulong
+mulalpha(ulong c)
+{
+	ushort r, g, b, a, t;
+
+	a = c     & 0xff;
+	b = c>>8  & 0xff;
+	g = c>>16 & 0xff;
+	r = c>>24 & 0xff;
+	r = mulalpha1(a, r, t);
+	g = mulalpha1(a, g, t);
+	b = mulalpha1(a, b, t);
+	return (r<<24)|(g<<16)|(b<<8)|a;
+}
+
 static void
 sparams_toraster(Shaderparams *sp, char *rname, void *v)
 {
@@ -49,7 +66,7 @@ sparams_toraster(Shaderparams *sp, char *rname, void *v)
 
 	switch(r->chan){
 	case COLOR32:
-		c = col2ul(*(Color*)v);
+		c = mulalpha(col2ul(*(Color*)v));
 		_rasterput(r, sp->p, &c);
 		break;
 	case FLOAT32:
@@ -70,7 +87,7 @@ pixel(Raster *fb, Point p, Color c, int blend)
 //		c = subpt3(Vec3(1,1,1), subpt3(dc, c));
 //		c = subpt3(addpt3(dc, c), Vec3(1,1,1));
 	}
-	putpixel(fb, p, col2ul(linear2srgb(c)));
+	putpixel(fb, p, mulalpha(col2ul(linear2srgb(c))));
 }
 
 static int

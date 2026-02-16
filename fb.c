@@ -129,23 +129,6 @@ rasterconvF2C(Raster *dst, Raster *src)
 }
 
 static void
-premulalpha(Raster *r)
-{
-	Color c;
-	ulong *p, len;
-
-	len = Dx(r->r)*Dy(r->r);
-	p = r->data;
-	while(len--){
-		c = ul2col(*p);
-		c.r *= c.a;
-		c.g *= c.a;
-		c.b *= c.a;
-		*p++ = col2ul(c);
-	}
-}
-
-static void
 upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 {
 	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
@@ -211,14 +194,6 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 		rasterconvF2C(r2, r);
 		r = r2;
 	}
-
-	/* this means the raster is a color one, so duplicate it */
-	if(r2 == nil){
-		r2 = _allocraster(nil, r->r, COLOR32);
-		memmove(r2->data, r->data, Dx(r->r)*Dy(r->r)*4);
-		r = r2;
-	}
-	premulalpha(r);
 
 	if(scale.x > 1 || scale.y > 1){
 		upscaledraw(r, dst, off, scale, ctl->upfilter);
@@ -311,14 +286,6 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 		rasterconvF2C(r2, r);
 		r = r2;
 	}
-
-	/* this means the raster is a color one, so duplicate it */
-	if(r2 == nil){
-		r2 = _allocraster(nil, r->r, COLOR32);
-		memmove(r2->data, r->data, Dx(r->r)*Dy(r->r)*4);
-		r = r2;
-	}
-	premulalpha(r);
 
 	if(scale.x > 1 || scale.y > 1){
 		upscalememdraw(r, dst, off, scale, ctl->upfilter);
