@@ -81,13 +81,13 @@ pixel(Raster *fb, Point p, Color c, int blend)
 	Color dc;
 
 	if(blend){
-		dc = srgb2linear(ul2col(getpixel(fb, p)));
+		dc = ul2col(srgb2linearul(getpixel(fb, p)));
 		c = lerp3(dc, c, c.a);	/* SoverD */
 //		c = addpt3(mulpt3(dc, 1), mulpt3(c, 1-c.a));
 //		c = subpt3(Vec3(1,1,1), subpt3(dc, c));
 //		c = subpt3(addpt3(dc, c), Vec3(1,1,1));
 	}
-	putpixel(fb, p, mulalpha(col2ul(linear2srgb(c))));
+	putpixel(fb, p, mulalpha(linear2srgbul(col2ul(c))));
 }
 
 static int

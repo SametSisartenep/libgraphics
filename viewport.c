@@ -8,16 +8,32 @@
 #include "internal.h"
 
 static void
+updatestats(Viewport *c, uvlong v)
+{
+	c->stats.v = v;
+	c->stats.n++;
+	c->stats.acc += v;
+	c->stats.avg = c->stats.acc/c->stats.n;
+	c->stats.min = v < c->stats.min || c->stats.n == 1? v: c->stats.min;
+	c->stats.max = v > c->stats.max || c->stats.n == 1? v: c->stats.max;
+	c->stats.nframes++;
+}
+
+static void
 viewport_draw(Viewport *v, Image *dst, char *rname)
 {
 	Point off, scale;
+	uvlong t0, t1;
 
 	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
 	scale.x = max(v->bx.x, 1);
 	scale.y = max(v->by.y, 1);
 
+	t0 = nanosec();
 	v->fbctl->draw(v->fbctl, dst, rname, off, scale);
+	t1 = nanosec();
+	updatestats(v, t1-t0);
 }
 
 static void
@@ -89,6 +105,7 @@ mkviewport(Rectangle r)
 	}
 
 	v = _emalloc(sizeof *v);
+	memset(&v->stats, 0, sizeof v->stats);
 	v->p = Pt2(0,0,1);
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);

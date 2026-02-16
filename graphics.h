@@ -165,8 +165,8 @@ struct BVertex
 	Point3 n;		/* surface normal */
 	Point2 uv;		/* texture coordinate */
 	Color c;		/* shading color */
-	Material *mtl;
 	Point3 tangent;
+	Material *mtl;
 	Vertexattrs;		/* attributes (varyings) */
 };
 
@@ -343,7 +343,7 @@ struct Framebuf
 {
 	Rectangle r;
 	Rectangle clipr;
-	Raster *rasters;	/* [0] color, [1] depth, [n] user-defined */
+	Raster *rasters;	/* [0] color, [1] depth, [2..n] user-defined */
 	Abuf abuf;		/* A-buffer */
 
 	void (*createraster)(Framebuf*, char*, ulong);
@@ -372,6 +372,11 @@ struct Viewport
 	RFrame;
 	Framebufctl *fbctl;
 	Rectangle r;
+
+	struct {
+		uvlong min, avg, max, acc, n, v;
+		uvlong nframes;
+	} stats;
 
 	void (*draw)(Viewport*, Image*, char*);
 	void (*memdraw)(Viewport*, Memimage*, char*);
