@@ -173,6 +173,30 @@ linear2srgb(Color c)
 	return c;
 }
 
+ulong
+srgb2linearul(ulong c)
+{
+	ulong l;
+
+	l = c & 0xff;
+	l |= srgb2lineartab[c>>8  & 0xff] << 8;
+	l |= srgb2lineartab[c>>16 & 0xff] << 16;
+	l |= srgb2lineartab[c>>24 & 0xff] << 24;
+	return l;
+}
+
+ulong
+linear2srgbul(ulong c)
+{
+	ulong l;
+
+	l = c & 0xff;
+	l |= linear2srgbtab[c>>8  & 0xff] << 8;
+	l |= linear2srgbtab[c>>16 & 0xff] << 16;
+	l |= linear2srgbtab[c>>24 & 0xff] << 24;
+	return l;
+}
+
 
 /* tone mapping */
 

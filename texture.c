@@ -28,56 +28,59 @@ uv2tp(Point2 uv, Texture *t)
 	return Pt(uv.x*Dx(t->image->r), (1 - uv.y)*Dy(t->image->r));
 }
 
-static Color
-cbuf2col(uchar b[4])
-{
-	Color c;
+#define divalpha1(a, v)		((((v)<<8)-(v))/(a))
 
-	c.a = b[0] / 255.0;
-	c.b = b[1] / 255.0;
-	c.g = b[2] / 255.0;
-	c.r = b[3] / 255.0;
-	return c;
+static ulong
+divalpha(ulong c)
+{
+	ushort r, g, b, a;
+
+	a = c     & 0xff;
+	b = c>>8  & 0xff;
+	g = c>>16 & 0xff;
+	r = c>>24 & 0xff;
+	r = divalpha1(a, r);
+	g = divalpha1(a, g);
+	b = divalpha1(a, b);
+	return (r<<24)|(g<<16)|(b<<8)|a;
 }
 
 static Color
 memreadcolor(Texture *t, Point sp)
 {
-	Color c;
-	uchar cbuf[4];
+	union {
+		uchar b[4];
+		ulong c;
+	} cbuf;
 
 	switch(t->image->chan){
 	default: sysfatal("unsupported texture format");
 	case RGB24:
-		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf+1, sizeof cbuf - 1);
-		cbuf[0] = 0xFF;
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf.b+1, sizeof cbuf - 1);
+		cbuf.b[0] = 0xFF;
 		break;
 	case RGBA32:
-		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf, sizeof cbuf);
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf.b, sizeof cbuf);
 		break;
 	case XRGB32:
-		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf, sizeof cbuf);
-		memmove(cbuf+1, cbuf, 3);
-		cbuf[0] = 0xFF;
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf.b, sizeof cbuf);
+		memmove(cbuf.b+1, cbuf.b, 3);
+		cbuf.b[0] = 0xFF;
 		break;
 	case GREY8:
-		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf+1, 1);
-		memset(cbuf+2, cbuf[1], 2);
-		cbuf[0] = 0xFF;
+		unloadmemimage(t->image, rectaddpt(UR, sp), cbuf.b+1, 1);
+		memset(cbuf.b+2, cbuf.b[1], 2);
+		cbuf.b[0] = 0xFF;
 		break;
 	}
-
-	c = cbuf2col(cbuf);
 	/* remove pre-multiplied alpha */
-	if(hasalpha(t->image->chan) && c.a > 0 && c.a < 1){
-		c.r /= c.a;
-		c.g /= c.a;
-		c.b /= c.a;
-	}
-	if(t->type == sRGBTexture)
-		c = srgb2linear(c);
+	if(hasalpha(t->image->chan) && cbuf.b[0] != 0)
+		cbuf.c = divalpha(cbuf.c);
 
-	return c;
+	if(t->type == sRGBTexture)
+		cbuf.c = srgb2linearul(cbuf.c);
+
+	return ul2col(cbuf.c);
 }
 
 /*

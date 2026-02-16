@@ -512,6 +512,8 @@ Color ul2col(ulong);
 int hasalpha(ulong);
 Color srgb2linear(Color);
 Color linear2srgb(Color);
+ulong srgb2linearul(ulong);
+ulong linear2srgbul(ulong);
 Color aces(Color);
 Color aces2(Color);
 
