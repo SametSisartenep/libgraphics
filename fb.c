@@ -135,13 +135,11 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	Rectangle blkr;
 	Point sp, dp;
 	Image *tmp;
-	ulong *blk, *blkp;
-	int dx;
+	ulong *blk;
 
 	filterfn = nil;
-	dx = Dx(fb->r);
-	blk = _emalloc(scale.x*dx*scale.y*4);
-	blkr = Rect(0,0,scale.x*dx,scale.y);
+	blk = _emalloc(scale.x*scale.y*4);
+	blkr = Rect(0,0,scale.x,scale.y);
 	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
 	if(tmp == nil)
 		sysfatal("allocimage: %r");
@@ -159,12 +157,11 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 		filterfn = ident_filter;
 	}
 
-	dp.x = dst->r.min.x+off.x;
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y){
-	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
-		filterfn(blkp, fb, sp, scale, scale.x*dx);
-	}
-		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*dx*scale.y*4);
+	;
+	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
+	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
+		filterfn(blk, fb, sp, scale, scale.x);
+		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
 	}
 	draw(dst, dst->r, tmp, nil, tmp->r.min);
 	freeimage(tmp);
