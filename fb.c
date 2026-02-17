@@ -132,14 +132,16 @@ static void
 upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 {
 	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
-	Rectangle blkr;
+	Rectangle blkr, dr;
 	Point sp, dp;
 	Image *tmp;
-	ulong *blk;
+	ulong *blk, *blkp;
+	int dx, nl;
 
 	filterfn = nil;
-	blk = _emalloc(scale.x*scale.y*4);
-	blkr = Rect(0,0,scale.x,scale.y);
+	dx = Dx(fb->r);
+	blk = _emalloc(scale.x*dx*scale.y*4);
+	blkr = Rect(0,0,scale.x*dx,scale.y);
 	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
 	if(tmp == nil)
 		sysfatal("allocimage: %r");
@@ -157,11 +159,31 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 		filterfn = ident_filter;
 	}
 
-	;
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		filterfn(blk, fb, sp, scale, scale.x);
-		loadimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+	/*
+	 * Fill an entire upscaled line (blk) and then clip against
+	 * the dst->r to select the data that needs to be sent.
+	 *
+	 * A better version could also do an initial clip to determine
+	 * the scanline segments that need to be sampled in the first
+	 * place.
+	 */
+	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
+	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
+	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
+		filterfn(blkp, fb, sp, scale, scale.x*dx);
+	}
+		dr = blkr;
+		if(rectclip(&dr, dst->r)){
+			/* get blk local (data) point */
+			dp.x = dr.min.x > blkr.min.x? dr.min.x - blkr.min.x: 0;
+			dp.y = dr.min.y > blkr.min.y? dr.min.y - blkr.min.y: 0;
+			nl = Dy(dr);
+			dr.max.y = dr.min.y+1;
+			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
+				loadimage(tmp, dr, (uchar*)(blk + dp.y*scale.x*dx + dp.x), Dx(dr)*4);
+		}
+		blkr.min.y += scale.y;
+		blkr.max.y += scale.y;
 	}
 	draw(dst, dst->r, tmp, nil, tmp->r.min);
 	freeimage(tmp);
@@ -203,16 +225,16 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 	sr = rectaddpt(fb->clipr, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectclip(&sr, dr)){
-		tmp = allocimage(display, sr, RGBA32, 0, DNofill);
+		tmp = allocimage(display, sr, RGBA32, 0, 0);
 		if(tmp == nil)
 			sysfatal("allocimage: %r");
 
-		dr = sr;
+		dr = rectaddpt(sr, dst->r.min);
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
 		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadimage(tmp, rectaddpt(dr, dst->r.min), _rasterbyteaddr(r, sr.min), Dx(dr)*4);
+			loadimage(tmp, dr, _rasterbyteaddr(r, sr.min), Dx(dr)*4);
 		draw(dst, rectaddpt(tmp->r, dst->r.min), tmp, nil, tmp->r.min);
 		freeimage(tmp);
 	}
@@ -224,17 +246,20 @@ static void
 upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 {
 	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
-	Rectangle blkr;
+	Rectangle blkr, dr;
 	Point sp, dp;
 	Memimage *tmp;
-	ulong *blk;
+	ulong *blk, *blkp;
+	int dx, nl;
 
 	filterfn = nil;
-	blk = _emalloc(scale.x*scale.y*4);
-	blkr = Rect(0,0,scale.x,scale.y);
+	dx = Dx(fb->r);
+	blk = _emalloc(scale.x*dx*scale.y*4);
+	blkr = Rect(0,0,scale.x*dx,scale.y);
 	tmp = allocmemimage(dst->r, RGBA32);
 	if(tmp == nil)
 		sysfatal("allocmemimage: %r");
+	memfillcolor(tmp, 0);
 
 	switch(filter){
 	case UFScale2x:
@@ -249,12 +274,33 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 		filterfn = ident_filter;
 	}
 
-	for(sp.y = fb->r.min.y, dp.y = dst->r.min.y+off.y; sp.y < fb->r.max.y; sp.y++, dp.y += scale.y)
-	for(sp.x = fb->r.min.x, dp.x = dst->r.min.x+off.x; sp.x < fb->r.max.x; sp.x++, dp.x += scale.x){
-		filterfn(blk, fb, sp, scale, scale.x);
-		loadmemimage(tmp, rectaddpt(blkr, dp), (uchar*)blk, scale.x*scale.y*4);
+	/*
+	 * Fill an entire upscaled line (blk) and then clip against
+	 * the dst->r to select the data that needs to be sent.
+	 *
+	 * A better version could also do an initial clip to determine
+	 * the scanline segments that need to be sampled in the first
+	 * place.
+	 */
+	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
+	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
+	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
+		filterfn(blkp, fb, sp, scale, scale.x*dx);
 	}
-	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, S);
+		dr = blkr;
+		if(rectclip(&dr, dst->r)){
+			/* get blk local (data) point */
+			dp.x = dr.min.x > blkr.min.x? dr.min.x - blkr.min.x: 0;
+			dp.y = dr.min.y > blkr.min.y? dr.min.y - blkr.min.y: 0;
+			nl = Dy(dr);
+			dr.max.y = dr.min.y+1;
+			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
+				loadmemimage(tmp, dr, (uchar*)(blk + dp.y*scale.x*dx + dp.x), Dx(dr)*4);
+		}
+		blkr.min.y += scale.y;
+		blkr.max.y += scale.y;
+	}
+	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, SoverD);
 	freememimage(tmp);
 	free(blk);
 }
@@ -297,24 +343,26 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 		tmp = allocmemimage(sr, RGBA32);
 		if(tmp == nil)
 			sysfatal("allocmemimage: %r");
+		memfillcolor(tmp, 0);
 
 		bdata0 = tmp->data->bdata;
 		tmp->data->bdata = (void*)r->data;
-		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, S);
+		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, SoverD);
 		tmp->data->bdata = bdata0;
 		freememimage(tmp);
 	}else if(rectclip(&sr, dr)){
 		tmp = allocmemimage(sr, RGBA32);
 		if(tmp == nil)
 			sysfatal("allocmemimage: %r");
+		memfillcolor(tmp, 0);
 
-		dr = sr;
+		dr = rectaddpt(sr, dst->r.min);
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
 		sr = rectsubpt(sr, off);
 		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadmemimage(tmp, rectaddpt(dr, dst->r.min), _rasterbyteaddr(r, sr.min), Dx(dr)*4);
-		memimagedraw(dst, rectaddpt(tmp->r, dst->r.min), tmp, tmp->r.min, nil, ZP, S);
+			loadmemimage(tmp, dr, _rasterbyteaddr(r, sr.min), Dx(dr)*4);
+		memimagedraw(dst, rectaddpt(tmp->r, dst->r.min), tmp, tmp->r.min, nil, ZP, SoverD);
 		freememimage(tmp);
 	}
 	qunlock(ctl);
