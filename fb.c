@@ -256,10 +256,7 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 	dx = Dx(fb->r);
 	blk = _emalloc(scale.x*dx*scale.y*4);
 	blkr = Rect(0,0,scale.x*dx,scale.y);
-	tmp = allocmemimage(dst->r, RGBA32);
-	if(tmp == nil)
-		sysfatal("allocmemimage: %r");
-	memfillcolor(tmp, 0);
+	tmp = _eallocmemimage(dst->r, RGBA32);
 
 	switch(filter){
 	case UFScale2x:
@@ -276,7 +273,7 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 
 	/*
 	 * Fill an entire upscaled line (blk) and then clip against
-	 * the dst->r to select the data that needs to be sent.
+	 * the dst->r to select the data that needs to be loaded.
 	 *
 	 * A better version could also do an initial clip to determine
 	 * the scanline segments that need to be sampled in the first
@@ -340,22 +337,14 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 	sr = rectaddpt(fb->r, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectinrect(sr, dr)){
-		tmp = allocmemimage(sr, RGBA32);
-		if(tmp == nil)
-			sysfatal("allocmemimage: %r");
-		memfillcolor(tmp, 0);
-
+		tmp = _eallocmemimage(sr, RGBA32);
 		bdata0 = tmp->data->bdata;
 		tmp->data->bdata = (void*)r->data;
 		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, SoverD);
 		tmp->data->bdata = bdata0;
 		freememimage(tmp);
 	}else if(rectclip(&sr, dr)){
-		tmp = allocmemimage(sr, RGBA32);
-		if(tmp == nil)
-			sysfatal("allocmemimage: %r");
-		memfillcolor(tmp, 0);
-
+		tmp = _eallocmemimage(sr, RGBA32);
 		dr = rectaddpt(sr, dst->r.min);
 		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
