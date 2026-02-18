@@ -51,6 +51,8 @@ enum {
 	VAPoint = 0,
 	VANumber,
 
+	MAXVATTRS = 10,	/* change this if your shaders require it */
+
 	/* itemarray */
 	NaI	= ~0ULL,	/* not an index */
 };
@@ -142,7 +144,7 @@ struct Vertexattr
 
 struct Vertexattrs
 {
-	Vertexattr *attrs;
+	Vertexattr attrs[MAXVATTRS];
 	ulong nattrs;
 };
 

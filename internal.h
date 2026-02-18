@@ -128,13 +128,11 @@ Framebufctl *_mkfbctl(Rectangle);
 void _rmfbctl(Framebufctl*);
 
 /* vertex */
-BVertex _dupvertex(BVertex*);
 void _loadvertex(BVertex*, BVertex*);
 void _lerpvertex(BVertex*, BVertex*, BVertex*, double);
 void _berpvertex(BVertex*, BVertex*, BVertex*, BVertex*, Point3);
 void _addvertex(BVertex*, BVertex*);
 void _mulvertex(BVertex*, double);
-void _delvattrs(BVertex*);
 void _fprintvattrs(int, Vertexattrs*);
 void _addvattr(Vertexattrs*, char*, int, void*);
 Vertexattr *_getvattr(Vertexattrs*, char*);

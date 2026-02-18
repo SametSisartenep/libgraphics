@@ -38,16 +38,6 @@ addvert(Polygon *p, BVertex v)
 }
 
 static void
-cleanpoly(Polygon *p)
-{
-	int i;
-
-	for(i = 0; i < p->n; i++)
-		_delvattrs(&p->v[i]);
-	p->n = 0;
-}
-
-static void
 fprintpoly(int fd, Polygon *p)
 {
 	int i;
@@ -112,38 +102,32 @@ _clipprimitive(BPrimitive *p, BPrimitive *cp)
 
 			if(sd1[j] >= 0){
 allin:
-				addvert(Vout, _dupvertex(v1));
+				addvert(Vout, *v1);
 			}
 		}
-		cleanpoly(Vin);
+		Vin->n = 0;
 		if(j < 6-1)
 			SWAP(Polygon*, &Vin, &Vout);
 	}
 
-	if(Vout->n < 2)
-		cleanpoly(Vout);
-	else switch(p->type){
-	case PLine:
-		cp[0] = *p;
-		cp[0].v[0] = _dupvertex(&Vout->v[0]);
-		cp[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? _dupvertex(&Vout->v[2]): _dupvertex(&Vout->v[1]);
-		cleanpoly(Vout);
-		np = 1;
-		break;
-	case PTriangle:
-		/* triangulate */
-		for(i = 0; i < Vout->n-2; i++, np++){
-			/*
-			 * when performing fan triangulation, indices 0 and 2
-			 * are referenced on every triangle, so duplicate them
-			 * to avoid complications during rasterization.
-			 */
-			cp[np] = *p;
-			cp[np].v[0] = i < Vout->n-2-1? _dupvertex(&Vout->v[0]): Vout->v[0];
-			cp[np].v[1] = Vout->v[i+1];
-			cp[np].v[2] = i < Vout->n-2-1? _dupvertex(&Vout->v[i+2]): Vout->v[i+2];
+	if(Vout->n > 1){
+		switch(p->type){
+		case PLine:
+			cp[0] = *p;
+			cp[0].v[0] = Vout->v[0];
+			cp[0].v[1] = eqpt3(Vout->v[0].p, Vout->v[1].p)? Vout->v[2]: Vout->v[1];
+			np = 1;
+			break;
+		case PTriangle:
+			/* triangulate */
+			for(i = 0; i < Vout->n-2; i++, np++){
+				cp[np] = *p;
+				cp[np].v[0] = Vout->v[0];
+				cp[np].v[1] = Vout->v[i+1];
+				cp[np].v[2] = Vout->v[i+2];
+			}
+			break;
 		}
-		break;
 	}
 	free(Vout->v);
 	free(Vin->v);
@@ -205,8 +189,6 @@ _adjustlineverts(Point *p0, Point *p1, BVertex *v0, BVertex *v1)
 	perc = len == 0? 0: hypot(Δp.x, Δp.y)/len;
 	_lerpvertex(&v[1], v0, v1, perc);
 
-	_delvattrs(v0);
-	_delvattrs(v1);
 	*v0 = v[0];
 	*v1 = v[1];
 }

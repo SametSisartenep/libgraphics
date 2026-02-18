@@ -19,8 +19,8 @@ addvattr(Vertexattrs *v, Vertexattr *va)
 			v->attrs[i] = *va;
 			return;
 		}
-	if(v->nattrs % 8 == 0)
-		v->attrs = _erealloc(v->attrs, (v->nattrs + 8)*sizeof(*va));
+	if(v->nattrs == MAXVATTRS)
+		sysfatal("too many vertex attributes or uniforms");
 	v->attrs[v->nattrs++] = *va;
 }
 
@@ -31,18 +31,6 @@ copyvattrs(BVertex *d, BVertex *s)
 
 	for(i = 0; i < s->nattrs; i++)
 		addvattr(d, &s->attrs[i]);
-}
-
-BVertex
-_dupvertex(BVertex *v)
-{
-	BVertex nv;
-
-	nv = *v;
-	nv.attrs = nil;
-	nv.nattrs = 0;
-	copyvattrs(&nv, v);
-	return nv;
 }
 
 void
@@ -168,14 +156,6 @@ _getvattr(Vertexattrs *v, char *id)
 		if(id != nil && strcmp(v->attrs[i].id, id) == 0)
 			return &v->attrs[i];
 	return nil;
-}
-
-void
-_delvattrs(BVertex *v)
-{
-	free(v->attrs);
-	v->attrs= nil;
-	v->nattrs = 0;
 }
 
 void

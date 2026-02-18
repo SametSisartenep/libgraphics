@@ -458,10 +458,6 @@ discard:
 //		∇z.f0 += ∇z.dy;
 //		∇pcz.f0 += ∇pcz.dy;
 	}
-
-//	_delvattrs(vp);
-//	_delvattrs(&∇v.dx);
-//	_delvattrs(&∇v.dy);
 }
 
 static void
@@ -523,11 +519,6 @@ rasterizer(void *arg)
 		fsp.scene = task.job->camera->scene;
 		task.fsp = &fsp;
 		(*rasterfn[task.p.type])(&task);
-
-		_delvattrs(&v);
-		if(task.p.type != PPoint)
-			for(i = 0; i < task.p.type+1; i++)
-				_delvattrs(&task.p.v[i]);
 	}
 }
 
@@ -631,7 +622,6 @@ tiler(void *arg)
 			switch(p->type){
 			case PPoint:
 				p->v[0].mtl = p->mtl;
-				p->v[0].attrs = nil;
 				p->v[0].nattrs = 0;
 
 				vsp.v = &p->v[0];
@@ -651,16 +641,13 @@ tiler(void *arg)
 					if(ptinrect(bbox.min, wr[i])){
 						rtask.clipr = &task.job->cliprects[i];
 						rtask.p = *p;
-						rtask.p.v[0] = _dupvertex(&p->v[0]);
 						send(taskchans[i], &rtask);
 						break;
 					}
-				_delvattrs(&p->v[0]);
 				break;
 			case PLine:
 				for(i = 0; i < 2; i++){
 					p->v[i].mtl = p->mtl;
-					p->v[i].attrs = nil;
 					p->v[i].nattrs = 0;
 
 					vsp.v = &p->v[i];
@@ -691,17 +678,12 @@ tiler(void *arg)
 						rtask.wr = wr[i];
 						rtask.clipr = &task.job->cliprects[i];
 						rtask.p = *p;
-						rtask.p.v[0] = _dupvertex(&p->v[0]);
-						rtask.p.v[1] = _dupvertex(&p->v[1]);
 						send(taskchans[i], &rtask);
 					}
-				_delvattrs(&p->v[0]);
-				_delvattrs(&p->v[1]);
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
 					p->v[i].mtl = p->mtl;
-					p->v[i].attrs = nil;
 					p->v[i].nattrs = 0;
 					p->v[i].tangent = p->tangent;
 
@@ -723,7 +705,7 @@ tiler(void *arg)
 					/* culling */
 					if((vsp.camera->cullmode == CullFront && !isfacingback(p))
 					|| (vsp.camera->cullmode == CullBack && isfacingback(p)))
-						goto skiptri;
+						continue;
 
 					p->v[0].p = ndc2viewport(vsp.fb, p->v[0].p);
 					p->v[1].p = ndc2viewport(vsp.fb, p->v[1].p);
@@ -740,15 +722,8 @@ tiler(void *arg)
 							rectclip(&rtask.wr, wr[i]);
 							rtask.clipr = &task.job->cliprects[i];
 							rtask.p = *p;
-							rtask.p.v[0] = _dupvertex(&p->v[0]);
-							rtask.p.v[1] = _dupvertex(&p->v[1]);
-							rtask.p.v[2] = _dupvertex(&p->v[2]);
 							send(taskchans[i], &rtask);
 						}
-skiptri:
-					_delvattrs(&p->v[0]);
-					_delvattrs(&p->v[1]);
-					_delvattrs(&p->v[2]);
 				}
 				break;
 			default: sysfatal("alien primitive detected");
