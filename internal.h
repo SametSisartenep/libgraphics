@@ -26,9 +26,8 @@ struct BPrimitive
 
 struct Polygon
 {
-	BVertex *v;
+	BVertex v[8];
 	ulong n;
-	ulong cap;
 };
 
 /* common task params */

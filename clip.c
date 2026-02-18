@@ -31,9 +31,7 @@ mulsdm(double r[6], double m[6][4], Point3 p)
 static int
 addvert(Polygon *p, BVertex v)
 {
-	if(++p->n > p->cap)
-		p->v = _erealloc(p->v, (p->cap = p->n)*sizeof(*p->v));
-	p->v[p->n-1] = v;
+	p->v[p->n++] = v;
 	return p->n;
 }
 
@@ -43,7 +41,7 @@ fprintpoly(int fd, Polygon *p)
 	int i;
 
 	for(i = 0; i < p->n; i++)
-		fprint(fd, "%d/%lud p %V\n", i, p->n, p->v[i].p);
+		fprint(fd, "%d n %lud p %V\n", i, p->n, p->v[i].p);
 }
 
 /*
@@ -129,8 +127,6 @@ allin:
 			break;
 		}
 	}
-	free(Vout->v);
-	free(Vin->v);
 
 	return np;
 }

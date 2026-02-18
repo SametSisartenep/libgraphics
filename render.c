@@ -7,6 +7,9 @@
 #include "graphics.h"
 #include "internal.h"
 
+#define TILESTKSZ	(32*1024)
+#define PROCSTKSZ	(8*1024)
+
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
@@ -763,13 +766,13 @@ entityproc(void *arg)
 		tp->taskc = ttaskchans[i];
 		tp->taskchans = rtaskchans;
 		tp->nproc = nproc;
-		proccreate(tiler, tp, mainstacksize);
+		proccreate(tiler, tp, TILESTKSZ);
 	}
 	for(i = 0; i < nproc; i++){
 		rp = _emalloc(sizeof *rp);
 		rp->id = i;
 		rp->taskc = rtaskchans[i] = chancreate(sizeof(Rastertask), 2048);
-		proccreate(rasterizer, rp, mainstacksize);
+		proccreate(rasterizer, rp, PROCSTKSZ);
 	}
 
 	while(recv(ep->taskc, &task) > 0){
@@ -843,7 +846,7 @@ renderer(void *arg)
 	ep = _emalloc(sizeof *ep);
 	ep->rctl = rctl;
 	ep->taskc = chancreate(sizeof(Entitytask), 256);
-	proccreate(entityproc, ep, mainstacksize);
+	proccreate(entityproc, ep, PROCSTKSZ);
 
 	while((job = recvp(rctl->jobq)) != nil){
 		if(job->rctl->doprof)
@@ -891,6 +894,6 @@ initgraphics(void)
 	memset(r, 0, sizeof *r);
 	r->jobq = chancreate(sizeof(Renderjob*), 8);
 	r->nprocs = nproc;
-	proccreate(renderer, r, mainstacksize);
+	proccreate(renderer, r, PROCSTKSZ);
 	return r;
 }
