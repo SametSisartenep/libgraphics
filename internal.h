@@ -15,6 +15,7 @@ typedef struct Rastertask Rastertask;
 typedef struct fGradient fGradient;
 typedef struct pGradient pGradient;
 typedef struct vGradient vGradient;
+typedef struct Gradients Gradients;
 
 struct BPrimitive
 {
@@ -100,6 +101,14 @@ struct vGradient
 	BVertex dy;
 };
 
+struct Gradients
+{
+	vGradient v;
+	pGradient bc;
+	fGradient z;
+	fGradient pcz;
+};
+
 /* alloc */
 void *_emalloc(ulong);
 void *_erealloc(void*, ulong);
@@ -127,7 +136,6 @@ Framebufctl *_mkfbctl(Rectangle);
 void _rmfbctl(Framebufctl*);
 
 /* vertex */
-void _loadvertex(BVertex*, BVertex*);
 void _lerpvertex(BVertex*, BVertex*, BVertex*, double);
 void _berpvertex(BVertex*, BVertex*, BVertex*, BVertex*, Point3);
 void _addvertex(BVertex*, BVertex*);

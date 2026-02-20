@@ -229,7 +229,7 @@ rasterizept(Rastertask *task)
 		pixel(cr, p, c, ropts & ROBlend);
 
 	task->clipr->min = minpt(task->clipr->min, p);
-	task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
+	task->clipr->max = maxpt(task->clipr->max, p);
 }
 
 static void
@@ -276,14 +276,15 @@ rasterizeline(Rastertask *task)
 	}
 
 	dp = subpt(p1, p0);
+	dplen = hypot(dp.x, dp.y);
+	dplen = dplen == 0? 0: 1.0/dplen;
 	Δe = 2*abs(dp.y);
 	e = 0;
 	Δy = p1.y > p0.y? 1: -1;
 
 	for(p = p0; p.x <= p1.x; p.x++){
 		Δp = subpt(p, p0);
-		dplen = hypot(dp.x, dp.y);
-		perc = dplen == 0? 0: hypot(Δp.x, Δp.y)/dplen;
+		perc = dplen*hypot(Δp.x, Δp.y);
 
 		if(steep) SWAP(int, &p.x, &p.y);
 
@@ -313,7 +314,7 @@ rasterizeline(Rastertask *task)
 			pixel(cr, p, c, ropts & ROBlend);
 
 		task->clipr->min = minpt(task->clipr->min, p);
-		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
+		task->clipr->max = maxpt(task->clipr->max, p);
 discard:
 		if(steep) SWAP(int, &p.x, &p.y);
 
@@ -342,17 +343,46 @@ _barycoords(Point2 p0, Point2 p1, Point2 p2, Point2 p)
 }
 
 static void
+initgradients(Gradients *∇, BPrimitive *prim, Point2 p0)
+{
+	Point2 t[3];
+
+	t[0] = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
+	t[1] = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
+	t[2] = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
+
+	∇->bc.p0 = _barycoords(t[0], t[1], t[2], p0);
+	∇->bc.dx = mulpt3((Point3){
+		t[2].y - t[1].y,
+		t[0].y - t[2].y,
+		t[1].y - t[0].y, 0}, ∇->bc.p0.w);
+	∇->bc.dy = mulpt3((Point3){
+		t[1].x - t[2].x,
+		t[2].x - t[0].x,
+		t[0].x - t[1].x, 0}, ∇->bc.p0.w);
+
+	_berpvertex(&∇->v.v0, prim->v+0, prim->v+1, prim->v+2, ∇->bc.p0);
+	_berpvertex(&∇->v.dx, prim->v+0, prim->v+1, prim->v+2, ∇->bc.dx);
+	_berpvertex(&∇->v.dy, prim->v+0, prim->v+1, prim->v+2, ∇->bc.dy);
+
+	∇->z.f0 = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.p0);
+	∇->z.dx = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.dx);
+	∇->z.dy = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.dy);
+
+	∇->pcz.f0 = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.p0);
+	∇->pcz.dx = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.dx);
+	∇->pcz.dy = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.dy);
+}
+
+static void
 rasterizetri(Rastertask *task)
 {
 	Shaderparams *sp;
 	Raster *cr, *zr;
 	BPrimitive *prim;
-	pGradient ∇bc;
-//	vGradient ∇v;
-//	fGradient ∇z, ∇pcz;
-//	BVertex v, *vp;
+	Gradients ∇;
+	BVertex v;
 	Point p;
-	Point2 t[3];
 	Point3 bc;
 	Color c;
 	float z, pcz;
@@ -366,79 +396,49 @@ rasterizetri(Rastertask *task)
 
 	ropts = sp->camera->rendopts;
 
-//	memset(&v, 0, sizeof v);
-//	vp = &v;
-
-	t[0] = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
-	t[1] = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
-	t[2] = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
-
-	∇bc.p0 = _barycoords(t[0], t[1], t[2], (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
-	∇bc.dx = mulpt3((Point3){t[2].y - t[1].y, t[0].y - t[2].y, t[1].y - t[0].y, 0}, ∇bc.p0.w);
-	∇bc.dy = mulpt3((Point3){t[1].x - t[2].x, t[2].x - t[0].x, t[0].x - t[1].x, 0}, ∇bc.p0.w);
-
-//	/* TODO find a good method to apply the fill rule */
-//	if(istoporleft(&t[1], &t[2])){
-//		∇bc.p0.x -= ∇bc.p0.w;
-//		∇bc.dx.x -= ∇bc.p0.w;
-//		∇bc.dy.x -= ∇bc.p0.w;
-//	}
-//	if(istoporleft(&t[2], &t[0])){
-//		∇bc.p0.y -= ∇bc.p0.w;
-//		∇bc.dx.y -= ∇bc.p0.w;
-//		∇bc.dy.y -= ∇bc.p0.w;
-//	}
-//	if(istoporleft(&t[0], &t[1])){
-//		∇bc.p0.z -= ∇bc.p0.w;
-//		∇bc.dx.z -= ∇bc.p0.w;
-//		∇bc.dy.z -= ∇bc.p0.w;
-//	}
-
 	/* perspective divide vertex attributes */
 	_mulvertex(prim->v+0, prim->v[0].p.w);
 	_mulvertex(prim->v+1, prim->v[1].p.w);
 	_mulvertex(prim->v+2, prim->v[2].p.w);
 
-//	memset(&∇v, 0, sizeof ∇v);
-//	_berpvertex(&∇v.v0, prim->v+0, prim->v+1, prim->v+2, ∇bc.p0);
-//	_berpvertex(&∇v.dx, prim->v+0, prim->v+1, prim->v+2, ∇bc.dx);
-//	_berpvertex(&∇v.dy, prim->v+0, prim->v+1, prim->v+2, ∇bc.dy);
-//
-//	∇z.f0 = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.p0);
-//	∇z.dx = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.dx);
-//	∇z.dy = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇bc.dy);
-//
-//	∇pcz.f0 = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.p0);
-//	∇pcz.dx = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.dx);
-//	∇pcz.dy = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇bc.dy);
+	initgradients(&∇, prim, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
+
+//	/* TODO find a good method to apply the fill rule */
+//	if(istoporleft(&t[1], &t[2])){
+//		∇.bc.p0.x -= ∇.bc.p0.w;
+//		∇.bc.dx.x -= ∇.bc.p0.w;
+//		∇.bc.dy.x -= ∇.bc.p0.w;
+//	}
+//	if(istoporleft(&t[2], &t[0])){
+//		∇.bc.p0.y -= ∇.bc.p0.w;
+//		∇.bc.dx.y -= ∇.bc.p0.w;
+//		∇.bc.dy.y -= ∇.bc.p0.w;
+//	}
+//	if(istoporleft(&t[0], &t[1])){
+//		∇.bc.p0.z -= ∇.bc.p0.w;
+//		∇.bc.dx.z -= ∇.bc.p0.w;
+//		∇.bc.dy.z -= ∇.bc.p0.w;
+//	}
 
 	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++){
-		bc = ∇bc.p0;
-//		*sp->v = ∇v.v0;
-//		z = ∇z.f0;
-//		pcz = ∇pcz.f0;
+		bc = ∇.bc.p0;
+		*sp->v = ∇.v.v0;
+		z = ∇.z.f0;
+		pcz = ∇.pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
 
-		z = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, bc);
 		if((ropts & RODepth) && z <= getdepth(zr, p))
 			goto discard;
 
-		/* interpolate z⁻¹ and get actual z */
-		pcz = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, bc);
-		pcz = 1.0/(pcz < ε1? ε1: pcz);
-
 		/* perspective-correct attribute interpolation  */
-		_berpvertex(sp->v, prim->v+0, prim->v+1, prim->v+2, mulpt3(bc, pcz));
+		v = *sp->v;
+		_mulvertex(sp->v, 1.0/(pcz < ε1? ε1: pcz));
 
-//		_loadvertex(vp, sp->v);
-//		_mulvertex(vp, 1/(pcz < ε1? ε1: pcz));
-
-//		SWAP(BVertex*, &vp, &sp->v);
 		sp->p = p;
 		c = sp->stab->fs(sp);
-//		SWAP(BVertex*, &vp, &sp->v);
+		*sp->v = v;
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
@@ -449,17 +449,17 @@ rasterizetri(Rastertask *task)
 			pixel(cr, p, c, ropts & ROBlend);
 
 		task->clipr->min = minpt(task->clipr->min, p);
-		task->clipr->max = maxpt(task->clipr->max, addpt(p, (Point){1,1}));
+		task->clipr->max = maxpt(task->clipr->max, p);
 discard:
-		bc = addpt3(bc, ∇bc.dx);
-//		_addvertex(sp->v, &∇v.dx);
-//		z += ∇z.dx;
-//		pcz += ∇pcz.dx;
+		bc = addpt3(bc, ∇.bc.dx);
+		_addvertex(sp->v, &∇.v.dx);
+		z += ∇.z.dx;
+		pcz += ∇.pcz.dx;
 	}
-		∇bc.p0 = addpt3(∇bc.p0, ∇bc.dy);
-//		_addvertex(&∇v.v0, &∇v.dy);
-//		∇z.f0 += ∇z.dy;
-//		∇pcz.f0 += ∇pcz.dy;
+		∇.bc.p0 = addpt3(∇.bc.p0, ∇.bc.dy);
+		_addvertex(&∇.v.v0, &∇.v.dy);
+		∇.z.f0 += ∇.z.dy;
+		∇.pcz.f0 += ∇.pcz.dy;
 	}
 }
 
@@ -482,7 +482,6 @@ rasterizer(void *arg)
 	threadsetname("rasterizer %d", rp->id);
 
 	memset(&fsp, 0, sizeof fsp);
-	memset(&v, 0, sizeof v);
 	fsp.v = &v;
 	fsp.getuniform = sparams_getuniform;
 	fsp.getattr = sparams_getattr;
@@ -505,6 +504,8 @@ rasterizer(void *arg)
 					job->cliprects[0].max = maxpt(job->cliprects[0].max, job->cliprects[i].max);
 				}
 				job->fb->clipr = job->cliprects[0];
+				job->fb->clipr.max.x++;
+				job->fb->clipr.max.y++;
 
 				if(job->rctl->doprof)
 					job->times.Rn[rp->id].t1 = nanosec();
@@ -546,15 +547,18 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 	int i;
 
 	d->type = s->type;
+	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);
+	d->mtl = s->mtl;
 	for(i = 0; i < s->type+1; i++){
 		v = itemarrayget(m->verts, s->v[i]);
 		d->v[i].p = *(Point3*)itemarrayget(m->positions, v->p);
 		d->v[i].n = v->n == NaI? ZP3: *(Point3*)itemarrayget(m->normals, v->n);
 		d->v[i].uv = v->uv == NaI? ZP2: *(Point2*)itemarrayget(m->texcoords, v->uv);
 		d->v[i].c = v->c == NaI? ZP3: *(Color*)itemarrayget(m->colors, v->c);
+		d->v[i].tangent = d->tangent;
+		d->v[i].mtl = d->mtl;
+		d->v[i].nattrs = 0;
 	}
-	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);
-	d->mtl = s->mtl;
 	return d;
 }
 
@@ -624,9 +628,6 @@ tiler(void *arg)
 
 			switch(p->type){
 			case PPoint:
-				p->v[0].mtl = p->mtl;
-				p->v[0].nattrs = 0;
-
 				vsp.v = &p->v[0];
 				vsp.idx = 0;
 				p->v[0].p = vsp.stab->vs(&vsp);
@@ -650,9 +651,6 @@ tiler(void *arg)
 				break;
 			case PLine:
 				for(i = 0; i < 2; i++){
-					p->v[i].mtl = p->mtl;
-					p->v[i].nattrs = 0;
-
 					vsp.v = &p->v[i];
 					vsp.idx = i;
 					p->v[i].p = vsp.stab->vs(&vsp);
@@ -660,11 +658,10 @@ tiler(void *arg)
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
 					np = _clipprimitive(p, cp);
+					if(np < 1)
+						break;
 					p = cp;
 				}
-
-				if(np < 1)
-					break;
 
 				p->v[0].p = clip2ndc(p->v[0].p);
 				p->v[1].p = clip2ndc(p->v[1].p);
@@ -686,10 +683,6 @@ tiler(void *arg)
 				break;
 			case PTriangle:
 				for(i = 0; i < 3; i++){
-					p->v[i].mtl = p->mtl;
-					p->v[i].nattrs = 0;
-					p->v[i].tangent = p->tangent;
-
 					vsp.v = &p->v[i];
 					vsp.idx = i;
 					p->v[i].p = vsp.stab->vs(&vsp);
