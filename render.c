@@ -544,20 +544,21 @@ static BPrimitive *
 assembleprim(BPrimitive *d, Primitive *s, Model *m)
 {
 	Vertex *v;
-	int i;
+	BVertex *dv;
+	usize *sv;
 
 	d->type = s->type;
 	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);
 	d->mtl = s->mtl;
-	for(i = 0; i < s->type+1; i++){
-		v = itemarrayget(m->verts, s->v[i]);
-		d->v[i].p = *(Point3*)itemarrayget(m->positions, v->p);
-		d->v[i].n = v->n == NaI? ZP3: *(Point3*)itemarrayget(m->normals, v->n);
-		d->v[i].uv = v->uv == NaI? ZP2: *(Point2*)itemarrayget(m->texcoords, v->uv);
-		d->v[i].c = v->c == NaI? ZP3: *(Color*)itemarrayget(m->colors, v->c);
-		d->v[i].tangent = d->tangent;
-		d->v[i].mtl = d->mtl;
-		d->v[i].nattrs = 0;
+	for(dv = &d->v[0], sv = &s->v[0]; dv < d->v + s->type+1; dv++, sv++){
+		v = itemarrayget(m->verts, *sv);
+		dv->p = *(Point3*)itemarrayget(m->positions, v->p);
+		dv->n = v->n == NaI? ZP3: *(Point3*)itemarrayget(m->normals, v->n);
+		dv->uv = v->uv == NaI? ZP2: *(Point2*)itemarrayget(m->texcoords, v->uv);
+		dv->c = v->c == NaI? ZP3: *(Color*)itemarrayget(m->colors, v->c);
+		dv->tangent = d->tangent;
+		dv->mtl = d->mtl;
+		dv->nattrs = 0;
 	}
 	return d;
 }
