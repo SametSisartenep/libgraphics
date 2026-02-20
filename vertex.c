@@ -10,39 +10,20 @@
 static void
 addvattr(Vertexattrs *v, Vertexattr *va)
 {
-	int i;
+	Vertexattr *vp, *ve;
 
 	assert(va->id != nil);
 
-	for(i = 0; i < v->nattrs; i++)
-		if(strcmp(v->attrs[i].id, va->id) == 0){
-			v->attrs[i] = *va;
+	vp = v->attrs;
+	ve = vp + v->nattrs;
+	for(; vp < ve; vp++)
+		if(strcmp(vp->id, va->id) == 0){
+			*vp = *va;
 			return;
 		}
 	if(v->nattrs == MAXVATTRS)
 		sysfatal("too many vertex attributes or uniforms");
 	v->attrs[v->nattrs++] = *va;
-}
-
-static void
-copyvattrs(BVertex *d, BVertex *s)
-{
-	int i;
-
-	for(i = 0; i < s->nattrs; i++)
-		addvattr(d, &s->attrs[i]);
-}
-
-void
-_loadvertex(BVertex *d, BVertex *s)
-{
-	d->p = s->p;
-	d->n = s->n;
-	d->c = s->c;
-	d->uv = s->uv;
-	d->tangent = s->tangent;
-	d->mtl = s->mtl;
-	copyvattrs(d, s);
 }
 
 /*
@@ -51,8 +32,7 @@ _loadvertex(BVertex *d, BVertex *s)
 void
 _lerpvertex(BVertex *v, BVertex *v0, BVertex *v1, double t)
 {
-	Vertexattr va;
-	int i;
+	Vertexattr va, *v0a, *v1a, *ve;
 
 	v->p = lerp3(v0->p, v1->p, t);
 	v->n = lerp3(v0->n, v1->n, t);
@@ -60,13 +40,17 @@ _lerpvertex(BVertex *v, BVertex *v0, BVertex *v1, double t)
 	v->uv = lerp2(v0->uv, v1->uv, t);
 	v->tangent = lerp3(v0->tangent, v1->tangent, t);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl;
-	for(i = 0; i < v0->nattrs; i++){
-		va.id = v0->attrs[i].id;
-		va.type = v0->attrs[i].type;
+	v->nattrs = 0;
+	v0a = v0->attrs;
+	v1a = v1->attrs;
+	ve = v0a + v0->nattrs;
+	for(; v0a < ve; v0a++, v1a++){
+		va.id = v0a->id;
+		va.type = v0a->type;
 		if(va.type == VAPoint)
-			va.p = lerp3(v0->attrs[i].p, v1->attrs[i].p, t);
+			va.p = lerp3(v0a->p, v1a->p, t);
 		else
-			va.n = flerp(v0->attrs[i].n, v1->attrs[i].n, t);
+			va.n = flerp(v0a->n, v1a->n, t);
 		addvattr(v, &va);
 	}
 }
@@ -77,8 +61,7 @@ _lerpvertex(BVertex *v, BVertex *v0, BVertex *v1, double t)
 void
 _berpvertex(BVertex *v, BVertex *v0, BVertex *v1, BVertex *v2, Point3 bc)
 {
-	Vertexattr va;
-	int i;
+	Vertexattr va, *v0a, *v1a, *v2a, *ve;
 
 	v->p = berp3(v0->p, v1->p, v2->p, bc);
 	v->n = berp3(v0->n, v1->n, v2->n, bc);
@@ -86,13 +69,18 @@ _berpvertex(BVertex *v, BVertex *v0, BVertex *v1, BVertex *v2, Point3 bc)
 	v->uv = berp2(v0->uv, v1->uv, v2->uv, bc);
 	v->tangent = berp3(v0->tangent, v1->tangent, v2->tangent, bc);
 	v->mtl = v0->mtl != nil? v0->mtl: v1->mtl != nil? v1->mtl: v2->mtl;
-	for(i = 0; i < v0->nattrs; i++){
-		va.id = v0->attrs[i].id;
-		va.type = v0->attrs[i].type;
+	v->nattrs = 0;
+	v0a = v0->attrs;
+	v1a = v1->attrs;
+	v2a = v2->attrs;
+	ve = v0a + v0->nattrs;
+	for(; v0a < ve; v0a++, v1a++, v2a++){
+		va.id = v0a->id;
+		va.type = v0a->type;
 		if(va.type == VAPoint)
-			va.p = berp3(v0->attrs[i].p, v1->attrs[i].p, v2->attrs[i].p, bc);
+			va.p = berp3(v0a->p, v1a->p, v2a->p, bc);
 		else
-			va.n = fberp(v0->attrs[i].n, v1->attrs[i].n, v2->attrs[i].n, bc);
+			va.n = fberp(v0a->n, v1a->n, v2a->n, bc);
 		addvattr(v, &va);
 	}
 }
@@ -100,14 +88,14 @@ _berpvertex(BVertex *v, BVertex *v0, BVertex *v1, BVertex *v2, Point3 bc)
 void
 _addvertex(BVertex *a, BVertex *b)
 {
-	Vertexattr *va, *vb;
+	Vertexattr *va, *vb, *ve;
 
 	a->n = addpt3(a->n, b->n);
 	a->c = addpt3(a->c, b->c);
 	a->uv = addpt2(a->uv, b->uv);
 	a->tangent = addpt3(a->tangent, b->tangent);
-	for(va = a->attrs; va < a->attrs + a->nattrs; va++){
-		vb = b->attrs + (va - a->attrs);
+	ve = a->attrs + a->nattrs;
+	for(va = a->attrs, vb = b->attrs; va < ve; va++, vb++){
 		if(va->type == VAPoint)
 			va->p = addpt3(va->p, vb->p);
 		else
@@ -118,13 +106,14 @@ _addvertex(BVertex *a, BVertex *b)
 void
 _mulvertex(BVertex *v, double s)
 {
-	Vertexattr *va;
+	Vertexattr *va, *ve;
 
 	v->n = mulpt3(v->n, s);
 	v->c = mulpt3(v->c, s);
 	v->uv = mulpt2(v->uv, s);
 	v->tangent = mulpt3(v->tangent, s);
-	for(va = v->attrs; va < v->attrs + v->nattrs; va++){
+	ve = v->attrs + v->nattrs;
+	for(va = v->attrs; va < ve; va++){
 		if(va->type == VAPoint)
 			va->p = mulpt3(va->p, s);
 		else
@@ -150,11 +139,15 @@ _addvattr(Vertexattrs *v, char *id, int type, void *val)
 Vertexattr *
 _getvattr(Vertexattrs *v, char *id)
 {
-	int i;
+	Vertexattr *va, *ve;
 
-	for(i = 0; i < v->nattrs; i++)
-		if(id != nil && strcmp(v->attrs[i].id, id) == 0)
-			return &v->attrs[i];
+	if(id == nil)
+		return nil;
+
+	ve = v->attrs + v->nattrs;
+	for(va = v->attrs; va < ve; va++)
+		if(strcmp(va->id, id) == 0)
+			return va;
 	return nil;
 }
 
