@@ -843,7 +843,7 @@ renderer(void *arg)
 	proccreate(entityproc, ep, PROCSTKSZ);
 
 	while((job = recvp(rctl->jobq)) != nil){
-		if(job->rctl->doprof)
+		if(rctl->doprof)
 			job->times.R.t0 = nanosec();
 
 		job->id = lastid++;
@@ -867,7 +867,7 @@ renderer(void *arg)
 		task.islast = 1;
 		send(ep->taskc, &task);
 
-		if(job->rctl->doprof)
+		if(rctl->doprof)
 			job->times.R.t1 = nanosec();
 	}
 }

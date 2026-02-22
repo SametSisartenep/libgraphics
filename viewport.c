@@ -22,16 +22,24 @@ updatestats(Viewport *c, uvlong v)
 static void
 viewport_draw(Viewport *v, Image *dst, char *rname)
 {
+	Viewdrawctx *ctx;
 	Point off, scale;
 	uvlong t0, t1;
 
+	ctx = &v->dctx;
+	if(ctx->img == nil){
+		ctx->img = allocimage(display, v->r, RGBA32, 0, 0);
+		if(ctx->img == nil)
+			sysfatal("allocimage: %r");
+	}
+
 	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
-	scale.x = max(v->bx.x, 1);
-	scale.y = max(v->by.y, 1);
+	scale.x = v->bx.x;
+	scale.y = v->by.y;
 
 	t0 = nanosec();
-	v->fbctl->draw(v->fbctl, dst, rname, off, scale);
+	v->fbctl->draw(v->fbctl, dst, rname, off, scale, ctx);
 	t1 = nanosec();
 	updatestats(v, t1-t0);
 }
@@ -43,19 +51,32 @@ viewport_memdraw(Viewport *v, Memimage *dst, char *rname)
 
 	off = Pt(v->p.x, v->p.y);
 	/* no downsampling support yet */
-	scale.x = max(v->bx.x, 1);
-	scale.y = max(v->by.y, 1);
+	scale.x = v->bx.x;
+	scale.y = v->by.y;
 
-	v->fbctl->memdraw(v->fbctl, dst, rname, off, scale);
+	v->fbctl->memdraw(v->fbctl, dst, rname, off, scale, &v->dctx);
 }
 
 static void
 viewport_setscale(Viewport *v, double sx, double sy)
 {
+	Viewdrawctx *ctx;
+
 	assert(sx > 0 && sy > 0);
 
 	v->bx.x = sx;
 	v->by.y = sy;
+
+	ctx = &v->dctx;
+	if(sx > 1 || sy > 1){
+		if(ctx->blk != nil)
+			free(ctx->blk);
+		ctx->blk = _emalloc(sx*Dx(v->r)*sy*4);
+		ctx->blkr = Rect(0, 0, sx*Dx(v->r), sy);
+	}else if(ctx->blk != nil){
+		free(ctx->blk);
+		ctx->blk = nil;
+	}
 }
 
 static void
@@ -105,7 +126,7 @@ mkviewport(Rectangle r)
 	}
 
 	v = _emalloc(sizeof *v);
-	memset(&v->stats, 0, sizeof v->stats);
+	memset(v, 0, sizeof *v);
 	v->p = Pt2(0,0,1);
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);
@@ -128,6 +149,8 @@ rmviewport(Viewport *v)
 {
 	if(v == nil)
 		return;
+	free(v->dctx.blk);
+	freeimage(v->dctx.img);
 	_rmfbctl(v->fbctl);
 	free(v);
 }

@@ -82,6 +82,7 @@ typedef struct Abuf Abuf;
 typedef struct Raster Raster;
 typedef struct Framebuf Framebuf;
 typedef struct Framebufctl Framebufctl;
+typedef struct Viewdrawctx Viewdrawctx;
 typedef struct Viewport Viewport;
 typedef struct Camera Camera;
 
@@ -359,8 +360,8 @@ struct Framebufctl
 	uint idx;		/* front buffer index */
 	uint upfilter;		/* upscaling filter */
 
-	void (*draw)(Framebufctl*, Image*, char*, Point, Point);
-	void (*memdraw)(Framebufctl*, Memimage*, char*, Point, Point);
+	void (*draw)(Framebufctl*, Image*, char*, Point, Point, Viewdrawctx*);
+	void (*memdraw)(Framebufctl*, Memimage*, char*, Point, Point, Viewdrawctx*);
 	void (*swap)(Framebufctl*);
 	void (*reset)(Framebufctl*);
 	void (*createraster)(Framebufctl*, char*, ulong);
@@ -369,11 +370,21 @@ struct Framebufctl
 	Framebuf *(*getbb)(Framebufctl*);
 };
 
+struct Viewdrawctx
+{
+	/* draw */
+	Image *img;
+	/* upscaled (mem)?draw */
+	ulong *blk;	/* upscaled scanline */
+	Rectangle blkr;
+};
+
 struct Viewport
 {
 	RFrame;
 	Framebufctl *fbctl;
 	Rectangle r;
+	Viewdrawctx dctx;
 
 	struct {
 		uvlong min, avg, max, acc, n, v;

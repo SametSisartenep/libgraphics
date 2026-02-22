@@ -129,7 +129,7 @@ rasterconvF2C(Raster *dst, Raster *src)
 }
 
 static void
-upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
+upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter, Viewdrawctx *ctx)
 {
 	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
 	Rectangle blkr, dr;
@@ -139,9 +139,9 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	int dx, nl;
 
 	filterfn = nil;
-	dx = Dx(fb->r);
-	blk = _emalloc(scale.x*dx*scale.y*4);
-	blkr = Rect(0,0,scale.x*dx,scale.y);
+	blk = ctx->blk;
+	blkr = ctx->blkr;
+	dx = Dx(blkr);
 	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
 	if(tmp == nil)
 		sysfatal("allocimage: %r");
@@ -170,7 +170,7 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
 	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
 	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
-		filterfn(blkp, fb, sp, scale, scale.x*dx);
+		filterfn(blkp, fb, sp, scale, dx);
 	}
 		dr = blkr;
 		if(rectclip(&dr, dst->r)){
@@ -180,23 +180,22 @@ upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter)
 			nl = Dy(dr);
 			dr.max.y = dr.min.y+1;
 			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
-				loadimage(tmp, dr, (uchar*)(blk + dp.y*scale.x*dx + dp.x), Dx(dr)*4);
+				loadimage(tmp, dr, (uchar*)(blk + dp.y*dx + dp.x), Dx(dr)*4);
 		}
 		blkr.min.y += scale.y;
 		blkr.max.y += scale.y;
 	}
 	draw(dst, dst->r, tmp, nil, tmp->r.min);
 	freeimage(tmp);
-	free(blk);
 }
 
 static void
-framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale)
+framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale, Viewdrawctx *ctx)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
-	Rectangle sr, dr;
 	Image *tmp;
+	Rectangle sr, dr, lr;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -215,35 +214,33 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 	}
 
 	if(scale.x > 1 || scale.y > 1){
-		upscaledraw(r, dst, off, scale, ctl->upfilter);
+		upscaledraw(r, dst, off, scale, ctl->upfilter, ctx);
 		qunlock(ctl);
 		_freeraster(r2);
 		return;
 	}
 
 	/* TODO use the clipr in upscaledraw too */
+	tmp = ctx->img;
 	sr = rectaddpt(fb->clipr, off);
 	dr = rectsubpt(dst->r, dst->r.min);
 	if(rectclip(&sr, dr)){
-		tmp = allocimage(display, sr, RGBA32, 0, 0);
-		if(tmp == nil)
-			sysfatal("allocimage: %r");
-
 		dr = rectaddpt(sr, dst->r.min);
-		dr.max.y = dr.min.y + 1;
 		/* remove offset to get the actual rect within the framebuffer */
-		sr = rectsubpt(sr, off);
-		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadimage(tmp, dr, _rasterbyteaddr(r, sr.min), Dx(dr)*4);
-		draw(dst, rectaddpt(tmp->r, dst->r.min), tmp, nil, tmp->r.min);
-		freeimage(tmp);
+		lr = sr = rectsubpt(sr, off);
+		lr.max.y = lr.min.y + 1;
+		for(; lr.min.y < sr.max.y; lr.min.y++, lr.max.y++)
+			loadimage(tmp, lr, _rasterbyteaddr(r, lr.min), Dx(sr)*4);
+		draw(dst, dr, tmp, nil, sr.min);
+//		border(dst, dr, 1, display->black, ZP);
+//		border(dst, rectaddpt(sr, dst->r.min), 1, display->white, ZP);
 	}
 	qunlock(ctl);
 	_freeraster(r2);
 }
 
 static void
-upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
+upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter, Viewdrawctx *ctx)
 {
 	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
 	Rectangle blkr, dr;
@@ -253,9 +250,9 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 	int dx, nl;
 
 	filterfn = nil;
-	dx = Dx(fb->r);
-	blk = _emalloc(scale.x*dx*scale.y*4);
-	blkr = Rect(0,0,scale.x*dx,scale.y);
+	blk = ctx->blk;
+	blkr = ctx->blkr;
+	dx = Dx(blkr);
 	tmp = _eallocmemimage(dst->r, RGBA32);
 
 	switch(filter){
@@ -282,7 +279,7 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
 	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
 	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
-		filterfn(blkp, fb, sp, scale, scale.x*dx);
+		filterfn(blkp, fb, sp, scale, dx);
 	}
 		dr = blkr;
 		if(rectclip(&dr, dst->r)){
@@ -292,18 +289,17 @@ upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter)
 			nl = Dy(dr);
 			dr.max.y = dr.min.y+1;
 			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
-				loadmemimage(tmp, dr, (uchar*)(blk + dp.y*scale.x*dx + dp.x), Dx(dr)*4);
+				loadmemimage(tmp, dr, (uchar*)(blk + dp.y*dx + dp.x), Dx(dr)*4);
 		}
 		blkr.min.y += scale.y;
 		blkr.max.y += scale.y;
 	}
 	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, SoverD);
 	freememimage(tmp);
-	free(blk);
 }
 
 static void
-framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Point scale)
+framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Point scale, Viewdrawctx *ctx)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
@@ -328,7 +324,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 	}
 
 	if(scale.x > 1 || scale.y > 1){
-		upscalememdraw(r, dst, off, scale, ctl->upfilter);
+		upscalememdraw(r, dst, off, scale, ctl->upfilter, ctx);
 		qunlock(ctl);
 		_freeraster(r2);
 		return;
