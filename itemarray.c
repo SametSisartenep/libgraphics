@@ -26,7 +26,8 @@ itemarrayadd(ItemArray *a, void *i)
 	usize idx;
 
 	idx = a->nitems;
-	a->items = _erealloc(a->items, ++a->nitems * a->itemsize);
+	if(a->nitems++ % 16 == 0)
+		a->items = _erealloc(a->items, (a->nitems + 15)*a->itemsize);
 	p = a->items;
 	p += idx*a->itemsize;
 	memmove(p, i, a->itemsize);
