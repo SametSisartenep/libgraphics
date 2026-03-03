@@ -8,10 +8,13 @@
 - [ ] Avoid writing the same texture multiple times under different names in exportmodel(2)
 - [ ] Add wireframe rendering by a reasonable interface and method
 - [ ] Find out why the A-buffer takes so much memory (enough to run OOM on a 32GB term!)
-- [+] Review the idea of using indexed properties for the vertices
-- [+] Create an internal Vertex type
+- [x] Review the idea of using indexed properties for the vertices
+- [x] Create an internal Vertex type
 - [ ] See if prims can be ordered front-to-back before rasterizing (quick Z-buffer discard)
 	- It might be better to add it as a Camera.rendopts flag, for
 	  transparency rendering without the A-buffer.
 - [ ] Implement decals
-- [+] Implement Model deduplication/compaction routine
+- [x] Implement Model deduplication/compaction routine
+- [ ] Detach Materials from Models
+	- It should be possible to store them separately and to refer
+	  to them from different models
