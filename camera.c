@@ -114,11 +114,11 @@ verifycfg(Camera *c)
 	assert(c->view != nil);
 	if(c->projtype == PERSPECTIVE)
 		assert(c->fov > 0 && c->fov < 180*DEG);
-	assert(c->clip.n > 0 && c->clip.n < c->clip.f);
+	assert(c->znear > 0 && c->znear < c->zfar);
 }
 
 Camera *
-Camv(Viewport *v, Renderer *r, Projection p, double fov, double n, double f)
+Camv(Viewport *v, Renderer *r, int p, double fov, double n, double f)
 {
 	Camera *c;
 
@@ -133,7 +133,7 @@ Camv(Viewport *v, Renderer *r, Projection p, double fov, double n, double f)
 }
 
 Camera *
-Cam(Rectangle vr, Renderer *r, Projection p, double fov, double n, double f)
+Cam(Rectangle vr, Renderer *r, int p, double fov, double n, double f)
 {
 	Viewport *v;
 
@@ -179,11 +179,11 @@ reloadcamera(Camera *c)
 		t = Dy(c->view->r)/2;
 		l = -r;
 		b = -t;
-		orthographic(c->proj, l, r, b, t, c->clip.n, c->clip.f);
+		orthographic(c->proj, l, r, b, t, c->znear, c->zfar);
 		break;
 	case PERSPECTIVE:
 		a = (double)Dx(c->view->r)/Dy(c->view->r);
-		perspective(c->proj, c->fov, a, c->clip.n, c->clip.f);
+		perspective(c->proj, c->fov, a, c->znear, c->zfar);
 		break;
 	default: sysfatal("unknown projection type");
 	}
@@ -193,12 +193,12 @@ reloadcamera(Camera *c)
 }
 
 void
-configcamera(Camera *c, Projection p, double fov, double n, double f)
+configcamera(Camera *c, int p, double fov, double n, double f)
 {
 	c->projtype = p;
 	c->fov = fov;
-	c->clip.n = n;
-	c->clip.f = f;
+	c->znear = n;
+	c->zfar = f;
 	reloadcamera(c);
 }
 
