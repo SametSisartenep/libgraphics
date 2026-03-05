@@ -184,7 +184,8 @@ struct LightSource
 	double		θu;		/* umbra angle. anything beyond is unlit */
 	double		θp;		/* penumbra angle. anything within is fully lit */
 
-	LightSource	*prev, *next;
+	LightSource	*prev;
+	LightSource	*next;
 };
 
 struct Material
@@ -236,8 +237,8 @@ struct Entity
 	RFrame3;
 	char		*name;
 	Model		*mdl;
-
-	Entity		*prev, *next;
+	Entity		*prev;
+	Entity		*next;
 };
 
 struct Scene
@@ -275,9 +276,10 @@ struct Shaderparams
 struct Shadertab
 {
 	char		*name;
+	Vertexattrs;				/* uniforms */
+
 	Point3		(*vs)(Shaderparams*);	/* vertex shader */
 	Color		(*fs)(Shaderparams*);	/* fragment shader */
-	Vertexattrs;				/* uniforms */
 };
 
 struct Rendertime
@@ -303,15 +305,13 @@ struct Renderjob
 	Channel		*donec;
 	Rectangle	*cliprects;	/* one per rasterizer */
 	int		ncliprects;
-
+	Renderjob	*next;
 	struct {
 		Rendertime	R;	/* renderer */
 		Rendertime	E;	/* entityproc */
-		Rendertime*	Tn;	/* tilers */
-		Rendertime*	Rn;	/* rasterizers */
+		Rendertime	*Tn;	/* tilers */
+		Rendertime	*Rn;	/* rasterizers */
 	} times;
-
-	Renderjob	*next;
 };
 
 struct Fragment
