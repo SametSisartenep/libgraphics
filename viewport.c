@@ -103,10 +103,10 @@ viewport_getheight(Viewport *v)
 	return Dy(v->r)*v->by.y;
 }
 
-static void
+static int
 viewport_createraster(Viewport *v, char *name, ulong chan)
 {
-	v->fbctl->createraster(v->fbctl, name, chan);
+	return v->fbctl->createraster(v->fbctl, name, chan);
 }
 
 static Raster *

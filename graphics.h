@@ -337,12 +337,11 @@ struct Abuf
 
 struct Raster
 {
-	char		*name;
+	char		name[32];
 	Rectangle	r;
 	ulong		chan;
-	ulong		*data;
-
 	Raster		*next;
+	ulong		data[];
 };
 
 struct Framebuf
@@ -352,7 +351,7 @@ struct Framebuf
 	Raster		*rasters;	/* [0] color, [1] depth, [2..n] user-defined */
 	Abuf		abuf;		/* A-buffer */
 
-	void		(*createraster)(Framebuf*, char*, ulong);
+	int		(*createraster)(Framebuf*, char*, ulong);
 	Raster*		(*fetchraster)(Framebuf*, char*);
 };
 
@@ -367,7 +366,7 @@ struct Framebufctl
 	void		(*memdraw)(Framebufctl*, Memimage*, char*, Point, Point, Viewdrawctx*);
 	void		(*swap)(Framebufctl*);
 	void		(*reset)(Framebufctl*);
-	void		(*createraster)(Framebufctl*, char*, ulong);
+	int		(*createraster)(Framebufctl*, char*, ulong);
 	Raster*		(*fetchraster)(Framebufctl*, char*);
 	Framebuf*	(*getfb)(Framebufctl*);
 	Framebuf*	(*getbb)(Framebufctl*);
@@ -401,7 +400,7 @@ struct Viewport
 	Framebuf*	(*getfb)(Viewport*);
 	int		(*getwidth)(Viewport*);
 	int		(*getheight)(Viewport*);
-	void		(*createraster)(Viewport*, char*, ulong);
+	int		(*createraster)(Viewport*, char*, ulong);
 	Raster*		(*fetchraster)(Viewport*, char*);
 };
 

@@ -200,7 +200,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 
-	r = fb->fetchraster(fb, name);
+	r = name == nil? fb->rasters: fb->fetchraster(fb, name);
 	if(r == nil){
 		qunlock(ctl);
 		return;
@@ -310,7 +310,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
 
-	r = fb->fetchraster(fb, name);
+	r = name == nil? fb->rasters: fb->fetchraster(fb, name);
 	if(r == nil){
 		qunlock(ctl);
 		return;
@@ -402,13 +402,15 @@ framebufctl_getbb(Framebufctl *ctl)
 	return ctl->fb[ctl->idx^1];	/* back buffer */
 }
 
-static void
+static int
 framebufctl_createraster(Framebufctl *ctl, char *name, ulong chan)
 {
 	Framebuf **fb;
 
 	for(fb = ctl->fb; fb < ctl->fb+2; fb++)
-		(*fb)->createraster(*fb, name, chan);
+		if((*fb)->createraster(*fb, name, chan) < 0)
+			return -1;
+	return 0;
 }
 
 static Raster *
@@ -420,23 +422,26 @@ framebufctl_fetchraster(Framebufctl *ctl, char *name)
 	return fb->fetchraster(fb, name);
 }
 
-static void
+static int
 fb_createraster(Framebuf *fb, char *name, ulong chan)
 {
-	Raster *r;
+	Raster **r;
 
-	assert(name != nil);
+	if(name == nil || name[0] == '\0'){
+		werrstr("name can't be empty");
+		return -1;
+	}
 
-	/*
-	 * TODO might be better to keep a tail so it's O(1)
-	 *
-	 * in practice though, most users won't ever create
-	 * more than ten extra rasters.
-	 */
-	r = fb->rasters;
-	while(r->next != nil)
-		r = r->next;
-	r->next = _allocraster(name, fb->r, chan);
+	r = &fb->rasters;
+	while(*r != nil){
+		if(strcmp((*r)->name, name) == 0){
+			werrstr("duplicate name \"%s\"", name);
+			return -1;
+		}
+		r = &(*r)->next;
+	}
+	*r = _allocraster(name, fb->r, chan);
+	return 0;
 }
 
 static Raster *
@@ -444,11 +449,10 @@ fb_fetchraster(Framebuf *fb, char *name)
 {
 	Raster *r;
 
-	r = fb->rasters;
 	if(name == nil)
-		return r;
+		return nil;
 
-	while((r = r->next) != nil)
+	for(r = fb->rasters; r != nil; r = r->next)
 		if(strcmp(name, r->name) == 0)
 			return r;
 	return nil;
@@ -461,11 +465,13 @@ _mkfb(Rectangle r)
 
 	fb = _emalloc(sizeof *fb);
 	memset(fb, 0, sizeof *fb);
-	fb->rasters = _allocraster(nil, r, COLOR32);
-	fb->rasters->next = _allocraster("z-buffer", r, FLOAT32);
 	fb->r = r;
 	fb->createraster = fb_createraster;
 	fb->fetchraster = fb_fetchraster;
+
+	fb->createraster(fb, "color", COLOR32);
+	fb->createraster(fb, "depth", FLOAT32);
+
 	return fb;
 }
 

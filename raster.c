@@ -12,15 +12,17 @@ _allocraster(char *name, Rectangle rr, ulong chan)
 {
 	Raster *r;
 
-	assert(chan <= FLOAT32);
+	if(chan > FLOAT32){
+		werrstr("bad format");
+		return nil;
+	}
 
-	r = _emalloc(sizeof *r);
-	memset(r, 0, sizeof *r);
+	r = _emalloc(sizeof(Raster) + 4*Dx(rr)*Dy(rr));
+	memset(r, 0, sizeof(Raster));
 	if(name != nil)
-		r->name = _estrdup(name);
+		snprint(r->name, sizeof r->name, "%s", name);
 	r->chan = chan;
 	r->r = rr;
-	r->data = _emalloc(Dx(rr)*Dy(rr)*sizeof(*r->data));
 	return r;
 }
 
@@ -87,9 +89,5 @@ _rastergetfloat(Raster *r, Point p)
 void
 _freeraster(Raster *r)
 {
-	if(r == nil)
-		return;
-	free(r->data);
-	free(r->name);
 	free(r);
 }

@@ -58,8 +58,7 @@ sparams_toraster(Shaderparams *sp, char *rname, void *v)
 	Raster *r;
 	ulong c;
 
-	/* keep the user away from the color buffer */
-	if(rname == nil || v == nil)
+	if(v == nil)
 		return;
 
 	fb = sp->fb;
