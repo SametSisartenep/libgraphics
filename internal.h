@@ -159,3 +159,7 @@ void	_memsetl(void*, ulong, usize);
 
 /* void SWAP(type, type *a, type *b) */
 #define SWAP(t, a, b) {t tmp; tmp = *(a); *(a) = *(b); *(b) = tmp;}
+
+#define RECTXRECT(a, b)\
+	((a).min.x < (b).max.x && (b).min.x < (a).max.x\
+	&& (a).min.y < (b).max.y && (b).min.y < (a).max.y)

@@ -276,10 +276,9 @@ struct Shaderparams
 struct Shadertab
 {
 	char		*name;
-	Vertexattrs;				/* uniforms */
-
 	Point3		(*vs)(Shaderparams*);	/* vertex shader */
 	Color		(*fs)(Shaderparams*);	/* fragment shader */
+	Vertexattrs;				/* uniforms */
 };
 
 struct Rendertime
@@ -331,7 +330,7 @@ struct Abuf
 {
 	QLock;
 	Astk		*stk;	/* framebuffer fragment stacks */
-	Astk*		*act;	/* active fragment stacks */
+	Astk		**act;	/* active fragment stacks */
 	ulong		nact;
 };
 

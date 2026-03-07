@@ -255,7 +255,7 @@ rasterizeline(Rastertask *task)
 	p0 = (Point){prim->v[0].p.x, prim->v[0].p.y};
 	p1 = (Point){prim->v[1].p.x, prim->v[1].p.y};
 	/* clip it against our wr */
-	if(_rectclipline(task->wr, &p0, &p1) < 0)
+	if(!_rectclipline(task->wr, &p0, &p1))
 		return;
 
 	_adjustlineverts(&p0, &p1, prim->v+0, prim->v+1);
@@ -289,8 +289,8 @@ rasterizeline(Rastertask *task)
 
 		z = flerp(prim->v[0].p.z, prim->v[1].p.z, perc);
 		/* TODO get rid of the bounds check and make sure the clipping doesn't overflow */
-		if(!ptinrect(p, sp->fb->r) ||
-		   ((ropts & RODepth) && z <= getdepth(zr, p)))
+		if(!ptinrect(p, sp->fb->r)
+		|| ((ropts & RODepth) && z <= getdepth(zr, p)))
 			goto discard;
 
 		/* interpolate z⁻¹ and get actual z */
@@ -373,6 +373,39 @@ initgradients(Gradients *∇, BPrimitive *prim, Point2 p0)
 	∇->pcz.dy = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.dy);
 }
 
+static Rectangle
+mktribbox(Point3 p0, Point3 p1, Point3 p2, Rectangle wr)
+{
+	Point l[6];
+	Rectangle r;
+	int i;
+
+	l[0] = (Point){p0.x+0.5, p0.y+0.5};
+	l[1] = (Point){p1.x+0.5, p1.y+0.5};
+	l[2] = l[1];
+	l[3] = (Point){p2.x+0.5, p2.y+0.5};
+	l[4] = l[3];
+	l[5] = l[0];
+
+	r.min = (Point){ 100000, 100000};
+	r.max = (Point){-100000,-100000};
+	for(i = 0; i < 6; i += 2)
+		if(_rectclipline(wr, l+i, l+i+1)){
+			r.min.x = min(r.min.x, l[i].x); r.min.x = min(r.min.x, l[i+1].x);
+			r.min.y = min(r.min.y, l[i].y); r.min.y = min(r.min.y, l[i+1].y);
+			r.max.x = max(r.max.x, l[i].x); r.max.x = max(r.max.x, l[i+1].x);
+			r.max.y = max(r.max.y, l[i].y); r.max.y = max(r.max.y, l[i+1].y);
+		}
+	r.max.x++;
+	r.max.y++;
+	/* simplified rectclip(2) */
+	if(r.min.x < wr.min.x) r.min.x = wr.min.x;
+	if(r.min.y < wr.min.y) r.min.y = wr.min.y;
+	if(r.max.x > wr.max.x) r.max.x = wr.max.x;
+	if(r.max.y > wr.max.y) r.max.y = wr.max.y;
+	return r;
+}
+
 static void
 rasterizetri(Rastertask *task)
 {
@@ -394,6 +427,8 @@ rasterizetri(Rastertask *task)
 	zr = cr->next;
 
 	ropts = sp->camera->rendopts;
+
+	task->wr = mktribbox(prim->v[0].p, prim->v[1].p, prim->v[2].p, task->wr);
 
 	/* perspective divide vertex attributes */
 	_mulvertex(prim->v+0, prim->v[0].p.w);
@@ -425,6 +460,13 @@ rasterizetri(Rastertask *task)
 		z = ∇.z.f0;
 		pcz = ∇.pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
+//		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
+//		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
+//			pixel(cr, p, (Color){1,0,0,1}, 0);
+//			putdepth(zr, p, 1);
+//			task->clipr->min = minpt(task->clipr->min, p);
+//			task->clipr->max = maxpt(task->clipr->max, p);
+//		}
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
 
@@ -674,7 +716,7 @@ tiler(void *arg)
 				bbox.max.y = max(p->v[0].p.y, p->v[1].p.y)+1;
 
 				for(i = 0; i < nproc; i++)
-					if(rectXrect(bbox, wr[i])){
+					if(RECTXRECT(bbox, wr[i])){
 						rtask.wr = wr[i];
 						rtask.clipr = &task.job->cliprects[i];
 						rtask.p = *p;
@@ -713,9 +755,8 @@ tiler(void *arg)
 					bbox.max.y = max(max(p->v[0].p.y, p->v[1].p.y), p->v[2].p.y)+1;
 
 					for(i = 0; i < nproc; i++)
-						if(rectXrect(bbox, wr[i])){
-							rtask.wr = bbox;
-							rectclip(&rtask.wr, wr[i]);
+						if(RECTXRECT(bbox, wr[i])){
+							rtask.wr = wr[i];
 							rtask.clipr = &task.job->cliprects[i];
 							rtask.p = *p;
 							send(taskchans[i], &rtask);

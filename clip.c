@@ -131,23 +131,28 @@ allin:
 	return np;
 }
 
-static int
-ptisinside(int code)
-{
-	return !code;
-}
+/* TODO bring these back when we get inline */
+//static int
+//ptisinside(int code)
+//{
+//	return !code;
+//}
+//
+//static int
+//lineisinside(int code0, int code1)
+//{
+//	return !(code0|code1);
+//}
+//
+//static int
+//lineisoutside(int code0, int code1)
+//{
+//	return code0 & code1;
+//}
 
-static int
-lineisinside(int code0, int code1)
-{
-	return !(code0|code1);
-}
-
-static int
-lineisoutside(int code0, int code1)
-{
-	return code0 & code1;
-}
+#define ptisinside(c)		(!c)
+#define lineisinside(c0, c1)	(!(c0|c1))
+#define lineisoutside(c0, c1)	(c0&c1)
 
 static int
 outcode(Point p, Rectangle r)
@@ -208,9 +213,9 @@ _rectclipline(Rectangle r, Point *p0, Point *p1)
 		code1 = outcode(*p1, r);
 
 		if(lineisinside(code0, code1))
-			return 0;
+			return 1;
 		else if(lineisoutside(code0, code1))
-			return -1;
+			return 0;
 
 		if(ptisinside(code0)){
 			SWAP(Point, p0, p1);
