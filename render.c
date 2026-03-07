@@ -376,9 +376,8 @@ initgradients(Gradients *∇, BPrimitive *prim, Point2 p0)
 static Rectangle
 mktribbox(Point3 p0, Point3 p1, Point3 p2, Rectangle wr)
 {
-	Point l[6];
+	Point l[6], *e0, *e1;
 	Rectangle r;
-	int i;
 
 	l[0] = (Point){p0.x+0.5, p0.y+0.5};
 	l[1] = (Point){p1.x+0.5, p1.y+0.5};
@@ -389,13 +388,16 @@ mktribbox(Point3 p0, Point3 p1, Point3 p2, Rectangle wr)
 
 	r.min = (Point){ 100000, 100000};
 	r.max = (Point){-100000,-100000};
-	for(i = 0; i < 6; i += 2)
-		if(_rectclipline(wr, l+i, l+i+1)){
-			r.min.x = min(r.min.x, l[i].x); r.min.x = min(r.min.x, l[i+1].x);
-			r.min.y = min(r.min.y, l[i].y); r.min.y = min(r.min.y, l[i+1].y);
-			r.max.x = max(r.max.x, l[i].x); r.max.x = max(r.max.x, l[i+1].x);
-			r.max.y = max(r.max.y, l[i].y); r.max.y = max(r.max.y, l[i+1].y);
+	for(e0 = &l[0], e1 = &l[1]; e1 < l + nelem(l); e0 += 2, e1 += 2)
+		if(_rectclipline(wr, e0, e1)){
+			r.min.x = min(r.min.x, e0->x); r.min.x = min(r.min.x, e1->x);
+			r.min.y = min(r.min.y, e0->y); r.min.y = min(r.min.y, e1->y);
+			r.max.x = max(r.max.x, e0->x); r.max.x = max(r.max.x, e1->x);
+			r.max.y = max(r.max.y, e0->y); r.max.y = max(r.max.y, e1->y);
 		}
+	/* exception when triangle surrounds the tile */
+	if(r.min.x > r.max.x || r.min.y > r.max.y)
+		return wr;
 	r.max.x++;
 	r.max.y++;
 	/* simplified rectclip(2) */
@@ -460,13 +462,13 @@ rasterizetri(Rastertask *task)
 		z = ∇.z.f0;
 		pcz = ∇.pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
-//		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
-//		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
-//			pixel(cr, p, (Color){1,0,0,1}, 0);
-//			putdepth(zr, p, 1);
-//			task->clipr->min = minpt(task->clipr->min, p);
-//			task->clipr->max = maxpt(task->clipr->max, p);
-//		}
+		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
+		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
+			pixel(cr, p, (Color){1,0,0,1}, 0);
+			putdepth(zr, p, 1);
+			task->clipr->min = minpt(task->clipr->min, p);
+			task->clipr->max = maxpt(task->clipr->max, p);
+		}
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
 
