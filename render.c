@@ -462,13 +462,13 @@ rasterizetri(Rastertask *task)
 		z = ∇.z.f0;
 		pcz = ∇.pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
-		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
-		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
-			pixel(cr, p, (Color){1,0,0,1}, 0);
-			putdepth(zr, p, 1);
-			task->clipr->min = minpt(task->clipr->min, p);
-			task->clipr->max = maxpt(task->clipr->max, p);
-		}
+//		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
+//		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
+//			pixel(cr, p, (Color){1,0,0,1}, 0);
+//			putdepth(zr, p, 1);
+//			task->clipr->min = minpt(task->clipr->min, p);
+//			task->clipr->max = maxpt(task->clipr->max, p);
+//		}
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
 
@@ -743,8 +743,10 @@ tiler(void *arg)
 					p->v[2].p = clip2ndc(p->v[2].p);
 
 					/* culling */
-					if((vsp.camera->cullmode == CullFront && !isfacingback(p))
-					|| (vsp.camera->cullmode == CullBack && isfacingback(p)))
+					if(isfacingback(p)){
+						if(vsp.camera->cullmode == CullBack)
+							continue;
+					}else if(vsp.camera->cullmode == CullFront)
 						continue;
 
 					p->v[0].p = ndc2viewport(vsp.fb, p->v[0].p);
