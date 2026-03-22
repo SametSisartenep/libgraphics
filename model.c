@@ -30,7 +30,7 @@ newmaterial(char *name)
 {
 	Material *mtl;
 
-	if(name == nil){
+	if(name == nil || name[0] == '\0'){
 		werrstr("needs a name");
 		return nil;
 	}
@@ -51,6 +51,7 @@ delmaterial(Material *mtl)
 	freetexture(mtl->specularmap);
 	freetexture(mtl->normalmap);
 	free(mtl->name);
+	free(mtl);
 }
 
 static usize
@@ -95,20 +96,23 @@ model_addprim(Model *m, Primitive P)
 	return itemarrayadd(m->prims, &P);
 }
 
-static int
+static usize
 model_addmaterial(Model *m, Material mtl)
 {
-	m->materials = _erealloc(m->materials, ++m->nmaterials*sizeof(*m->materials));
-	m->materials[m->nmaterials-1] = mtl;
-	return m->nmaterials-1;
+	assert(mtl.name != nil);
+	return itemarrayadd(m->materials, &mtl);
 }
 
 static Material *
 model_getmaterial(Model *m, char *name)
 {
-	Material *mtl;
+	Material *mtl, *last;
 
-	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++)
+	if(name == nil)
+		return nil;
+
+	mtl = m->materials->items;
+	for(last = mtl + m->materials->nitems; mtl < last; mtl++)
 		if(strcmp(mtl->name, name) == 0)
 			return mtl;
 	return nil;
@@ -128,6 +132,7 @@ newmodel(void)
 	m->tangents = mkitemarray(sizeof(Point3));
 	m->verts = mkitemarray(sizeof(Vertex));
 	m->prims = mkitemarray(sizeof(Primitive));
+	m->materials = mkitemarray(sizeof(Material));
 	m->addposition = model_addposition;
 	m->addnormal = model_addnormal;
 	m->addtexcoord = model_addtexcoord;
@@ -137,46 +142,36 @@ newmodel(void)
 	m->addprim = model_addprim;
 	m->addmaterial = model_addmaterial;
 	m->getmaterial = model_getmaterial;
+	incref(m);
 	return m;
 }
 
-Model *
-dupmodel(Model *m)
+void
+copymodel(Model *s, Model *d)
 {
-	Model *nm;
-	Primitive *prim, *nprim;
-	int i;
+	if(d->name)
+		free(d->name);
+	d->name = s->name? _estrdup(s->name): nil;
+	dupitemarray(s->positions, &d->positions);
+	dupitemarray(s->normals, &d->normals);
+	dupitemarray(s->texcoords, &d->texcoords);
+	dupitemarray(s->colors, &d->colors);
+	dupitemarray(s->tangents, &d->tangents);
+	dupitemarray(s->verts, &d->verts);
+	dupitemarray(s->prims, &d->prims);
+	dupitemarray(s->materials, &d->materials);
+}
 
-	if(m == nil)
-		return nil;
+Model *
+dupmodel(Model *s, Model **d)
+{
+	Model *t;
 
-	nm = newmodel();
-	if(m->nmaterials > 0){
-		nm->nmaterials = m->nmaterials;
-		nm->materials = _emalloc(nm->nmaterials*sizeof(*nm->materials));
-		for(i = 0; i < m->nmaterials; i++){
-			nm->materials[i] = m->materials[i];
-			nm->materials[i].diffusemap = duptexture(m->materials[i].diffusemap);
-			nm->materials[i].specularmap = duptexture(m->materials[i].specularmap);
-			nm->materials[i].normalmap = duptexture(m->materials[i].normalmap);
-			nm->materials[i].name = _estrdup(m->materials[i].name);
-		}
-	}
-	nm->positions = dupitemarray(m->positions);
-	nm->normals = dupitemarray(m->normals);
-	nm->texcoords = dupitemarray(m->texcoords);
-	nm->colors = dupitemarray(m->colors);
-	nm->tangents = dupitemarray(m->tangents);
-	nm->verts = dupitemarray(m->verts);
-	nm->prims = dupitemarray(m->prims);
-	for(i = 0; i < m->prims->nitems && nm->nmaterials > 0; i++){
-		prim = itemarrayget(m->prims, i);
-		if(prim->mtl != nil){
-			nprim = itemarrayget(nm->prims, i);
-			nprim->mtl = &nm->materials[prim->mtl - m->materials];
-		}
-	}
-	return nm;
+	t = *d;
+	*d = s;
+	incref(*d);
+	delmodel(t);
+	return *d;
 }
 
 void
@@ -185,17 +180,18 @@ delmodel(Model *m)
 	if(m == nil)
 		return;
 
-	while(m->nmaterials--)
-		delmaterial(&m->materials[m->nmaterials]);
-	free(m->materials);
-	rmitemarray(m->positions);
-	rmitemarray(m->normals);
-	rmitemarray(m->texcoords);
-	rmitemarray(m->colors);
-	rmitemarray(m->tangents);
-	rmitemarray(m->verts);
-	rmitemarray(m->prims);
-	free(m);
+	if(decref(m) == 0){
+		rmitemarray(m->positions);
+		rmitemarray(m->normals);
+		rmitemarray(m->texcoords);
+		rmitemarray(m->colors);
+		rmitemarray(m->tangents);
+		rmitemarray(m->verts);
+		rmitemarray(m->prims);
+		rmitemarray(m->materials);
+		free(m->name);
+		free(m);
+	}
 }
 
 /*

@@ -16,6 +16,7 @@ mkitemarray(usize is)
 	a = _emalloc(sizeof *a);
 	memset(a, 0, sizeof *a);
 	a->itemsize = is;
+	incref(a);
 	return a;
 }
 
@@ -48,33 +49,39 @@ itemarrayget(ItemArray *a, usize idx)
 }
 
 usize
-copyitemarray(ItemArray *d, ItemArray *s)
+copyitemarray(ItemArray *s, ItemArray *d)
 {
 	usize len;
 
-	assert(d->itemsize == s->itemsize);
 	len = s->nitems * s->itemsize;
-
 	free(d->items);
 	d->items = _emalloc(len);
 	d->nitems = s->nitems;
+	d->itemsize = s->itemsize;
 	memmove(d->items, s->items, len);
 	return d->nitems;
 }
 
+/*
+ * deferring rmitemarray() makes this operation idempotent.
+ */
 ItemArray *
-dupitemarray(ItemArray *a)
+dupitemarray(ItemArray *s, ItemArray **d)
 {
-	ItemArray *na;
+	ItemArray *t;
 
-	na = mkitemarray(a->itemsize);
-	copyitemarray(na, a);
-	return na;
+	t = *d;
+	*d = s;
+	incref(*d);
+	rmitemarray(t);
+	return *d;
 }
 
 void
 rmitemarray(ItemArray *a)
 {
-	free(a->items);
-	free(a);
+	if(decref(a) == 0){
+		free(a->items);
+		free(a);
+	}
 }

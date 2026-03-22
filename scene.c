@@ -42,18 +42,6 @@ newspotlight(Point3 p, Point3 dir, Color c, double θu, double θp)
 	return newlight(LightSpot, p, dir, c, 1000, θu, θp);
 }
 
-LightSource *
-duplight(LightSource *l)
-{
-	LightSource *nl;
-
-	nl = _emalloc(sizeof *nl);
-	memset(nl, 0, sizeof *nl);
-	*nl = *l;
-	nl->prev = nl->next = nil;
-	return nl;
-}
-
 void
 dellight(LightSource *l)
 {
@@ -74,23 +62,6 @@ newentity(char *name, Model *m)
 	e->mdl = m;
 	e->prev = e->next = nil;
 	return e;
-}
-
-Entity *
-dupentity(Entity *e)
-{
-	Entity *ne;
-
-	if(e == nil)
-		return nil;
-
-	ne = newentity(nil, nil);
-	*ne = *e;
-	if(e->name != nil)
-		ne->name = _estrdup(e->name);
-	ne->mdl = dupmodel(e->mdl);
-	ne->prev = ne->next = nil;
-	return ne;
 }
 
 void
@@ -161,25 +132,6 @@ newscene(char *name)
 	s->getent = scene_getent;
 	s->addlight = scene_addlight;
 	return s;
-}
-
-Scene *
-dupscene(Scene *s)
-{
-	Scene *ns;
-	Entity *e;
-	LightSource *l;
-
-	if(s == nil)
-		return nil;
-
-	ns = newscene(s->name);
-	for(e = s->ents.next; e != &s->ents; e = e->next)
-		ns->addent(ns, dupentity(e));
-	for(l = s->lights.next; l != &s->lights; l = l->next)
-		ns->addlight(ns, duplight(l));
-	ns->skybox = dupcubemap(s->skybox);
-	return ns;
 }
 
 void

@@ -24,15 +24,14 @@ typedef struct Mtltab Mtltab;
 
 struct Mtlentry
 {
-	Material;
-	ulong idx;
-	Mtlentry *next;
+	char		*name;
+	ulong		idx;
+	Mtlentry	*next;
 };
 
 struct Mtltab
 {
-	Mtlentry *mtls[MTLHTSIZ];
-	int loaded;			/* was the table loaded into a model already? */
+	Mtlentry	*mtls[MTLHTSIZ];
 };
 
 static void
@@ -71,25 +70,16 @@ mkmtltab(void)
 	return t;
 }
 
-static void
-freemtlentry(Mtlentry *m)
-{
-	freetexture(m->normalmap);
-	freetexture(m->specularmap);
-	freetexture(m->diffusemap);
-	free(m->name);
-	free(m);
-}
-
 static Mtlentry *
-mtltabadd(Mtltab *t, Material *m)
+mtltabadd(Mtltab *t, Material *m, ulong idx)
 {
 	Mtlentry *nm, *mp, *prev;
 	uint h;
 
 	nm = _emalloc(sizeof *nm);
 	memset(nm, 0, sizeof *nm);
-	nm->Material = *m;
+	nm->name = m->name;
+	nm->idx = idx;
 	nm->next = nil;
 
 	prev = nil;
@@ -121,18 +111,6 @@ mtltabget(Mtltab *t, char *name)
 }
 
 static void
-mtltabloadmodel(Model *m, Mtltab *t)
-{
-	Mtlentry *e;
-	int i;
-
-	for(i = 0; i < nelem(t->mtls); i++)
-		for(e = t->mtls[i]; e != nil; e = e->next)
-			e->idx = m->addmaterial(m, *e);
-	t->loaded++;
-}
-
-static void
 rmmtltab(Mtltab *t)
 {
 	Mtlentry *m, *nm;
@@ -141,10 +119,7 @@ rmmtltab(Mtltab *t)
 	for(i = 0; i < nelem(t->mtls); i++)
 		for(m = t->mtls[i]; m != nil; m = nm){
 			nm = m->next;
-			if(t->loaded)
-				free(m);
-			else
-				freemtlentry(m);
+			free(m);
 		}
 }
 
@@ -152,21 +127,21 @@ Model *
 readmodel(int fd)
 {
 	Curline curline;
-	ItemArray *pa, *na, *ta, *ca, *Ta, *va, *Pa;
+	ItemArray *pa, *na, *ta, *ca, *Ta, *va, *Pa, *ma;
 	Mtltab *mtltab;
 	Mtlentry *me;
 	Point3 p, n, T;
 	Point2 t;
 	Color c;
 	Vertex v;
-	Primitive P, *prim;
+	Primitive P;
 	Material mtl;
 	Model *m;
 	Memimage *mi;
 	Biobuf *bin;
 	void *vp;
 	char *line, *f[10], *s, assets[200], buf[256];
-	usize idx, i;
+	usize idx;
 	int nf, nv, inamaterial, texfd;
 
 	n.w = T.w = 0;
@@ -184,6 +159,7 @@ readmodel(int fd)
 	Ta = mkitemarray(sizeof(T));
 	va = mkitemarray(sizeof(v));
 	Pa = mkitemarray(sizeof(P));
+	ma = mkitemarray(sizeof(mtl));
 	mtltab = mkmtltab();
 
 	memset(&curline, 0, sizeof curline);
@@ -212,7 +188,8 @@ readmodel(int fd)
 				*s = 0;
 
 			if(strcmp(f[0], "}") == 0){
-				if(mtltabadd(mtltab, &mtl) == nil){
+				idx = itemarrayadd(ma, &mtl);
+				if(mtltabadd(mtltab, &mtl, idx) == nil){
 					error(&curline, "mtltabadd: %r");
 					goto getout;
 				}
@@ -446,11 +423,12 @@ novertex:
 				/* ignore 4th field (nf == 4) */
 
 				if(nf == 5){
-					P.mtl = mtltabget(mtltab, f[4]);
-					if(P.mtl == nil){
+					me = mtltabget(mtltab, f[4]);
+					if(me == nil){
 						error(&curline, "material '%s' not found", f[4]);
 						goto getout;
 					}
+					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			case PLine:
@@ -476,11 +454,12 @@ notenough:
 				/* ignore 5th field (nf == 5) */
 
 				if(nf == 6){
-					P.mtl = mtltabget(mtltab, f[5]);
-					if(P.mtl == nil){
+					me = mtltabget(mtltab, f[5]);
+					if(me == nil){
 						error(&curline, "material '%s' not found", f[5]);
 						goto getout;
 					}
+					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			case PTriangle:
@@ -523,11 +502,12 @@ notenough:
 				}
 
 				if(nf == 7){
-					P.mtl = mtltabget(mtltab, f[6]);
-					if(P.mtl == nil){
+					me = mtltabget(mtltab, f[6]);
+					if(me == nil){
 						error(&curline, "material '%s' not found", f[6]);
 						goto getout;
 					}
+					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			default:
@@ -557,21 +537,14 @@ notenough:
 	}
 
 	m = newmodel();
-	mtltabloadmodel(m, mtltab);
-	copyitemarray(m->positions, pa);
-	copyitemarray(m->normals, na);
-	copyitemarray(m->texcoords, ta);
-	copyitemarray(m->colors, ca);
-	copyitemarray(m->tangents, Ta);
-	copyitemarray(m->verts, va);
-	copyitemarray(m->prims, Pa);
-	for(i = 0; i < Pa->nitems; i++){
-		prim = itemarrayget(m->prims, i);
-		if(prim->mtl != nil){
-			me = mtltabget(mtltab, prim->mtl->name);
-			prim->mtl = &m->materials[me->idx];
-		}
-	}
+	dupitemarray(pa, &m->positions);
+	dupitemarray(na, &m->normals);
+	dupitemarray(ta, &m->texcoords);
+	dupitemarray(ca, &m->colors);
+	dupitemarray(Ta, &m->tangents);
+	dupitemarray(va, &m->verts);
+	dupitemarray(Pa, &m->prims);
+	dupitemarray(ma, &m->materials);
 
 getout:
 	rmitemarray(pa);
@@ -581,6 +554,7 @@ getout:
 	rmitemarray(Ta);
 	rmitemarray(va);
 	rmitemarray(Pa);
+	rmitemarray(ma);
 	rmmtltab(mtltab);
 	Bterm(bin);
 	return m;
@@ -769,8 +743,8 @@ writemodel(int fd, Model *m)
 		sysfatal("Bfdopen: %r");
 
 	n = 0;
-	for(i = 0; i < m->nmaterials; i++)
-		n += Bprintmtl(out, &m->materials[i]);
+	for(i = 0; i < m->materials->nitems; i++)
+		n += Bprintmtl(out, itemarrayget(m->materials, i));
 
 	for(i = 0; i < m->positions->nitems; i++)
 		n += Bprintp(out, itemarrayget(m->positions, i));
@@ -814,16 +788,15 @@ int
 exportmodel(char *path, Model *m)
 {
 	static char Esmallbuf[] = "buf too small to hold path";
-	Material *mtl;
+	Material *mtl, *lastmtl;
 	char buf[256], *pe, *me;
 	int fd, idx;
-
-	idx = 0;
 
 	if((pe = seprint(buf, buf + sizeof buf, "%s", path)) == nil)
 		sysfatal(Esmallbuf);
 
-	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++, idx++){
+	mtl = m->materials->items;
+	for(idx = 0, lastmtl = mtl + m->materials->nitems; mtl < lastmtl; mtl++, idx++){
 		if(mtl->name == nil){
 			fprint(2, "warning: material #%d has no name. skipping...\n", idx);
 			continue;
@@ -881,7 +854,8 @@ exportmodel(char *path, Model *m)
 	}
 	close(fd);
 
-	for(mtl = m->materials; mtl < m->materials+m->nmaterials; mtl++){
+	mtl = m->materials->items;
+	for(lastmtl = mtl + m->materials->nitems; mtl < lastmtl; mtl++){
 		if(mtl->name == nil)
 			continue;
 

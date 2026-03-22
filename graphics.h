@@ -87,6 +87,7 @@ typedef struct Camera		Camera;
 
 struct ItemArray
 {
+	Ref;
 	void	*items;
 	usize	nitems;
 	usize	itemsize;
@@ -210,6 +211,7 @@ struct Primitive
 
 struct Model
 {
+	Ref;
 	char		*name;
 	ItemArray	*positions;
 	ItemArray	*normals;
@@ -218,8 +220,7 @@ struct Model
 	ItemArray	*tangents;
 	ItemArray	*verts;
 	ItemArray	*prims;
-	Material	*materials;
-	ulong		nmaterials;
+	ItemArray	*materials;
 
 	usize		(*addposition)(Model*, Point3);
 	usize		(*addnormal)(Model*, Point3);
@@ -228,7 +229,7 @@ struct Model
 	usize		(*addtangent)(Model*, Point3);
 	usize		(*addvert)(Model*, Vertex);
 	usize		(*addprim)(Model*, Primitive);
-	int		(*addmaterial)(Model*, Material);
+	usize		(*addmaterial)(Model*, Material);
 	Material*	(*getmaterial)(Model*, char*);
 };
 
@@ -472,15 +473,12 @@ int	exportmodel(char*, Model*);
 LightSource*	newpointlight(Point3, Color);
 LightSource*	newdireclight(Point3, Point3, Color);
 LightSource*	newspotlight(Point3, Point3, Color, double, double);
-LightSource*	duplight(LightSource*);
 void		dellight(LightSource*);
 Entity*		newentity(char*, Model*);
-Entity*		dupentity(Entity*);
 void		delentity(Entity*);
 Scene*		newscene(char*);
-Scene*		dupscene(Scene*);
-void		delscene(Scene*);
 void		clearscene(Scene*);
+void		delscene(Scene*);
 
 /* model */
 Vertex		mkvert(void);
@@ -488,7 +486,8 @@ Primitive	mkprim(int);
 Material*	newmaterial(char*);
 void		delmaterial(Material*);
 Model*		newmodel(void);
-Model*		dupmodel(Model*);
+void		copymodel(Model*, Model*);
+Model*		dupmodel(Model*, Model**);
 void		delmodel(Model*);
 void		compactmodel(Model*);
 
@@ -523,7 +522,7 @@ ItemArray*	mkitemarray(usize);
 usize		itemarrayadd(ItemArray*, void*);
 void*		itemarrayget(ItemArray*, usize);
 usize		copyitemarray(ItemArray*, ItemArray*);
-ItemArray*	dupitemarray(ItemArray*);
+ItemArray*	dupitemarray(ItemArray*, ItemArray**);
 void		rmitemarray(ItemArray*);
 
 /* color */
