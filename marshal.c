@@ -16,7 +16,7 @@ typedef struct Curline Curline;
 struct Curline
 {
 	char file[256];
-	usize line;
+	ulong line;
 };
 
 typedef struct Mtlentry Mtlentry;
@@ -40,7 +40,7 @@ error(Curline *l, char *fmt, ...)
 	va_list va;
 	char buf[ERRMAX], *bp;
 
-	bp = seprint(buf, buf + sizeof buf, "%s:%llud ", l->file, l->line);
+	bp = seprint(buf, buf + sizeof buf, "%s:%lud ", l->file, l->line);
 
 	va_start(va, fmt);
 	vseprint(bp, buf + sizeof buf, fmt, va);
@@ -141,7 +141,7 @@ readmodel(int fd)
 	Biobuf *bin;
 	void *vp;
 	char *line, *f[10], *s, assets[200], buf[256];
-	usize idx;
+	ulong idx;
 	int nf, nv, inamaterial, texfd;
 
 	n.w = T.w = 0;
@@ -363,7 +363,7 @@ notexture:
 			idx = strtoul(f[1], nil, 10);
 			vp = itemarrayget(pa, idx);
 			if(vp == nil){
-				error(&curline, "no position at idx %llud", idx);
+				error(&curline, "no position at idx %lud", idx);
 				goto getout;
 			}
 			v.p = idx;
@@ -372,7 +372,7 @@ notexture:
 				idx = strtoul(f[2], nil, 10);
 				vp = itemarrayget(na, idx);
 				if(vp == nil){
-					error(&curline, "no normal at idx %llud", idx);
+					error(&curline, "no normal at idx %lud", idx);
 					goto getout;
 				}
 				v.n = idx;
@@ -382,7 +382,7 @@ notexture:
 				idx = strtoul(f[3], nil, 10);
 				vp = itemarrayget(ta, idx);
 				if(vp == nil){
-					error(&curline, "no texture at idx %llud", idx);
+					error(&curline, "no texture at idx %lud", idx);
 					goto getout;
 				}
 				v.uv = idx;
@@ -392,7 +392,7 @@ notexture:
 				idx = strtoul(f[4], nil, 10);
 				vp = itemarrayget(ca, idx);
 				if(vp == nil){
-					error(&curline, "no color at idx %llud", idx);
+					error(&curline, "no color at idx %lud", idx);
 					goto getout;
 				}
 				v.c = idx;
@@ -415,7 +415,7 @@ notexture:
 				vp = itemarrayget(va, idx);
 				if(vp == nil){
 novertex:
-					error(&curline, "no vertex at idx %llud", idx);
+					error(&curline, "no vertex at idx %lud", idx);
 					goto getout;
 				}
 				P.v[0] = idx;
@@ -495,7 +495,7 @@ notenough:
 					idx = strtoul(f[5], nil, 10);
 					vp = itemarrayget(Ta, idx);
 					if(vp == nil){
-						error(&curline, "no tangent at idx %llud", idx);
+						error(&curline, "no tangent at idx %lud", idx);
 						goto getout;
 					}
 					P.tangent = idx;
@@ -641,11 +641,11 @@ BprintT(Biobuf *b, Point3 *p)
 }
 
 static int
-Bprintidx(Biobuf *b, usize idx)
+Bprintidx(Biobuf *b, ulong idx)
 {
 	if(idx == NaI)
 		return Bprint(b, " -");
-	return Bprint(b, " %llud", idx);
+	return Bprint(b, " %lud", idx);
 }
 
 static int
@@ -653,7 +653,7 @@ Bprintv(Biobuf *b, Vertex *v)
 {
 	int n;
 
-	n = Bprint(b, "v %llud", v->p);
+	n = Bprint(b, "v %lud", v->p);
 	n += Bprintidx(b, v->n);
 	n += Bprintidx(b, v->uv);
 	n += Bprintidx(b, v->c);

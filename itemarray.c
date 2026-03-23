@@ -9,7 +9,7 @@
 #include "internal.h"
 
 ItemArray *
-mkitemarray(usize is)
+mkitemarray(ulong is)
 {
 	ItemArray *a;
 
@@ -20,15 +20,18 @@ mkitemarray(usize is)
 	return a;
 }
 
-usize
+ulong
 itemarrayadd(ItemArray *a, void *i)
 {
 	char *p;
-	usize idx;
+	ulong idx;
+	usize newlen;
 
 	idx = a->nitems;
-	if(a->nitems++ % 16 == 0)
-		a->items = _erealloc(a->items, (a->nitems + 15)*a->itemsize);
+	if(a->nitems++ % 16 == 0){
+		newlen = (a->nitems + 15)*a->itemsize;
+		a->items = _erealloc(a->items, newlen);
+	}
 	p = a->items;
 	p += idx*a->itemsize;
 	memmove(p, i, a->itemsize);
@@ -36,7 +39,7 @@ itemarrayadd(ItemArray *a, void *i)
 }
 
 void *
-itemarrayget(ItemArray *a, usize idx)
+itemarrayget(ItemArray *a, ulong idx)
 {
 	char *p;
 
@@ -48,7 +51,7 @@ itemarrayget(ItemArray *a, usize idx)
 	return p;
 }
 
-usize
+ulong
 copyitemarray(ItemArray *s, ItemArray *d)
 {
 	usize len;

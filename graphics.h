@@ -53,7 +53,7 @@ enum {
 	MAXVATTRS	= 10,	/* change this if your shaders require it */
 
 	/* itemarray */
-	NaI	= ~0ULL,	/* not an index */
+	NaI	= ~0UL,		/* not an index */
 };
 
 typedef struct ItemArray	ItemArray;
@@ -89,8 +89,8 @@ struct ItemArray
 {
 	Ref;
 	void	*items;
-	usize	nitems;
-	usize	itemsize;
+	ulong	nitems;
+	ulong	itemsize;
 };
 
 struct Color
@@ -151,10 +151,10 @@ struct Vertexattrs
 
 struct Vertex
 {
-	usize	p;	/* position idx */
-	usize	n;	/* surface normal idx */
-	usize	uv;	/* texture coordinate idx */
-	usize	c;	/* shading color idx */
+	ulong	p;	/* position idx */
+	ulong	n;	/* surface normal idx */
+	ulong	uv;	/* texture coordinate idx */
+	ulong	c;	/* shading color idx */
 };
 
 /*
@@ -204,8 +204,8 @@ struct Material
 struct Primitive
 {
 	int		type;
-	usize		v[3];		/* vertex indices */
-	usize		tangent;	/* tangent idx */
+	ulong		v[3];		/* vertex indices */
+	ulong		tangent;	/* tangent idx */
 	Material	*mtl;
 };
 
@@ -222,14 +222,14 @@ struct Model
 	ItemArray	*prims;
 	ItemArray	*materials;
 
-	usize		(*addposition)(Model*, Point3);
-	usize		(*addnormal)(Model*, Point3);
-	usize		(*addtexcoord)(Model*, Point2);
-	usize		(*addcolor)(Model*, Color);
-	usize		(*addtangent)(Model*, Point3);
-	usize		(*addvert)(Model*, Vertex);
-	usize		(*addprim)(Model*, Primitive);
-	usize		(*addmaterial)(Model*, Material);
+	ulong		(*addposition)(Model*, Point3);
+	ulong		(*addnormal)(Model*, Point3);
+	ulong		(*addtexcoord)(Model*, Point2);
+	ulong		(*addcolor)(Model*, Color);
+	ulong		(*addtangent)(Model*, Point3);
+	ulong		(*addvert)(Model*, Vertex);
+	ulong		(*addprim)(Model*, Primitive);
+	ulong		(*addmaterial)(Model*, Material);
 	Material*	(*getmaterial)(Model*, char*);
 };
 
@@ -518,10 +518,10 @@ Memimage*	rgba(ulong);
 Memimage*	dupmemimage(Memimage*);
 
 /* itemarray */
-ItemArray*	mkitemarray(usize);
-usize		itemarrayadd(ItemArray*, void*);
-void*		itemarrayget(ItemArray*, usize);
-usize		copyitemarray(ItemArray*, ItemArray*);
+ItemArray*	mkitemarray(ulong);
+ulong		itemarrayadd(ItemArray*, void*);
+void*		itemarrayget(ItemArray*, ulong);
+ulong		copyitemarray(ItemArray*, ItemArray*);
 ItemArray*	dupitemarray(ItemArray*, ItemArray**);
 void		rmitemarray(ItemArray*);
 

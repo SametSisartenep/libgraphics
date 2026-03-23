@@ -588,7 +588,7 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 {
 	Vertex *v;
 	BVertex *dv;
-	usize *sv;
+	ulong *sv;
 
 	d->type = s->type;
 	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);

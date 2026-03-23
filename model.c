@@ -54,49 +54,49 @@ delmaterial(Material *mtl)
 	free(mtl);
 }
 
-static usize
+static ulong
 model_addposition(Model *m, Point3 p)
 {
 	return itemarrayadd(m->positions, &p);
 }
 
-static usize
+static ulong
 model_addnormal(Model *m, Point3 n)
 {
 	return itemarrayadd(m->normals, &n);
 }
 
-static usize
+static ulong
 model_addtexcoord(Model *m, Point2 t)
 {
 	return itemarrayadd(m->texcoords, &t);
 }
 
-static usize
+static ulong
 model_addcolor(Model *m, Color c)
 {
 	return itemarrayadd(m->colors, &c);
 }
 
-static usize
+static ulong
 model_addtangent(Model *m, Point3 T)
 {
 	return itemarrayadd(m->tangents, &T);
 }
 
-static usize
+static ulong
 model_addvert(Model *m, Vertex v)
 {
 	return itemarrayadd(m->verts, &v);
 }
 
-static usize
+static ulong
 model_addprim(Model *m, Primitive P)
 {
 	return itemarrayadd(m->prims, &P);
 }
 
-static usize
+static ulong
 model_addmaterial(Model *m, Material mtl)
 {
 	assert(mtl.name != nil);
@@ -207,15 +207,15 @@ typedef struct Reidxtab Reidxtab;
 
 struct Reidx
 {
-	usize old;
-	usize new;
+	ulong old;
+	ulong new;
 };
 
 struct Reidxtab
 {
 	Reidx *tab;
-	usize len;
-	usize cap;
+	ulong len;
+	ulong cap;
 };
 
 static void
@@ -240,7 +240,7 @@ reindexverts(ItemArray *verts, Reidxtab *t, int aoff)
 {
 	Reidx *reidx;
 	Vertex *v, *vb, *ve;
-	usize *attr;
+	ulong *attr;
 
 	if(t->len == 0)
 		return;
@@ -249,7 +249,7 @@ reindexverts(ItemArray *verts, Reidxtab *t, int aoff)
 	ve = vb + verts->nitems;
 
 	for(v = vb; v < ve; v++){
-		attr = (usize*)((char*)v + aoff);
+		attr = (ulong*)((char*)v + aoff);
 		for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
 			if(*attr == reidx->old)
 				*attr = reidx->new;
@@ -283,7 +283,7 @@ reindexprimverts(ItemArray *prims, Reidxtab *t)
 {
 	Reidx *reidx;
 	Primitive *P, *Pb, *Pe;
-	usize i;
+	ulong i;
 
 	if(t->len == 0)
 		return;
@@ -305,7 +305,7 @@ dedupitemarray(ItemArray *a, Reidxtab *t)
 {
 	char *p1, *p2, *pb, *pe;
 	void *vp;
-	usize nitems0, i, j;
+	ulong nitems0, i, j;
 
 	pb = a->items;
 	pe = pb + a->nitems*a->itemsize;
