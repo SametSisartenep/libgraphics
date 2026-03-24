@@ -135,15 +135,20 @@ alloctexture(int type, Memimage *i)
 	memset(t, 0, sizeof *t);
 	t->image = i;
 	t->type = type;
+	incref(t);
 	return t;
 }
 
 Texture *
-duptexture(Texture *t)
+duptexture(Texture *s, Texture **d)
 {
-	if(t == nil)
-		return nil;
-	return alloctexture(t->type, dupmemimage(t->image));
+	Texture *t;
+
+	t = *d;
+	*d = s;
+	incref(*d);
+	freetexture(t);
+	return *d;
 }
 
 void
@@ -152,11 +157,11 @@ freetexture(Texture *t)
 	if(t == nil)
 		return;
 
-	freememimage(t->image);
-	free(t);
+	if(decref(t) == 0){
+		freememimage(t->image);
+		free(t);
+	}
 }
-
-/* cubemap sampling */
 
 Cubemap *
 readcubemap(char *paths[6])
@@ -184,21 +189,15 @@ readcubemap(char *paths[6])
 }
 
 Cubemap *
-dupcubemap(Cubemap *cm)
+dupcubemap(Cubemap *s, Cubemap **d)
 {
-	Cubemap *ncm;
-	int i;
+	Cubemap *t;
 
-	if(cm == nil)
-		return nil;
-
-	ncm = _emalloc(sizeof *ncm);
-	memset(ncm, 0, sizeof *ncm);
-	if(cm->name != nil)
-		ncm->name = _estrdup(cm->name);
-	for(i = 0; i < 6; i++)
-		ncm->faces[i] = duptexture(cm->faces[i]);
-	return ncm;
+	t = *d;
+	*d = s;
+	incref(*d);
+	freecubemap(t);
+	return *d;
 }
 
 void
@@ -209,10 +208,12 @@ freecubemap(Cubemap *cm)
 	if(cm == nil)
 		return;
 
-	for(i = 0; i < 6; i++)
-		freetexture(cm->faces[i]);
-	free(cm->name);
-	free(cm);
+	if(decref(cm) == 0){
+		for(i = 0; i < 6; i++)
+			freetexture(cm->faces[i]);
+		free(cm->name);
+		free(cm);
+	}
 }
 
 /*

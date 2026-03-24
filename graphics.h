@@ -100,6 +100,7 @@ struct Color
 
 struct Texture
 {
+	Ref;
 	int		type;
 	char		*file;
 	Memimage	*image;
@@ -107,6 +108,7 @@ struct Texture
 
 struct Cubemap
 {
+	Ref;
 	char		*name;
 	Texture		*faces[6];	/* -x, +x, -y, +y, -z, +z */
 };
@@ -493,13 +495,13 @@ void		compactmodel(Model*);
 
 /* texture */
 Texture*	alloctexture(int, Memimage*);
-Texture*	duptexture(Texture*);
+Texture*	duptexture(Texture*, Texture**);
 void		freetexture(Texture*);
 Color		neartexsampler(Texture*, Point2);
 Color		bilitexsampler(Texture*, Point2);
 Color		sampletexture(Texture*, Point2, Color(*)(Texture*, Point2));
 Cubemap*	readcubemap(char*[6]);
-Cubemap*	dupcubemap(Cubemap*);
+Cubemap*	dupcubemap(Cubemap*, Cubemap**);
 void		freecubemap(Cubemap*);
 Color		samplecubemap(Cubemap*, Point3, Color(*)(Texture*, Point2));
 
