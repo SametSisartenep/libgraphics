@@ -528,7 +528,6 @@ rasterizer(void *arg)
 	fsp.v = &v;
 	fsp.getuniform = sparams_getuniform;
 	fsp.getattr = sparams_getattr;
-	fsp.setattr = nil;
 	fsp.toraster = sparams_toraster;
 
 	while(recv(rp->taskc, &task) > 0){
@@ -540,7 +539,7 @@ rasterizer(void *arg)
 			if(job->camera->rendopts & ROAbuff)
 				squashAbuf(job->fb, &task.wr, job->camera->rendopts & ROBlend);
 
-			if(decref(job) < 1){
+			if(decref(job) == 0){
 				/* set the clipr to the union of bboxes from the rasterizers */
 				for(i = 1; i < job->ncliprects; i++){
 					job->cliprects[0].min = minpt(job->cliprects[0].min, job->cliprects[i].min);
@@ -632,7 +631,6 @@ tiler(void *arg)
 	vsp.getuniform = sparams_getuniform;
 	vsp.getattr = sparams_getattr;
 	vsp.setattr = sparams_setattr;
-	vsp.toraster = nil;
 
 	while(recv(tp->taskc, &task) > 0){
 		if(task.job->rctl->doprof
@@ -644,7 +642,7 @@ tiler(void *arg)
 			if(task.job->rctl->doprof)
 				task.job->times.Tn[tp->id].t1 = nanosec();
 
-			if(decref(task.job) < 1){
+			if(decref(task.job) == 0){
 				if(task.job->camera->rendopts & ROAbuff)
 					initworkrects(wr, nproc, &task.job->fb->r);
 
@@ -798,10 +796,9 @@ entityproc(void *arg)
 	ttaskchans = _emalloc(nproc*sizeof(Channel*));
 	rtaskchans = _emalloc(nproc*sizeof(Channel*));
 	for(i = 0; i < nproc; i++){
-		ttaskchans[i] = chancreate(sizeof(Tilertask), 256);
 		tp = _emalloc(sizeof *tp);
 		tp->id = i;
-		tp->taskc = ttaskchans[i];
+		tp->taskc = ttaskchans[i] = chancreate(sizeof(Tilertask), 256);
 		tp->taskchans = rtaskchans;
 		tp->nproc = nproc;
 		proccreate(tiler, tp, TILESTKSZ);
