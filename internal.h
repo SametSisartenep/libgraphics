@@ -12,7 +12,6 @@ typedef struct Tilerparam	Tilerparam;
 typedef struct Tilertask	Tilertask;
 typedef struct Rasterparam	Rasterparam;
 typedef struct Rastertask	Rastertask;
-typedef struct fGradient	fGradient;
 typedef struct pGradient	pGradient;
 typedef struct vGradient	vGradient;
 typedef struct Gradients	Gradients;
@@ -80,13 +79,6 @@ struct Rastertask
 	BPrimitive	p;
 };
 
-struct fGradient
-{
-	double	f0;
-	double	dx;
-	double	dy;
-};
-
 struct pGradient
 {
 	Point3	p0;
@@ -105,8 +97,6 @@ struct Gradients
 {
 	vGradient	v;
 	pGradient	bc;
-	fGradient	z;
-	fGradient	pcz;
 };
 
 /* alloc */

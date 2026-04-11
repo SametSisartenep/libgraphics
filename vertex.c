@@ -90,6 +90,7 @@ _addvertex(BVertex *a, BVertex *b)
 {
 	Vertexattr *va, *vb, *ve;
 
+	a->p = addpt3(a->p, b->p);
 	a->n = addpt3(a->n, b->n);
 	a->c = addpt3(a->c, b->c);
 	a->uv = addpt2(a->uv, b->uv);
@@ -103,6 +104,10 @@ _addvertex(BVertex *a, BVertex *b)
 	}
 }
 
+/*
+ * this is only used for attribute linearization and subsequent
+ * perspective correction, so we can omit the position.
+ */
 void
 _mulvertex(BVertex *v, double s)
 {

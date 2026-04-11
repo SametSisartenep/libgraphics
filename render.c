@@ -363,14 +363,6 @@ initgradients(Gradients *∇, BPrimitive *prim, Point2 p0)
 	_berpvertex(&∇->v.v0, prim->v+0, prim->v+1, prim->v+2, ∇->bc.p0);
 	_berpvertex(&∇->v.dx, prim->v+0, prim->v+1, prim->v+2, ∇->bc.dx);
 	_berpvertex(&∇->v.dy, prim->v+0, prim->v+1, prim->v+2, ∇->bc.dy);
-
-	∇->z.f0 = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.p0);
-	∇->z.dx = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.dx);
-	∇->z.dy = fberp(prim->v[0].p.z, prim->v[1].p.z, prim->v[2].p.z, ∇->bc.dy);
-
-	∇->pcz.f0 = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.p0);
-	∇->pcz.dx = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.dx);
-	∇->pcz.dy = fberp(prim->v[0].p.w, prim->v[1].p.w, prim->v[2].p.w, ∇->bc.dy);
 }
 
 static Rectangle
@@ -419,7 +411,6 @@ rasterizetri(Rastertask *task)
 	Point p;
 	Point3 bc;
 	Color c;
-	float z, pcz;
 	uint ropts;
 
 	prim = &task->p;
@@ -459,8 +450,6 @@ rasterizetri(Rastertask *task)
 	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++){
 		bc = ∇.bc.p0;
 		*sp->v = ∇.v.v0;
-		z = ∇.z.f0;
-		pcz = ∇.pcz.f0;
 	for(p.x = task->wr.min.x; p.x < task->wr.max.x; p.x++){
 //		if(p.x == task->wr.min.x || p.x == task->wr.max.x-1
 //		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
@@ -472,12 +461,12 @@ rasterizetri(Rastertask *task)
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
 
-		if((ropts & RODepth) && z <= getdepth(zr, p))
+		if((ropts & RODepth) && sp->v->p.z <= getdepth(zr, p))
 			goto discard;
 
 		/* perspective-correct attribute interpolation  */
 		v = *sp->v;
-		_mulvertex(sp->v, 1.0/(pcz < ε1? ε1: pcz));
+		_mulvertex(sp->v, 1.0/(sp->v->p.w < ε1? ε1: sp->v->p.w));
 
 		sp->p = p;
 		c = sp->stab->fs(sp);
@@ -485,9 +474,9 @@ rasterizetri(Rastertask *task)
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
-			putdepth(zr, p, z);
+			putdepth(zr, p, sp->v->p.z);
 		if(ropts & ROAbuff)
-			pushtoAbuf(sp->fb, p, c, z);
+			pushtoAbuf(sp->fb, p, c, sp->v->p.z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
 
@@ -496,13 +485,9 @@ rasterizetri(Rastertask *task)
 discard:
 		bc = addpt3(bc, ∇.bc.dx);
 		_addvertex(sp->v, &∇.v.dx);
-		z += ∇.z.dx;
-		pcz += ∇.pcz.dx;
 	}
 		∇.bc.p0 = addpt3(∇.bc.p0, ∇.bc.dy);
 		_addvertex(&∇.v.v0, &∇.v.dy);
-		∇.z.f0 += ∇.z.dy;
-		∇.pcz.f0 += ∇.pcz.dy;
 	}
 }
 
