@@ -309,7 +309,6 @@ shootcamera(Camera *c, Shadertab *s)
 	free(job->times.Tn);
 	free(job->times.Rn);
 
-	free(job->cliprects);
 	chanfree(job->donec);
 	free(job->camera);
 	free(job);

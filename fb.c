@@ -129,73 +129,12 @@ rasterconvF2C(Raster *dst, Raster *src)
 }
 
 static void
-upscaledraw(Raster *fb, Image *dst, Point off, Point scale, uint filter, Viewdrawctx *ctx)
-{
-	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
-	Rectangle blkr, dr;
-	Point sp, dp;
-	Image *tmp;
-	ulong *blk, *blkp;
-	int dx, nl;
-
-	filterfn = nil;
-	blk = ctx->blk;
-	blkr = ctx->blkr;
-	dx = Dx(blkr);
-	tmp = allocimage(display, dst->r, RGBA32, 0, 0);
-	if(tmp == nil)
-		sysfatal("allocimage: %r");
-
-	switch(filter){
-	case UFScale2x:
-		if(scale.x == scale.y && scale.y == 2)
-			filterfn = scale2x_filter;
-		break;
-	case UFScale3x:
-		if(scale.x == scale.y && scale.y == 3)
-			filterfn = scale3x_filter;
-		break;
-	default:
-		filterfn = ident_filter;
-	}
-
-	/*
-	 * Fill an entire upscaled line (blk) and then clip against
-	 * the dst->r to select the data that needs to be sent.
-	 *
-	 * A better version could also do an initial clip to determine
-	 * the scanline segments that need to be sampled in the first
-	 * place.
-	 */
-	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
-	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
-	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
-		filterfn(blkp, fb, sp, scale, dx);
-	}
-		dr = blkr;
-		if(rectclip(&dr, dst->r)){
-			/* get blk local (data) point */
-			dp.x = dr.min.x > blkr.min.x? dr.min.x - blkr.min.x: 0;
-			dp.y = dr.min.y > blkr.min.y? dr.min.y - blkr.min.y: 0;
-			nl = Dy(dr);
-			dr.max.y = dr.min.y+1;
-			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
-				loadimage(tmp, dr, (uchar*)(blk + dp.y*dx + dp.x), Dx(dr)*4);
-		}
-		blkr.min.y += scale.y;
-		blkr.max.y += scale.y;
-	}
-	draw(dst, dst->r, tmp, nil, tmp->r.min);
-	freeimage(tmp);
-}
-
-static void
-framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scale, Viewdrawctx *ctx)
+framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
-	Image *tmp;
-	Rectangle sr, dr, lr;
+	Matrix m;
+	Warp w;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -213,99 +152,24 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Point off, Point scal
 		r = r2;
 	}
 
-	if(scale.x > 1 || scale.y > 1){
-		upscaledraw(r, dst, off, scale, ctl->upfilter, ctx);
-		qunlock(ctl);
-		_freeraster(r2);
-		return;
-	}
+	loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
+	rframematrix(m, *view);
+	mkwarp(w, m);
+	affinewarp(dst, dst->r, view->drawfb, ZP, w, 0);
 
-	/* TODO use the clipr in upscaledraw too */
-	tmp = ctx->img;
-	sr = rectaddpt(fb->clipr, off);
-	dr = rectsubpt(dst->r, dst->r.min);
-	if(rectclip(&sr, dr)){
-		dr = rectaddpt(sr, dst->r.min);
-		/* remove offset to get the actual rect within the framebuffer */
-		lr = sr = rectsubpt(sr, off);
-		lr.max.y = lr.min.y + 1;
-		for(; lr.min.y < sr.max.y; lr.min.y++, lr.max.y++)
-			loadimage(tmp, lr, _rasterbyteaddr(r, lr.min), Dx(sr)*4);
-		draw(dst, dr, tmp, nil, sr.min);
-//		border(dst, dr, 1, display->black, ZP);
-//		border(dst, rectaddpt(sr, dst->r.min), 1, display->white, ZP);
-	}
 	qunlock(ctl);
 	_freeraster(r2);
 }
 
 static void
-upscalememdraw(Raster *fb, Memimage *dst, Point off, Point scale, uint filter, Viewdrawctx *ctx)
-{
-	void (*filterfn)(ulong*, Raster*, Point, Point, ulong);
-	Rectangle blkr, dr;
-	Point sp, dp;
-	Memimage *tmp;
-	ulong *blk, *blkp;
-	int dx, nl;
-
-	filterfn = nil;
-	blk = ctx->blk;
-	blkr = ctx->blkr;
-	dx = Dx(blkr);
-	tmp = _eallocmemimage(dst->r, RGBA32);
-
-	switch(filter){
-	case UFScale2x:
-		if(scale.x == scale.y && scale.y == 2)
-			filterfn = scale2x_filter;
-		break;
-	case UFScale3x:
-		if(scale.x == scale.y && scale.y == 3)
-			filterfn = scale3x_filter;
-		break;
-	default:
-		filterfn = ident_filter;
-	}
-
-	/*
-	 * Fill an entire upscaled line (blk) and then clip against
-	 * the dst->r to select the data that needs to be loaded.
-	 *
-	 * A better version could also do an initial clip to determine
-	 * the scanline segments that need to be sampled in the first
-	 * place.
-	 */
-	blkr = rectaddpt(blkr, addpt(dst->r.min, off));
-	for(sp.y = fb->r.min.y; sp.y < fb->r.max.y; sp.y++){
-	for(sp.x = fb->r.min.x, blkp = blk; sp.x < fb->r.max.x; sp.x++, blkp += scale.x){
-		filterfn(blkp, fb, sp, scale, dx);
-	}
-		dr = blkr;
-		if(rectclip(&dr, dst->r)){
-			/* get blk local (data) point */
-			dp.x = dr.min.x > blkr.min.x? dr.min.x - blkr.min.x: 0;
-			dp.y = dr.min.y > blkr.min.y? dr.min.y - blkr.min.y: 0;
-			nl = Dy(dr);
-			dr.max.y = dr.min.y+1;
-			for(; nl-- > 0; dp.y++, dr.min.y++, dr.max.y++)
-				loadmemimage(tmp, dr, (uchar*)(blk + dp.y*dx + dp.x), Dx(dr)*4);
-		}
-		blkr.min.y += scale.y;
-		blkr.max.y += scale.y;
-	}
-	memimagedraw(dst, dst->r, tmp, tmp->r.min, nil, ZP, SoverD);
-	freememimage(tmp);
-}
-
-static void
-framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Point scale, Viewdrawctx *ctx)
+framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
-	Rectangle sr, dr;
 	Memimage *tmp;
 	uchar *bdata0;
+	Matrix m;
+	Warp w;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -323,33 +187,14 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Point off, Poin
 		r = r2;
 	}
 
-	if(scale.x > 1 || scale.y > 1){
-		upscalememdraw(r, dst, off, scale, ctl->upfilter, ctx);
-		qunlock(ctl);
-		_freeraster(r2);
-		return;
-	}
-
-	sr = rectaddpt(fb->r, off);
-	dr = rectsubpt(dst->r, dst->r.min);
-	if(rectinrect(sr, dr)){
-		tmp = _eallocmemimage(sr, RGBA32);
-		bdata0 = tmp->data->bdata;
-		tmp->data->bdata = (void*)r->data;
-		memimagedraw(dst, rectaddpt(sr, dst->r.min), tmp, ZP, nil, ZP, SoverD);
-		tmp->data->bdata = bdata0;
-		freememimage(tmp);
-	}else if(rectclip(&sr, dr)){
-		tmp = _eallocmemimage(sr, RGBA32);
-		dr = rectaddpt(sr, dst->r.min);
-		dr.max.y = dr.min.y + 1;
-		/* remove offset to get the actual rect within the framebuffer */
-		sr = rectsubpt(sr, off);
-		for(; sr.min.y < sr.max.y; sr.min.y++, dr.min.y++, dr.max.y++)
-			loadmemimage(tmp, dr, _rasterbyteaddr(r, sr.min), Dx(dr)*4);
-		memimagedraw(dst, rectaddpt(tmp->r, dst->r.min), tmp, tmp->r.min, nil, ZP, SoverD);
-		freememimage(tmp);
-	}
+	tmp = _eallocmemimage(fb->r, RGBA32);
+	bdata0 = tmp->data->bdata;
+	tmp->data->bdata = (void*)r->data;
+	rframematrix(m, *view);
+	mkwarp(w, m);
+	memaffinewarp(dst, dst->r, tmp, tmp->r.min, w, 0);
+	tmp->data->bdata = bdata0;
+	freememimage(tmp);
 	qunlock(ctl);
 	_freeraster(r2);
 }

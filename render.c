@@ -226,9 +226,6 @@ rasterizept(Rastertask *task)
 		pushtoAbuf(sp->fb, p, c, z);
 	else
 		pixel(cr, p, c, ropts & ROBlend);
-
-	task->clipr->min = minpt(task->clipr->min, p);
-	task->clipr->max = maxpt(task->clipr->max, p);
 }
 
 static void
@@ -311,9 +308,6 @@ rasterizeline(Rastertask *task)
 			pushtoAbuf(sp->fb, p, c, z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
-
-		task->clipr->min = minpt(task->clipr->min, p);
-		task->clipr->max = maxpt(task->clipr->max, p);
 discard:
 		if(steep) SWAP(int, &p.x, &p.y);
 
@@ -334,7 +328,7 @@ _barycoords(Point2 p0, Point2 p1, Point2 p2, Point2 p)
 
 	Point3 v = crossvec3(Vec3(p0p2.x, p0p1.x, pp0.x), Vec3(p0p2.y, p0p1.y, pp0.y));
 
-	/* handle degenerate triangles—i.e. the ones where every point lies on the same line */
+	/* handle degenerate triangles */
 	if(fabs(v.z) < ε1)
 		return Pt3(-1,-1,-1,1);
 	/* barycoords and inverse signed double area (for the gradients) */
@@ -342,14 +336,8 @@ _barycoords(Point2 p0, Point2 p1, Point2 p2, Point2 p)
 }
 
 static void
-initgradients(Gradients *∇, BPrimitive *prim, Point2 p0)
+initgradients(Gradients *∇, BPrimitive *prim, Point2 t[3], Point2 p0)
 {
-	Point2 t[3];
-
-	t[0] = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
-	t[1] = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
-	t[2] = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
-
 	∇->bc.p0 = _barycoords(t[0], t[1], t[2], p0);
 	∇->bc.dx = mulpt3((Point3){
 		t[2].y - t[1].y,
@@ -409,6 +397,7 @@ rasterizetri(Rastertask *task)
 	Gradients ∇;
 	BVertex v;
 	Point p;
+	Point2 t[3];
 	Point3 bc;
 	Color c;
 	uint ropts;
@@ -423,29 +412,21 @@ rasterizetri(Rastertask *task)
 
 	task->wr = mktribbox(prim->v[0].p, prim->v[1].p, prim->v[2].p, task->wr);
 
+	t[0] = (Point2){prim->v[0].p.x, prim->v[0].p.y, 1};
+	t[1] = (Point2){prim->v[1].p.x, prim->v[1].p.y, 1};
+	t[2] = (Point2){prim->v[2].p.x, prim->v[2].p.y, 1};
+
 	/* perspective divide vertex attributes */
 	_mulvertex(prim->v+0, prim->v[0].p.w);
 	_mulvertex(prim->v+1, prim->v[1].p.w);
 	_mulvertex(prim->v+2, prim->v[2].p.w);
 
-	initgradients(&∇, prim, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
+	initgradients(&∇, prim, t, (Point2){task->wr.min.x+0.5, task->wr.min.y+0.5, 1});
 
-//	/* TODO find a good method to apply the fill rule */
-//	if(istoporleft(&t[1], &t[2])){
-//		∇.bc.p0.x -= ∇.bc.p0.w;
-//		∇.bc.dx.x -= ∇.bc.p0.w;
-//		∇.bc.dy.x -= ∇.bc.p0.w;
-//	}
-//	if(istoporleft(&t[2], &t[0])){
-//		∇.bc.p0.y -= ∇.bc.p0.w;
-//		∇.bc.dx.y -= ∇.bc.p0.w;
-//		∇.bc.dy.y -= ∇.bc.p0.w;
-//	}
-//	if(istoporleft(&t[0], &t[1])){
-//		∇.bc.p0.z -= ∇.bc.p0.w;
-//		∇.bc.dx.z -= ∇.bc.p0.w;
-//		∇.bc.dy.z -= ∇.bc.p0.w;
-//	}
+	/* TODO find a good method to apply the fill rule */
+//	if(istoporleft(&t[1], &t[2])) ∇.bc.p0.x -= ∇.bc.dx.x + ∇.bc.dy.x;
+//	if(istoporleft(&t[2], &t[0])) ∇.bc.p0.y -= ∇.bc.dx.y + ∇.bc.dy.y;
+//	if(istoporleft(&t[0], &t[1])) ∇.bc.p0.z -= ∇.bc.dx.z + ∇.bc.dy.z;
 
 	for(p.y = task->wr.min.y; p.y < task->wr.max.y; p.y++){
 		bc = ∇.bc.p0;
@@ -455,8 +436,6 @@ rasterizetri(Rastertask *task)
 //		|| p.y == task->wr.min.y || p.y == task->wr.max.y-1){
 //			pixel(cr, p, (Color){1,0,0,1}, 0);
 //			putdepth(zr, p, 1);
-//			task->clipr->min = minpt(task->clipr->min, p);
-//			task->clipr->max = maxpt(task->clipr->max, p);
 //		}
 		if(bc.x < 0 || bc.y < 0 || bc.z < 0)
 			goto discard;
@@ -479,9 +458,6 @@ rasterizetri(Rastertask *task)
 			pushtoAbuf(sp->fb, p, c, sp->v->p.z);
 		else
 			pixel(cr, p, c, ropts & ROBlend);
-
-		task->clipr->min = minpt(task->clipr->min, p);
-		task->clipr->max = maxpt(task->clipr->max, p);
 discard:
 		bc = addpt3(bc, ∇.bc.dx);
 		_addvertex(sp->v, &∇.v.dx);
@@ -504,7 +480,6 @@ rasterizer(void *arg)
 	Renderjob *job;
 	BVertex v;
 	Shaderparams fsp;
-	int i;
 
 	rp = arg;
 	threadsetname("rasterizer %d", rp->id);
@@ -525,15 +500,6 @@ rasterizer(void *arg)
 				squashAbuf(job->fb, &task.wr, job->camera->rendopts & ROBlend);
 
 			if(decref(job) == 0){
-				/* set the clipr to the union of bboxes from the rasterizers */
-				for(i = 1; i < job->ncliprects; i++){
-					job->cliprects[0].min = minpt(job->cliprects[0].min, job->cliprects[i].min);
-					job->cliprects[0].max = maxpt(job->cliprects[0].max, job->cliprects[i].max);
-				}
-				job->fb->clipr = job->cliprects[0];
-				job->fb->clipr.max.x++;
-				job->fb->clipr.max.y++;
-
 				if(job->rctl->doprof)
 					job->times.Rn[rp->id].t1 = nanosec();
 
@@ -670,7 +636,6 @@ tiler(void *arg)
 
 				for(i = 0; i < nproc; i++)
 					if(ptinrect(bbox.min, wr[i])){
-						rtask.clipr = &task.job->cliprects[i];
 						rtask.p = *p;
 						send(taskchans[i], &rtask);
 						break;
@@ -703,7 +668,6 @@ tiler(void *arg)
 				for(i = 0; i < nproc; i++)
 					if(RECTXRECT(bbox, wr[i])){
 						rtask.wr = wr[i];
-						rtask.clipr = &task.job->cliprects[i];
 						rtask.p = *p;
 						send(taskchans[i], &rtask);
 					}
@@ -744,7 +708,6 @@ tiler(void *arg)
 					for(i = 0; i < nproc; i++)
 						if(RECTXRECT(bbox, wr[i])){
 							rtask.wr = wr[i];
-							rtask.clipr = &task.job->cliprects[i];
 							rtask.p = *p;
 							send(taskchans[i], &rtask);
 						}
@@ -816,15 +779,6 @@ entityproc(void *arg)
 			if(task.job->rctl->doprof)
 				task.job->times.E.t1 = nanosec();
 			continue;
-		}
-
-		if(task.job->cliprects == nil){
-			task.job->cliprects = _emalloc(nproc*sizeof(Rectangle));
-			task.job->ncliprects = nproc;
-			for(i = 0; i < nproc; i++){
-				task.job->cliprects[i].min = (Point){ 1000000, 1000000};
-				task.job->cliprects[i].max = (Point){-1000000,-1000000};
-			}
 		}
 
 		eb = task.entity->mdl->prims->items;

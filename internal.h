@@ -75,7 +75,6 @@ struct Rastertask
 	Commontask;
 	Shaderparams	*fsp;
 	Rectangle	wr;		/* working rect */
-	Rectangle	*clipr;
 	BPrimitive	p;
 };
 

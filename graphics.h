@@ -305,8 +305,6 @@ struct Renderjob
 	Camera		*camera;
 	Shadertab	*shaders;
 	Channel		*donec;
-	Rectangle	*cliprects;	/* one per rasterizer */
-	int		ncliprects;
 	Renderjob	*next;
 	struct {
 		Rendertime	R;	/* renderer */
@@ -349,7 +347,6 @@ struct Raster
 struct Framebuf
 {
 	Rectangle	r;
-	Rectangle	clipr;
 	Raster		*rasters;	/* [0] color, [1] depth, [2..n] user-defined */
 	Abuf		abuf;		/* A-buffer */
 
@@ -364,8 +361,8 @@ struct Framebufctl
 	uint		idx;		/* front buffer index */
 	uint		upfilter;	/* upscaling filter */
 
-	void		(*draw)(Framebufctl*, Image*, char*, Point, Point, Viewdrawctx*);
-	void		(*memdraw)(Framebufctl*, Memimage*, char*, Point, Point, Viewdrawctx*);
+	void		(*draw)(Framebufctl*, Image*, char*, Viewport*);
+	void		(*memdraw)(Framebufctl*, Memimage*, char*, Viewport*);
 	void		(*swap)(Framebufctl*);
 	void		(*reset)(Framebufctl*);
 	int		(*createraster)(Framebufctl*, char*, ulong);
@@ -374,21 +371,12 @@ struct Framebufctl
 	Framebuf*	(*getbb)(Framebufctl*);
 };
 
-struct Viewdrawctx
-{
-	/* draw */
-	Image		*img;
-	/* upscaled (mem)?draw */
-	ulong		*blk;	/* upscaled scanline */
-	Rectangle	blkr;
-};
-
 struct Viewport
 {
 	RFrame;
 	Framebufctl	*fbctl;
 	Rectangle	r;
-	Viewdrawctx	dctx;
+	Image		*drawfb;
 
 	struct {
 		uvlong	min, avg, max, acc, n, v;

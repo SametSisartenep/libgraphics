@@ -18,3 +18,4 @@
 - [ ] Detach Materials from Models
 	- It should be possible to store them separately and to refer
 	  to them from different models
+- [x] Use affinewarp(2) for upscaled viewport drawing
