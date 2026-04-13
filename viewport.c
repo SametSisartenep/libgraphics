@@ -50,9 +50,9 @@ viewport_setscale(Viewport *v, double sx, double sy)
 }
 
 static void
-viewport_setscalefilter(Viewport *v, int f)
+viewport_setfilter(Viewport *v, int f)
 {
-	v->fbctl->upfilter = f;
+	v->filter = f;
 }
 
 static Framebuf *
@@ -105,7 +105,7 @@ mkviewport(Rectangle r)
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
 	v->setscale = viewport_setscale;
-	v->setscalefilter = viewport_setscalefilter;
+	v->setfilter = viewport_setfilter;
 	v->getfb = viewport_getfb;
 	v->getwidth = viewport_getwidth;
 	v->getheight = viewport_getheight;

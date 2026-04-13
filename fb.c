@@ -74,12 +74,6 @@ scale3x_filter(ulong *dst, Raster *fb, Point sp, Point, ulong dx)
 	}
 }
 
-//static void
-//scale4x_filter(ulong *dst, Raster *fb, Point sp, ulong)
-//{
-//
-//}
-
 static void
 ident_filter(ulong *dst, Raster *fb, Point sp, Point s, ulong dx)
 {
@@ -155,7 +149,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 	loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
 	rframematrix(m, *view);
 	mkwarp(w, m);
-	affinewarp(dst, dst->r, view->drawfb, ZP, w, 0);
+	affinewarp(dst, dst->r, view->drawfb, ZP, w, view->filter);
 
 	qunlock(ctl);
 	_freeraster(r2);
@@ -192,7 +186,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 	tmp->data->bdata = (void*)r->data;
 	rframematrix(m, *view);
 	mkwarp(w, m);
-	memaffinewarp(dst, dst->r, tmp, tmp->r.min, w, 0);
+	memaffinewarp(dst, dst->r, tmp, tmp->r.min, w, view->filter);
 	tmp->data->bdata = bdata0;
 	freememimage(tmp);
 	qunlock(ctl);

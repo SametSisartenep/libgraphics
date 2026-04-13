@@ -35,11 +35,9 @@ enum {
 	RAWTexture = 0,		/* unmanaged */
 	sRGBTexture,
 
-	/* upscaling filters */
-	UFNone = 0,		/* nearest neighbour */
-	UFScale2x,
-	UFScale3x,
-	UFScale4x,
+	/* viewport sampling filters */
+	VFNearest = 0,
+	VFBilinear,
 
 	/* render options */
 	ROBlend	= 0x01,
@@ -359,7 +357,6 @@ struct Framebufctl
 	QLock;
 	Framebuf	*fb[2];		/* double buffer */
 	uint		idx;		/* front buffer index */
-	uint		upfilter;	/* upscaling filter */
 
 	void		(*draw)(Framebufctl*, Image*, char*, Viewport*);
 	void		(*memdraw)(Framebufctl*, Memimage*, char*, Viewport*);
@@ -377,6 +374,7 @@ struct Viewport
 	Framebufctl	*fbctl;
 	Rectangle	r;
 	Image		*drawfb;
+	int		filter;
 
 	struct {
 		uvlong	min, avg, max, acc, n, v;
@@ -386,7 +384,7 @@ struct Viewport
 	void		(*draw)(Viewport*, Image*, char*);
 	void		(*memdraw)(Viewport*, Memimage*, char*);
 	void		(*setscale)(Viewport*, double, double);
-	void		(*setscalefilter)(Viewport*, int);
+	void		(*setfilter)(Viewport*, int);
 	Framebuf*	(*getfb)(Viewport*);
 	int		(*getwidth)(Viewport*);
 	int		(*getheight)(Viewport*);
