@@ -43,10 +43,24 @@ viewport_memdraw(Viewport *v, Memimage *dst, char *rname)
 }
 
 static void
-viewport_setscale(Viewport *v, double sx, double sy)
+viewport_move(Viewport *v, Point2 p)
 {
-	v->bx.x = sx;
-	v->by.y = sy;
+	Matrix m;
+
+	v->p = p.w == 0? addpt2(v->p, p): p;
+	rframematrix(m, *v);
+	v->Warp = mkwarp(m);
+}
+
+static void
+viewport_scale(Viewport *v, Point2 s)
+{
+	Matrix m;
+
+	v->bx.x = s.x;
+	v->by.y = s.y;
+	rframematrix(m, *v);
+	v->Warp = mkwarp(m);
 }
 
 static void
@@ -104,7 +118,8 @@ mkviewport(Rectangle r)
 	v->r = r;
 	v->draw = viewport_draw;
 	v->memdraw = viewport_memdraw;
-	v->setscale = viewport_setscale;
+	v->move = viewport_move;
+	v->scale = viewport_scale;
 	v->setfilter = viewport_setfilter;
 	v->getfb = viewport_getfb;
 	v->getwidth = viewport_getwidth;

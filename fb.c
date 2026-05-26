@@ -127,8 +127,6 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
-	Matrix m;
-	Warp w;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -147,9 +145,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 	}
 
 	loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
-	rframematrix(m, *view);
-	mkwarp(w, m);
-	affinewarp(dst, dst->r, view->drawfb, ZP, w, view->filter);
+	affinewarp(dst, dst->r, view->drawfb, ZP, view, view->filter);
 
 	qunlock(ctl);
 	_freeraster(r2);
@@ -162,8 +158,6 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 	Raster *r, *r2;
 	Memimage *tmp;
 	uchar *bdata0;
-	Matrix m;
-	Warp w;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -184,9 +178,7 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 	tmp = _eallocmemimage(fb->r, RGBA32);
 	bdata0 = tmp->data->bdata;
 	tmp->data->bdata = (void*)r->data;
-	rframematrix(m, *view);
-	mkwarp(w, m);
-	memaffinewarp(dst, dst->r, tmp, tmp->r.min, w, view->filter);
+	memaffinewarp(dst, dst->r, tmp, tmp->r.min, view, view->filter);
 	tmp->data->bdata = bdata0;
 	freememimage(tmp);
 	qunlock(ctl);

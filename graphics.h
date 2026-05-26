@@ -371,6 +371,7 @@ struct Framebufctl
 struct Viewport
 {
 	RFrame;
+	Warp;
 	Framebufctl	*fbctl;
 	Rectangle	r;
 	Image		*drawfb;
@@ -383,7 +384,8 @@ struct Viewport
 
 	void		(*draw)(Viewport*, Image*, char*);
 	void		(*memdraw)(Viewport*, Memimage*, char*);
-	void		(*setscale)(Viewport*, double, double);
+	void		(*move)(Viewport*, Point2);
+	void		(*scale)(Viewport*, Point2);
 	void		(*setfilter)(Viewport*, int);
 	Framebuf*	(*getfb)(Viewport*);
 	int		(*getwidth)(Viewport*);
