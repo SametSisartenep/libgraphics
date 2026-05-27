@@ -103,6 +103,7 @@ Viewport *
 mkviewport(Rectangle r)
 {
 	Viewport *v;
+	Matrix m;
 
 	if(badrect(r)){
 		werrstr("bad viewport rectangle");
@@ -114,6 +115,8 @@ mkviewport(Rectangle r)
 	v->p = Pt2(0,0,1);
 	v->bx = Vec2(1,0);
 	v->by = Vec2(0,1);
+	rframematrix(m, *v);
+	v->Warp = mkwarp(m);
 	v->fbctl = _mkfbctl(r);
 	v->r = r;
 	v->draw = viewport_draw;
