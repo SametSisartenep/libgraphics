@@ -163,7 +163,7 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 		r = r2;
 	}
 
-	dr = view->drawfb->r;
+	dr = fb->r;
 	dr = xformrect(dr, *view);
 	dr = rectaddpt(dr, dst->r.min);
 	if(rectclip(&dr, dst->r)){
