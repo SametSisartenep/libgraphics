@@ -8,20 +8,20 @@
 #include "internal.h"
 
 static Point
-xformpt(Point p, Matrix m)
+xformpt(Point p, RFrame rf)
 {
 	Point2 q;
 
 	q = (Point2){p.x, p.y, 1};
-	q = xform(q, m);
+	q = invrframexform(q, rf);
 	return (Point){q.x+0.5, q.y+0.5};
 }
 
 static Rectangle
-xformrect(Rectangle r, Matrix m)
+xformrect(Rectangle r, RFrame rf)
 {
-	r.min = xformpt(r.min, m);
-	r.max = xformpt(r.max, m);
+	r.min = xformpt(r.min, rf);
+	r.max = xformpt(r.max, rf);
 	return canonrect(r);
 }
 
@@ -145,7 +145,6 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
-	Matrix m;
 	Rectangle dr;
 
 	qlock(ctl);
@@ -164,9 +163,8 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 		r = r2;
 	}
 
-	rframematrix(m, *view);
 	dr = view->drawfb->r;
-	dr = xformrect(dr, m);
+	dr = xformrect(dr, *view);
 	dr = rectaddpt(dr, dst->r.min);
 	if(rectclip(&dr, dst->r)){
 		loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
@@ -184,7 +182,6 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 	Raster *r, *r2;
 	Memimage *tmp;
 	uchar *bdata0;
-	Matrix m;
 	Rectangle dr;
 
 	qlock(ctl);
@@ -203,9 +200,8 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 		r = r2;
 	}
 
-	rframematrix(m, *view);
 	dr = fb->r;
-	dr = xformrect(dr, m);
+	dr = xformrect(dr, *view);
 	dr = rectaddpt(dr, dst->r.min);
 	if(rectclip(&dr, dst->r)){
 		tmp = _eallocmemimage(fb->r, RGBA32);
@@ -360,6 +356,7 @@ _mkfbctl(Rectangle r)
 
 	fc = _emalloc(sizeof *fc);
 	memset(fc, 0, sizeof *fc);
+	r = rectsubpt(r, r.min);
 	fc->fb[0] = _mkfb(r);
 	fc->fb[1] = _mkfb(r);
 	fc->draw = framebufctl_draw;
