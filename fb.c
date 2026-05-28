@@ -7,6 +7,24 @@
 #include "graphics.h"
 #include "internal.h"
 
+static Point
+xformpt(Point p, Matrix m)
+{
+	Point2 q;
+
+	q = (Point2){p.x, p.y, 1};
+	q = xform(q, m);
+	return (Point){q.x+0.5, q.y+0.5};
+}
+
+static Rectangle
+xformrect(Rectangle r, Matrix m)
+{
+	r.min = xformpt(r.min, m);
+	r.max = xformpt(r.max, m);
+	return canonrect(r);
+}
+
 /*
  * scale[234]x filters
  *
@@ -127,6 +145,8 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 {
 	Framebuf *fb;
 	Raster *r, *r2;
+	Matrix m;
+	Rectangle dr;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -144,8 +164,14 @@ framebufctl_draw(Framebufctl *ctl, Image *dst, char *name, Viewport *view)
 		r = r2;
 	}
 
-	loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
-	affinewarp(dst, dst->r, view->drawfb, ZP, view, view->filter);
+	rframematrix(m, *view);
+	dr = view->drawfb->r;
+	dr = xformrect(dr, m);
+	dr = rectaddpt(dr, dst->r.min);
+	if(rectclip(&dr, dst->r)){
+		loadimage(view->drawfb, view->drawfb->r, _rasterbyteaddr(r, fb->r.min), Dx(fb->r)*Dy(fb->r)*4);
+		affinewarp(dst, dr, view->drawfb, view->drawfb->r.min, view, view->filter);
+	}
 
 	qunlock(ctl);
 	_freeraster(r2);
@@ -158,6 +184,8 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 	Raster *r, *r2;
 	Memimage *tmp;
 	uchar *bdata0;
+	Matrix m;
+	Rectangle dr;
 
 	qlock(ctl);
 	fb = ctl->getfb(ctl);
@@ -175,12 +203,19 @@ framebufctl_memdraw(Framebufctl *ctl, Memimage *dst, char *name, Viewport *view)
 		r = r2;
 	}
 
-	tmp = _eallocmemimage(fb->r, RGBA32);
-	bdata0 = tmp->data->bdata;
-	tmp->data->bdata = (void*)r->data;
-	memaffinewarp(dst, dst->r, tmp, tmp->r.min, view, view->filter);
-	tmp->data->bdata = bdata0;
-	freememimage(tmp);
+	rframematrix(m, *view);
+	dr = fb->r;
+	dr = xformrect(dr, m);
+	dr = rectaddpt(dr, dst->r.min);
+	if(rectclip(&dr, dst->r)){
+		tmp = _eallocmemimage(fb->r, RGBA32);
+		bdata0 = tmp->data->bdata;
+		tmp->data->bdata = (void*)r->data;
+		memaffinewarp(dst, dr, tmp, tmp->r.min, view, view->filter);
+		tmp->data->bdata = bdata0;
+		freememimage(tmp);
+	}
+
 	qunlock(ctl);
 	_freeraster(r2);
 }
