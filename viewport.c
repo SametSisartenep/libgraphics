@@ -8,32 +8,15 @@
 #include "internal.h"
 
 static void
-updatestats(Viewport *c, uvlong v)
-{
-	c->stats.v = v;
-	c->stats.n++;
-	c->stats.acc += v;
-	c->stats.avg = c->stats.acc/c->stats.n;
-	c->stats.min = v < c->stats.min || c->stats.n == 1? v: c->stats.min;
-	c->stats.max = v > c->stats.max || c->stats.n == 1? v: c->stats.max;
-	c->stats.nframes++;
-}
-
-static void
 viewport_draw(Viewport *v, Image *dst, char *rname)
 {
-	uvlong t0, t1;
-
 	if(v->drawfb == nil){
 		v->drawfb = allocimage(display, v->r, RGBA32, 0, 0);
 		if(v->drawfb == nil)
 			sysfatal("allocimage: %r");
 	}
 
-	t0 = nanosec();
 	v->fbctl->draw(v->fbctl, dst, rname, v);
-	t1 = nanosec();
-	updatestats(v, t1-t0);
 }
 
 static void

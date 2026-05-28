@@ -377,11 +377,6 @@ struct Viewport
 	Image		*drawfb;
 	int		filter;
 
-	struct {
-		uvlong	min, avg, max, acc, n, v;
-		uvlong	nframes;
-	} stats;
-
 	void		(*draw)(Viewport*, Image*, char*);
 	void		(*memdraw)(Viewport*, Memimage*, char*);
 	void		(*move)(Viewport*, Point2);
