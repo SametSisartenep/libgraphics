@@ -279,7 +279,6 @@ struct Shadertab
 	char		*name;
 	Point3		(*vs)(Shaderparams*);	/* vertex shader */
 	Color		(*fs)(Shaderparams*);	/* fragment shader */
-	Vertexattrs;				/* uniforms */
 };
 
 struct Rendertime
@@ -403,6 +402,7 @@ struct Camera
 	int		projtype;
 	Matrix3		proj;		/* VCS to clip space xform */
 	Matrix3		invproj;	/* clip space to VCS xform */
+	Vertexattrs	uniforms;
 
 	struct {
 		uvlong	min, avg, max, acc, n, v;
@@ -431,7 +431,7 @@ void		rmviewport(Viewport*);
 
 /* render */
 Renderer*	initgraphics(void);
-void		setuniform(Shadertab*, char*, int, void*);
+void		setuniform(Camera*, char*, int, void*);
 
 /* xform */
 Point3	model2world(Entity*, Point3);

@@ -13,13 +13,13 @@
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
-	return _getvattr(sp->stab, id);
+	return _getvattr(&sp->camera->uniforms, id);
 }
 
 void
-setuniform(Shadertab *st, char *id, int type, void *val)
+setuniform(Camera *c, char *id, int type, void *val)
 {
-	_addvattr(st, id, type, val);
+	_addvattr(&c->uniforms, id, type, val);
 }
 
 static Vertexattr *
