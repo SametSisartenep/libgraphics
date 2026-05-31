@@ -537,21 +537,50 @@ static BPrimitive *
 assembleprim(BPrimitive *d, Primitive *s, Model *m)
 {
 	Vertex *v;
+	Point3 *p3;
+	Point2 *p2;
+	Color *c;
 	BVertex *dv;
 	ulong *sv;
 
+	memset(d, 0, sizeof *d);
 	d->type = s->type;
-	d->tangent = s->tangent == NaI? ZP3: *(Point3*)itemarrayget(m->tangents, s->tangent);
+	if(s->tangent != NaI){
+		p3 = itemarrayget(m->tangents, s->tangent);
+		if(p3 != nil)
+			d->tangent = *p3;
+	}
 	d->mtl = s->mtl;
 	for(dv = &d->v[0], sv = &s->v[0]; dv < d->v + s->type+1; dv++, sv++){
+		/* must have at least a valid vertex and position */
+		if(*sv == NaI)
+			return nil;
 		v = itemarrayget(m->verts, *sv);
-		dv->p = *(Point3*)itemarrayget(m->positions, v->p);
-		dv->n = v->n == NaI? ZP3: *(Point3*)itemarrayget(m->normals, v->n);
-		dv->uv = v->uv == NaI? ZP2: *(Point2*)itemarrayget(m->texcoords, v->uv);
-		dv->c = v->c == NaI? ZP3: *(Color*)itemarrayget(m->colors, v->c);
+		if(v == nil)
+			return nil;
+		if(v->p == NaI)
+			return nil;
+		p3 = itemarrayget(m->positions, v->p);
+		if(p3 == nil)
+			return nil;
+		dv->p = *p3;
+		if(v->n != NaI){
+			p3 = itemarrayget(m->normals, v->n);
+			if(p3 != nil)
+				dv->n = *p3;
+		}
+		if(v->uv != NaI){
+			p2 = itemarrayget(m->texcoords, v->uv);
+			if(p2 != nil)
+				dv->uv = *p2;
+		}
+		if(v->c != NaI){
+			c = itemarrayget(m->colors, v->c);
+			if(c != nil)
+				dv->c = *c;
+		}
 		dv->tangent = d->tangent;
 		dv->mtl = d->mtl;
-		dv->nattrs = 0;
 	}
 	return d;
 }
@@ -618,6 +647,12 @@ tiler(void *arg)
 			np = 1;	/* start with one. after clipping it might change */
 
 			p = assembleprim(&prim, ep, vsp.entity->mdl);
+			if(p == nil){
+				fprint(2, "malformed primitive #%zd ent %s mdl %s\n",
+					ep - (Primitive*)vsp.entity->mdl->prims->items,
+					vsp.entity->name, vsp.entity->mdl->name);
+				continue;
+			}
 
 			switch(p->type){
 			case PPoint:
