@@ -30,12 +30,21 @@ static Color
 skyboxfs(Shaderparams *sp)
 {
 	Vertexattr *va;
-	Color c;
 
 	va = sp->getattr(sp, "dir");
-	c = samplecubemap(sp->scene->skybox, va->p, neartexsampler);
-	return c;
+	return samplecubemap(sp->scene->skybox, va->p, neartexsampler);
 }
+
+static Shadertab skyboxshader = {
+	.name		= "*skybox*",
+	.vs		= skyboxvs,
+	.fs		= skyboxfs
+};
+
+static Material skyboxmtl = {
+	.name		= "*skybox*",
+	.shaders	= &skyboxshader
+};
 
 static Model *
 mkskyboxmodel(void)
@@ -64,6 +73,8 @@ mkskyboxmodel(void)
 	m = newmodel();
 	t = mkprim(PTriangle);
 	v = mkvert();
+
+	t.mtl = m->addmaterial(m, skyboxmtl);
 
 	/* build bottom and top quads around y-axis */
 	p = Pt3(-0.5,-0.5,0.5,1);
@@ -239,9 +250,6 @@ printtimings(Renderjob *job)
 {
 	int i;
 
-	if(!job->rctl->doprof)
-		return;
-
 	fprint(2, "R %llud %llud\nE %llud %llud\n",
 		job->times.R.t0, job->times.R.t1,
 		job->times.E.t0, job->times.E.t1);
@@ -255,7 +263,7 @@ printtimings(Renderjob *job)
 }
 
 void
-shootcamera(Camera *c, Shadertab *s)
+shootcamera(Camera *c)
 {
 	static Scene *skyboxscene;
 	static Shadertab skyboxshader = { nil, skyboxvs, skyboxfs };
@@ -264,8 +272,8 @@ shootcamera(Camera *c, Shadertab *s)
 	Renderjob *job;
 	uvlong t0, t1;
 
-	assert(c != nil && s != nil
-		&& c->view != nil && c->rctl != nil && c->scene != nil);
+	if(c == nil || c->view == nil || c->rctl == nil || c->scene == nil)
+		return;
 
 	fbctl = c->view->fbctl;
 
@@ -275,7 +283,6 @@ shootcamera(Camera *c, Shadertab *s)
 	job->fb = fbctl->getbb(fbctl);
 	job->camera = _emalloc(sizeof *c);
 	*job->camera = *c;
-	job->shaders = s;
 	job->donec = chancreate(sizeof(void*), 0);
 
 	t0 = nanosec();
@@ -296,7 +303,6 @@ shootcamera(Camera *c, Shadertab *s)
 		reloadcamera(job->camera);
 		job->camera->scene = skyboxscene;
 		job->camera->scene->skybox = c->scene->skybox;
-		job->shaders = &skyboxshader;
 		sendp(c->rctl->jobq, job);
 		recvp(job->donec);
 	}
@@ -305,9 +311,11 @@ shootcamera(Camera *c, Shadertab *s)
 	fbctl->reset(fbctl);
 
 	updatestats(c, t1-t0);
-	printtimings(job);
-	free(job->times.Tn);
-	free(job->times.Rn);
+	if(job->rctl->doprof){
+		printtimings(job);
+		free(job->times.Tn);
+		free(job->times.Rn);
+	}
 
 	chanfree(job->donec);
 	free(job->camera);

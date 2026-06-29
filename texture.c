@@ -142,12 +142,9 @@ alloctexture(int type, Memimage *i)
 Texture *
 duptexture(Texture *s, Texture **d)
 {
-	Texture *t;
-
-	t = *d;
+	incref(s);
+	freetexture(*d);
 	*d = s;
-	incref(*d);
-	freetexture(t);
 	return *d;
 }
 
@@ -164,16 +161,29 @@ freetexture(Texture *t)
 }
 
 Cubemap *
-readcubemap(char *paths[6])
+alloccubemap(char *name, Texture *faces[6])
 {
 	Cubemap *cm;
-	Memimage *i;
-	char **p;
-	int fd;
+	int i;
 
 	cm = _emalloc(sizeof *cm);
 	memset(cm, 0, sizeof *cm);
-	
+	if(name != nil)
+		cm->name = _estrdup(name);
+	for(i = 0; i < 6; i++)
+		cm->faces[i] = faces[i];
+	incref(cm);
+	return cm;
+}
+
+Cubemap *
+readcubemap(char *paths[6])
+{
+	Memimage *i;
+	Texture *faces[6];
+	char **p;
+	int fd;
+
 	for(p = paths; p < paths+6; p++){
 		assert(*p != nil);
 		fd = open(*p, OREAD);
@@ -182,21 +192,18 @@ readcubemap(char *paths[6])
 		i = readmemimage(fd);
 		if(i == nil)
 			sysfatal("readmemimage: %r");
-		cm->faces[p-paths] = alloctexture(sRGBTexture, i);
+		faces[p-paths] = alloctexture(sRGBTexture, i);
 		close(fd);
 	}
-	return cm;
+	return alloccubemap(nil, faces);
 }
 
 Cubemap *
 dupcubemap(Cubemap *s, Cubemap **d)
 {
-	Cubemap *t;
-
-	t = *d;
+	incref(s);
+	freecubemap(*d);
 	*d = s;
-	incref(*d);
-	freecubemap(t);
 	return *d;
 }
 

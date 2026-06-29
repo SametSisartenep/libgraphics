@@ -8,30 +8,11 @@
 #include "graphics.h"
 #include "internal.h"
 
-enum {
-	MTLHTSIZ = 17,
-};
-
 typedef struct Curline Curline;
 struct Curline
 {
 	char file[256];
 	ulong line;
-};
-
-typedef struct Mtlentry Mtlentry;
-typedef struct Mtltab Mtltab;
-
-struct Mtlentry
-{
-	char		*name;
-	ulong		idx;
-	Mtlentry	*next;
-};
-
-struct Mtltab
-{
-	Mtlentry	*mtls[MTLHTSIZ];
 };
 
 static void
@@ -49,78 +30,17 @@ error(Curline *l, char *fmt, ...)
 	werrstr("%s", buf);
 }
 
-static uint
-hash(char *s)
+static ulong
+findmaterial(ItemArray *a, char *name)
 {
-	uint h;
+	Material *s, *e;
 
-	h = 0x811c9dc5;
-	while(*s != 0)
-		h = (h^(uchar)*s++) * 0x1000193;
-	return h % MTLHTSIZ;
-}
-
-static Mtltab *
-mkmtltab(void)
-{
-	Mtltab *t;
-
-	t = _emalloc(sizeof *t);
-	memset(t, 0, sizeof *t);
-	return t;
-}
-
-static Mtlentry *
-mtltabadd(Mtltab *t, Material *m, ulong idx)
-{
-	Mtlentry *nm, *mp, *prev;
-	uint h;
-
-	nm = _emalloc(sizeof *nm);
-	memset(nm, 0, sizeof *nm);
-	nm->name = m->name;
-	nm->idx = idx;
-	nm->next = nil;
-
-	prev = nil;
-	h = hash(nm->name);
-	for(mp = t->mtls[h]; mp != nil; prev = mp, mp = mp->next)
-		if(strcmp(mp->name, nm->name) == 0){
-			werrstr("material already exists");
-			return nil;
-		}
-	if(prev == nil){
-		t->mtls[h] = nm;
-		return nm;
-	}
-	prev->next = nm;
-	return nm;
-}
-
-static Mtlentry *
-mtltabget(Mtltab *t, char *name)
-{
-	Mtlentry *m;
-	uint h;
-
-	h = hash(name);
-	for(m = t->mtls[h]; m != nil; m = m->next)
-		if(strcmp(m->name, name) == 0)
-			break;
-	return m;
-}
-
-static void
-rmmtltab(Mtltab *t)
-{
-	Mtlentry *m, *nm;
-	int i;
-
-	for(i = 0; i < nelem(t->mtls); i++)
-		for(m = t->mtls[i]; m != nil; m = nm){
-			nm = m->next;
-			free(m);
-		}
+	s = a->items;
+	e = s + a->nitems;
+	for(; s < e; s++)
+		if(strcmp(s->name, name) == 0)
+			return s - (Material*)a->items;
+	return NaI;
 }
 
 Model *
@@ -128,8 +48,6 @@ readmodel(int fd)
 {
 	Curline curline;
 	ItemArray *pa, *na, *ta, *ca, *Ta, *va, *Pa, *ma;
-	Mtltab *mtltab;
-	Mtlentry *me;
 	Point3 p, n, T;
 	Point2 t;
 	Color c;
@@ -160,7 +78,6 @@ readmodel(int fd)
 	va = mkitemarray(sizeof(v));
 	Pa = mkitemarray(sizeof(P));
 	ma = mkitemarray(sizeof(mtl));
-	mtltab = mkmtltab();
 
 	memset(&curline, 0, sizeof curline);
 	if(fd2path(fd, curline.file, sizeof curline.file) != 0)
@@ -188,11 +105,7 @@ readmodel(int fd)
 				*s = 0;
 
 			if(strcmp(f[0], "}") == 0){
-				idx = itemarrayadd(ma, &mtl);
-				if(mtltabadd(mtltab, &mtl, idx) == nil){
-					error(&curline, "mtltabadd: %r");
-					goto getout;
-				}
+				itemarrayadd(ma, &mtl);
 				inamaterial--;
 			}else if(strcmp(f[0], "ambient") == 0){
 				if(nf != 4 && nf != 5){
@@ -423,12 +336,11 @@ novertex:
 				/* ignore 4th field (nf == 4) */
 
 				if(nf == 5){
-					me = mtltabget(mtltab, f[4]);
-					if(me == nil){
+					P.mtl = findmaterial(ma, f[4]);
+					if(P.mtl == NaI){
 						error(&curline, "material '%s' not found", f[4]);
 						goto getout;
 					}
-					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			case PLine:
@@ -454,12 +366,11 @@ notenough:
 				/* ignore 5th field (nf == 5) */
 
 				if(nf == 6){
-					me = mtltabget(mtltab, f[5]);
-					if(me == nil){
+					P.mtl = findmaterial(ma, f[5]);
+					if(P.mtl == NaI){
 						error(&curline, "material '%s' not found", f[5]);
 						goto getout;
 					}
-					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			case PTriangle:
@@ -502,12 +413,11 @@ notenough:
 				}
 
 				if(nf == 7){
-					me = mtltabget(mtltab, f[6]);
-					if(me == nil){
+					P.mtl = findmaterial(ma, f[6]);
+					if(P.mtl == NaI){
 						error(&curline, "material '%s' not found", f[6]);
 						goto getout;
 					}
-					P.mtl = itemarrayget(ma, me->idx);
 				}
 				break;
 			default:
@@ -555,7 +465,6 @@ getout:
 	rmitemarray(va);
 	rmitemarray(Pa);
 	rmitemarray(ma);
-	rmmtltab(mtltab);
 	Bterm(bin);
 	return m;
 }
@@ -662,8 +571,9 @@ Bprintv(Biobuf *b, Vertex *v)
 }
 
 static int
-BprintP(Biobuf *b, Primitive *p)
+BprintP(Biobuf *b, Primitive *p, Model *m)
 {
+	Material *mtl;
 	char *s;
 	int n, i;
 
@@ -671,10 +581,13 @@ BprintP(Biobuf *b, Primitive *p)
 	for(i = 0; i < p->type+1; i++)
 		n += Bprintidx(b, p->v[i]);
 	n += Bprintidx(b, p->tangent);
-	if(p->mtl != nil){
-		s = _equotestrdup(p->mtl->name);
-		n += Bprint(b, " %s", s);
-		free(s);
+	if(p->mtl != NaI){
+		mtl = itemarrayget(m->materials, p->mtl);
+		if(mtl != nil){
+			s = _equotestrdup(mtl->name);
+			n += Bprint(b, " %s", s);
+			free(s);
+		}
 	}
 	n += Bprint(b, "\n");
 	return n;
@@ -759,7 +672,7 @@ writemodel(int fd, Model *m)
 	for(i = 0; i < m->verts->nitems; i++)
 		n += Bprintv(out, itemarrayget(m->verts, i));
 	for(i = 0; i < m->prims->nitems; i++)
-		n += BprintP(out, itemarrayget(m->prims, i));
+		n += BprintP(out, itemarrayget(m->prims, i), m);
 
 	Bterm(out);
 	return n;

@@ -21,7 +21,7 @@ mkprim(int type)
 	prim.type = type;
 	prim.v[0] = prim.v[1] = prim.v[2] = NaI;
 	prim.tangent = NaI;
-	prim.mtl = nil;
+	prim.mtl = NaI;
 	return prim;
 }
 
@@ -103,19 +103,22 @@ model_addmaterial(Model *m, Material mtl)
 	return itemarrayadd(m->materials, &mtl);
 }
 
-static Material *
-model_getmaterial(Model *m, char *name)
+static ulong
+model_findmaterial(Model *m, char *name)
 {
-	Material *mtl, *last;
+	Material *mtl, *mtls, *mtle;
 
 	if(name == nil)
-		return nil;
+		return NaI;
 
-	mtl = m->materials->items;
-	for(last = mtl + m->materials->nitems; mtl < last; mtl++)
+	mtl = mtls = m->materials->items;
+	mtle = mtls + m->materials->nitems;
+	while(mtl < mtle){
 		if(strcmp(mtl->name, name) == 0)
-			return mtl;
-	return nil;
+			return mtl - mtls;
+		mtl++;
+	}
+	return NaI;
 }
 
 Model *
@@ -141,7 +144,7 @@ newmodel(void)
 	m->addvert = model_addvert;
 	m->addprim = model_addprim;
 	m->addmaterial = model_addmaterial;
-	m->getmaterial = model_getmaterial;
+	m->findmaterial = model_findmaterial;
 	incref(m);
 	return m;
 }
@@ -188,7 +191,7 @@ delmodel(Model *m)
 		rmitemarray(m->tangents);
 		rmitemarray(m->verts);
 		rmitemarray(m->prims);
-		rmitemarray(m->materials);
+		rmitemarray(m->materials);	/* TODO this leaks material properties (name and textures). fix it */
 		free(m->name);
 		free(m);
 	}

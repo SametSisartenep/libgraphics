@@ -10,6 +10,38 @@
 #define TILESTKSZ	(32*1024)
 #define PROCSTKSZ	(8*1024)
 
+static Point3
+defvertexshader(Shaderparams *sp)
+{
+	sp->v->n = model2world(sp->entity, sp->v->n);
+	sp->v->p = model2world(sp->entity, sp->v->p);
+	return world2clip(sp->camera, sp->v->p);
+}
+
+static Color
+defpicselshader(Shaderparams *sp)
+{
+	return sp->v->c;
+}
+
+static Shadertab defstab = {
+	.name		= "*default*",
+	.vs		= defvertexshader,
+	.fs		= defpicselshader
+};
+
+static Material defmtl = {
+	.name		= "*default*",
+	.ambient	= { 1,1,1,1 },
+	.diffuse	= { 1,1,1,1 },
+	.specular	= { 1,1,1,1 },
+	.shininess	= 1,
+	.diffusemap	= nil,
+	.specularmap	= nil,
+	.normalmap	= nil,
+	.shaders	= &defstab
+};
+
 static Vertexattr *
 sparams_getuniform(Shaderparams *sp, char *id)
 {
@@ -217,7 +249,7 @@ rasterizept(Rastertask *task)
 
 	*sp->v = prim->v[0];
 	sp->p = p;
-	c = sp->stab->fs(sp);
+	c = prim->mtl->shaders->fs(sp);
 	if(c.a == 0)			/* discard non-colors */
 		return;
 	if(ropts & RODepth)
@@ -294,12 +326,12 @@ rasterizeline(Rastertask *task)
 		pcz = flerp(prim->v[0].p.w, prim->v[1].p.w, perc);
 		pcz = 1.0/(pcz < ε1? ε1: pcz);
 
-		/* perspective-correct attribute interpolation  */
+		/* perspective-correct attribute interpolation */
 		perc *= prim->v[0].p.w * pcz;
 		_lerpvertex(sp->v, prim->v+0, prim->v+1, perc);
 
 		sp->p = p;
-		c = sp->stab->fs(sp);
+		c = prim->mtl->shaders->fs(sp);
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
 		if(ropts & RODepth)
@@ -443,12 +475,12 @@ rasterizetri(Rastertask *task)
 		if((ropts & RODepth) && sp->v->p.z <= getdepth(zr, p))
 			goto discard;
 
-		/* perspective-correct attribute interpolation  */
+		/* perspective-correct attribute interpolation */
 		v = *sp->v;
 		_mulvertex(sp->v, 1.0/(sp->v->p.w < ε1? ε1: sp->v->p.w));
 
 		sp->p = p;
-		c = sp->stab->fs(sp);
+		c = prim->mtl->shaders->fs(sp);
 		*sp->v = v;
 		if(c.a == 0)			/* discard non-colors */
 			goto discard;
@@ -510,7 +542,6 @@ rasterizer(void *arg)
 		}
 
 		fsp.fb = task.job->fb;
-		fsp.stab = task.job->shaders;
 		fsp.camera = task.job->camera;
 		fsp.entity = task.entity;
 		fsp.scene = task.job->camera->scene;
@@ -550,7 +581,15 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 		if(p3 != nil)
 			d->tangent = *p3;
 	}
-	d->mtl = s->mtl;
+
+	if(s->mtl == NaI)
+		d->mtl = &defmtl;
+	else{
+		d->mtl = itemarrayget(m->materials, s->mtl);
+		if(d->mtl == nil || d->mtl->shaders == nil)
+			d->mtl = &defmtl;
+	}
+
 	for(dv = &d->v[0], sv = &s->v[0]; dv < d->v + s->type+1; dv++, sv++){
 		/* must have at least a valid vertex and position */
 		if(*sv == NaI)
@@ -558,12 +597,14 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 		v = itemarrayget(m->verts, *sv);
 		if(v == nil)
 			return nil;
+
 		if(v->p == NaI)
 			return nil;
 		p3 = itemarrayget(m->positions, v->p);
 		if(p3 == nil)
 			return nil;
 		dv->p = *p3;
+
 		if(v->n != NaI){
 			p3 = itemarrayget(m->normals, v->n);
 			if(p3 != nil)
@@ -636,7 +677,6 @@ tiler(void *arg)
 			continue;
 		}
 		vsp.fb = task.job->fb;
-		vsp.stab = task.job->shaders;
 		vsp.camera = task.job->camera;
 		vsp.entity = task.entity;
 		vsp.scene = task.job->camera->scene;
@@ -658,7 +698,7 @@ tiler(void *arg)
 			case PPoint:
 				vsp.v = &p->v[0];
 				vsp.idx = 0;
-				p->v[0].p = vsp.stab->vs(&vsp);
+				p->v[0].p = p->mtl->shaders->vs(&vsp);
 
 				if(!isvisible(p->v[0].p))
 					break;
@@ -680,7 +720,7 @@ tiler(void *arg)
 				for(i = 0; i < 2; i++){
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = vsp.stab->vs(&vsp);
+					p->v[i].p = p->mtl->shaders->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p)){
@@ -711,7 +751,7 @@ tiler(void *arg)
 				for(i = 0; i < 3; i++){
 					vsp.v = &p->v[i];
 					vsp.idx = i;
-					p->v[i].p = vsp.stab->vs(&vsp);
+					p->v[i].p = p->mtl->shaders->vs(&vsp);
 				}
 
 				if(!isvisible(p->v[0].p) || !isvisible(p->v[1].p) || !isvisible(p->v[2].p)){

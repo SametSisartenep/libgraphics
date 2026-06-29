@@ -199,6 +199,7 @@ struct Material
 	Texture		*diffusemap;
 	Texture		*specularmap;
 	Texture		*normalmap;
+	Shadertab	*shaders;
 };
 
 struct Primitive
@@ -206,7 +207,7 @@ struct Primitive
 	int		type;
 	ulong		v[3];		/* vertex indices */
 	ulong		tangent;	/* tangent idx */
-	Material	*mtl;
+	ulong		mtl;		/* material idx */
 };
 
 struct Model
@@ -230,7 +231,7 @@ struct Model
 	ulong		(*addvert)(Model*, Vertex);
 	ulong		(*addprim)(Model*, Primitive);
 	ulong		(*addmaterial)(Model*, Material);
-	Material*	(*getmaterial)(Model*, char*);
+	ulong		(*findmaterial)(Model*, char*);
 };
 
 struct Entity
@@ -260,7 +261,6 @@ struct Scene
 struct Shaderparams
 {
 	Framebuf	*fb;
-	Shadertab	*stab;
 	Camera		*camera;
 	Entity		*entity;
 	Scene		*scene;
@@ -300,7 +300,6 @@ struct Renderjob
 	Renderer	*rctl;
 	Framebuf	*fb;
 	Camera		*camera;
-	Shadertab	*shaders;
 	Channel		*donec;
 	Renderjob	*next;
 	struct {
@@ -423,7 +422,7 @@ void	placecamera(Camera*, Scene*, Point3, Point3, Point3);
 void	movecamera(Camera*, Point3);
 void	rotatecamera(Camera*, Point3, double);
 void	aimcamera(Camera*, Point3);
-void	shootcamera(Camera*, Shadertab*);
+void	shootcamera(Camera*);
 
 /* viewport */
 Viewport*	mkviewport(Rectangle);
@@ -483,6 +482,7 @@ void		freetexture(Texture*);
 Color		neartexsampler(Texture*, Point2);
 Color		bilitexsampler(Texture*, Point2);
 Color		sampletexture(Texture*, Point2, Color(*)(Texture*, Point2));
+Cubemap*	alloccubemap(char*, Texture*[6]);
 Cubemap*	readcubemap(char*[6]);
 Cubemap*	dupcubemap(Cubemap*, Cubemap**);
 void		freecubemap(Cubemap*);
