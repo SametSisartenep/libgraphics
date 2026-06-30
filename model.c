@@ -57,50 +57,50 @@ delmaterial(Material *mtl)
 static ulong
 model_addposition(Model *m, Point3 p)
 {
-	return itemarrayadd(m->positions, &p);
+	return bunchadd(m->positions, &p);
 }
 
 static ulong
 model_addnormal(Model *m, Point3 n)
 {
-	return itemarrayadd(m->normals, &n);
+	return bunchadd(m->normals, &n);
 }
 
 static ulong
 model_addtexcoord(Model *m, Point2 t)
 {
-	return itemarrayadd(m->texcoords, &t);
+	return bunchadd(m->texcoords, &t);
 }
 
 static ulong
 model_addcolor(Model *m, Color c)
 {
-	return itemarrayadd(m->colors, &c);
+	return bunchadd(m->colors, &c);
 }
 
 static ulong
 model_addtangent(Model *m, Point3 T)
 {
-	return itemarrayadd(m->tangents, &T);
+	return bunchadd(m->tangents, &T);
 }
 
 static ulong
 model_addvert(Model *m, Vertex v)
 {
-	return itemarrayadd(m->verts, &v);
+	return bunchadd(m->verts, &v);
 }
 
 static ulong
 model_addprim(Model *m, Primitive P)
 {
-	return itemarrayadd(m->prims, &P);
+	return bunchadd(m->prims, &P);
 }
 
 static ulong
 model_addmaterial(Model *m, Material mtl)
 {
 	assert(mtl.name != nil);
-	return itemarrayadd(m->materials, &mtl);
+	return bunchadd(m->materials, &mtl);
 }
 
 static ulong
@@ -128,53 +128,50 @@ newmodel(void)
 
 	m = _emalloc(sizeof *m);
 	memset(m, 0, sizeof *m);
-	m->positions = mkitemarray(sizeof(Point3));
-	m->normals = mkitemarray(sizeof(Point3));
-	m->texcoords = mkitemarray(sizeof(Point2));
-	m->colors = mkitemarray(sizeof(Color));
-	m->tangents = mkitemarray(sizeof(Point3));
-	m->verts = mkitemarray(sizeof(Vertex));
-	m->prims = mkitemarray(sizeof(Primitive));
-	m->materials = mkitemarray(sizeof(Material));
-	m->addposition = model_addposition;
-	m->addnormal = model_addnormal;
-	m->addtexcoord = model_addtexcoord;
-	m->addcolor = model_addcolor;
-	m->addtangent = model_addtangent;
-	m->addvert = model_addvert;
-	m->addprim = model_addprim;
-	m->addmaterial = model_addmaterial;
-	m->findmaterial = model_findmaterial;
+	m->positions	= allocbunch(sizeof(Point3));
+	m->normals	= allocbunch(sizeof(Point3));
+	m->texcoords	= allocbunch(sizeof(Point2));
+	m->colors	= allocbunch(sizeof(Color));
+	m->tangents	= allocbunch(sizeof(Point3));
+	m->verts	= allocbunch(sizeof(Vertex));
+	m->prims	= allocbunch(sizeof(Primitive));
+	m->materials	= allocbunch(sizeof(Material));
+	m->addposition	= model_addposition;
+	m->addnormal	= model_addnormal;
+	m->addtexcoord	= model_addtexcoord;
+	m->addcolor	= model_addcolor;
+	m->addtangent	= model_addtangent;
+	m->addvert	= model_addvert;
+	m->addprim	= model_addprim;
+	m->addmaterial	= model_addmaterial;
+	m->findmaterial	= model_findmaterial;
 	incref(m);
 	return m;
 }
 
-void
-copymodel(Model *s, Model *d)
+Model *
+refmodel(Model *m)
 {
-	if(d->name)
-		free(d->name);
-	d->name = s->name? _estrdup(s->name): nil;
-	dupitemarray(s->positions, &d->positions);
-	dupitemarray(s->normals, &d->normals);
-	dupitemarray(s->texcoords, &d->texcoords);
-	dupitemarray(s->colors, &d->colors);
-	dupitemarray(s->tangents, &d->tangents);
-	dupitemarray(s->verts, &d->verts);
-	dupitemarray(s->prims, &d->prims);
-	dupitemarray(s->materials, &d->materials);
+	incref(m);
+	return m;
 }
 
 Model *
-dupmodel(Model *s, Model **d)
+dupmodel(Model *m)
 {
-	Model *t;
+	Model *n;
 
-	t = *d;
-	*d = s;
-	incref(*d);
-	delmodel(t);
-	return *d;
+	n = newmodel();
+	n->name		= m->name? _estrdup(m->name): nil;
+	n->positions	= refbunch(m->positions);
+	n->normals	= refbunch(m->normals);
+	n->texcoords	= refbunch(m->texcoords);
+	n->colors	= refbunch(m->colors);
+	n->tangents	= refbunch(m->tangents);
+	n->verts	= refbunch(m->verts);
+	n->prims	= refbunch(m->prims);
+	n->materials	= refbunch(m->materials);
+	return n;
 }
 
 void
@@ -184,14 +181,14 @@ delmodel(Model *m)
 		return;
 
 	if(decref(m) == 0){
-		rmitemarray(m->positions);
-		rmitemarray(m->normals);
-		rmitemarray(m->texcoords);
-		rmitemarray(m->colors);
-		rmitemarray(m->tangents);
-		rmitemarray(m->verts);
-		rmitemarray(m->prims);
-		rmitemarray(m->materials);	/* TODO this leaks material properties (name and textures). fix it */
+		freebunch(m->positions);
+		freebunch(m->normals);
+		freebunch(m->texcoords);
+		freebunch(m->colors);
+		freebunch(m->tangents);
+		freebunch(m->verts);
+		freebunch(m->prims);
+		freebunch(m->materials);	/* TODO this leaks material properties (name and textures). fix it */
 		free(m->name);
 		free(m);
 	}
@@ -200,11 +197,13 @@ delmodel(Model *m)
 /*
  * sequential reindexing table
  *
- * the tables are processed in order (hence the sequence) for every
- * vertex attribute.  if the attribute equals the old index, it's
- * replaced by the new one; if it's bigger, it's decreased by one.
- * otherwise it stays the same.
+ * the tables are processed in order for every vertex attribute.
+ * if the attribute equals the old index, it's replaced by the new
+ * one; if it's bigger, it's decreased by one.  otherwise it stays
+ * the same.
  */
+/* TODO there must be a better way to do this */
+/* TODO think of a way to parallelize it */
 typedef struct Reidx Reidx;
 typedef struct Reidxtab Reidxtab;
 
@@ -239,7 +238,7 @@ freereidxtab(Reidxtab *t)
 }
 
 static void
-reindexverts(ItemArray *verts, Reidxtab *t, int aoff)
+reindexverts(Bunch *verts, Reidxtab *t, int aoff)
 {
 	Reidx *reidx;
 	Vertex *v, *vb, *ve;
@@ -262,10 +261,11 @@ reindexverts(ItemArray *verts, Reidxtab *t, int aoff)
 }
 
 static void
-reindexprimtans(ItemArray *prims, Reidxtab *t)
+reindexprims(Bunch *prims, Reidxtab *t, int aoff)
 {
 	Reidx *reidx;
 	Primitive *P, *Pb, *Pe;
+	ulong *attr;
 
 	if(t->len == 0)
 		return;
@@ -273,16 +273,18 @@ reindexprimtans(ItemArray *prims, Reidxtab *t)
 	Pb = prims->items;
 	Pe = Pb + prims->nitems;
 
-	for(P = Pb; P < Pe; P++)
-	for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
-		if(P->tangent == reidx->old)
-			P->tangent = reidx->new;
-		else if(P->tangent > reidx->old)
-			P->tangent--;
+	for(P = Pb; P < Pe; P++){
+		attr = (ulong*)((char*)P + aoff);
+		for(reidx = t->tab; reidx < t->tab+t->len; reidx++)
+			if(*attr == reidx->old)
+				*attr = reidx->new;
+			else if(*attr > reidx->old)
+				(*attr)--;
+	}
 }
 
 static void
-reindexprimverts(ItemArray *prims, Reidxtab *t)
+reindexprimverts(Bunch *prims, Reidxtab *t)
 {
 	Reidx *reidx;
 	Primitive *P, *Pb, *Pe;
@@ -304,7 +306,7 @@ reindexprimverts(ItemArray *prims, Reidxtab *t)
 }
 
 static void
-dedupitemarray(ItemArray *a, Reidxtab *t)
+dedup(Bunch *a, Reidxtab *t)
 {
 	char *p1, *p2, *pb, *pe;
 	void *vp;
@@ -355,30 +357,34 @@ compactmodel(Model *m)
 
 	memset(&itab, 0, sizeof(itab));
 
-	dedupitemarray(m->positions, &itab);
+	dedup(m->positions, &itab);
 	reindexverts(m->verts, &itab, offsetof(Vertex, p));
 	itab.len = 0;
 
-	dedupitemarray(m->normals, &itab);
+	dedup(m->normals, &itab);
 	reindexverts(m->verts, &itab, offsetof(Vertex, n));
 	itab.len = 0;
 
-	dedupitemarray(m->texcoords, &itab);
+	dedup(m->texcoords, &itab);
 	reindexverts(m->verts, &itab, offsetof(Vertex, uv));
 	itab.len = 0;
 
-	dedupitemarray(m->colors, &itab);
+	dedup(m->colors, &itab);
 	reindexverts(m->verts, &itab, offsetof(Vertex, c));
 	itab.len = 0;
 
-	dedupitemarray(m->tangents, &itab);
-	reindexprimtans(m->prims, &itab);
+	dedup(m->tangents, &itab);
+	reindexprims(m->prims, &itab, offsetof(Primitive, tangent));
 	itab.len = 0;
 
-	dedupitemarray(m->verts, &itab);
+	dedup(m->materials, &itab);
+	reindexprims(m->prims, &itab, offsetof(Primitive, mtl));
+	itab.len = 0;
+
+	dedup(m->verts, &itab);
 	reindexprimverts(m->prims, &itab);
 
-	dedupitemarray(m->prims, nil);
+	dedup(m->prims, nil);
 
 	freereidxtab(&itab);
 }

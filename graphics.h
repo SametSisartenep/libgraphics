@@ -50,11 +50,11 @@ enum {
 
 	MAXVATTRS	= 10,	/* change this if your shaders require it */
 
-	/* itemarray */
+	/* bunch */
 	NaI	= ~0UL,		/* not an index */
 };
 
-typedef struct ItemArray	ItemArray;
+typedef struct Bunch		Bunch;
 typedef struct Color		Color;
 typedef struct Texture		Texture;
 typedef struct Cubemap		Cubemap;
@@ -83,7 +83,7 @@ typedef struct Viewdrawctx	Viewdrawctx;
 typedef struct Viewport		Viewport;
 typedef struct Camera		Camera;
 
-struct ItemArray
+struct Bunch
 {
 	Ref;
 	void	*items;
@@ -214,14 +214,14 @@ struct Model
 {
 	Ref;
 	char		*name;
-	ItemArray	*positions;
-	ItemArray	*normals;
-	ItemArray	*texcoords;
-	ItemArray	*colors;
-	ItemArray	*tangents;
-	ItemArray	*verts;
-	ItemArray	*prims;
-	ItemArray	*materials;
+	Bunch		*positions;
+	Bunch		*normals;
+	Bunch		*texcoords;
+	Bunch		*colors;
+	Bunch		*tangents;
+	Bunch		*verts;
+	Bunch		*prims;
+	Bunch		*materials;
 
 	ulong		(*addposition)(Model*, Point3);
 	ulong		(*addnormal)(Model*, Point3);
@@ -470,8 +470,8 @@ Primitive	mkprim(int);
 Material*	newmaterial(char*);
 void		delmaterial(Material*);
 Model*		newmodel(void);
-void		copymodel(Model*, Model*);
-Model*		dupmodel(Model*, Model**);
+Model*		refmodel(Model*);
+Model*		dupmodel(Model*);
 void		delmodel(Model*);
 void		compactmodel(Model*);
 
@@ -502,13 +502,13 @@ int		eqpt3(Point3, Point3);
 Memimage*	rgba(ulong);
 Memimage*	dupmemimage(Memimage*);
 
-/* itemarray */
-ItemArray*	mkitemarray(ulong);
-ulong		itemarrayadd(ItemArray*, void*);
-void*		itemarrayget(ItemArray*, ulong);
-ulong		copyitemarray(ItemArray*, ItemArray*);
-ItemArray*	dupitemarray(ItemArray*, ItemArray**);
-void		rmitemarray(ItemArray*);
+/* bunch */
+Bunch*	allocbunch(ulong);
+ulong	bunchadd(Bunch*, void*);
+void*	bunchget(Bunch*, ulong);
+Bunch*	refbunch(Bunch*);
+Bunch*	dupbunch(Bunch*);
+void	freebunch(Bunch*);
 
 /* color */
 ulong	col2ul(Color);

@@ -577,7 +577,7 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 	memset(d, 0, sizeof *d);
 	d->type = s->type;
 	if(s->tangent != NaI){
-		p3 = itemarrayget(m->tangents, s->tangent);
+		p3 = bunchget(m->tangents, s->tangent);
 		if(p3 != nil)
 			d->tangent = *p3;
 	}
@@ -585,7 +585,7 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 	if(s->mtl == NaI)
 		d->mtl = &defmtl;
 	else{
-		d->mtl = itemarrayget(m->materials, s->mtl);
+		d->mtl = bunchget(m->materials, s->mtl);
 		if(d->mtl == nil || d->mtl->shaders == nil)
 			d->mtl = &defmtl;
 	}
@@ -594,29 +594,29 @@ assembleprim(BPrimitive *d, Primitive *s, Model *m)
 		/* must have at least a valid vertex and position */
 		if(*sv == NaI)
 			return nil;
-		v = itemarrayget(m->verts, *sv);
+		v = bunchget(m->verts, *sv);
 		if(v == nil)
 			return nil;
 
 		if(v->p == NaI)
 			return nil;
-		p3 = itemarrayget(m->positions, v->p);
+		p3 = bunchget(m->positions, v->p);
 		if(p3 == nil)
 			return nil;
 		dv->p = *p3;
 
 		if(v->n != NaI){
-			p3 = itemarrayget(m->normals, v->n);
+			p3 = bunchget(m->normals, v->n);
 			if(p3 != nil)
 				dv->n = *p3;
 		}
 		if(v->uv != NaI){
-			p2 = itemarrayget(m->texcoords, v->uv);
+			p2 = bunchget(m->texcoords, v->uv);
 			if(p2 != nil)
 				dv->uv = *p2;
 		}
 		if(v->c != NaI){
-			c = itemarrayget(m->colors, v->c);
+			c = bunchget(m->colors, v->c);
 			if(c != nil)
 				dv->c = *c;
 		}

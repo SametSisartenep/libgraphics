@@ -31,7 +31,7 @@ error(Curline *l, char *fmt, ...)
 }
 
 static ulong
-findmaterial(ItemArray *a, char *name)
+findmaterial(Bunch *a, char *name)
 {
 	Material *s, *e;
 
@@ -47,7 +47,7 @@ Model *
 readmodel(int fd)
 {
 	Curline curline;
-	ItemArray *pa, *na, *ta, *ca, *Ta, *va, *Pa, *ma;
+	Bunch *pa, *na, *ta, *ca, *Ta, *va, *Pa, *ma;
 	Point3 p, n, T;
 	Point2 t;
 	Color c;
@@ -70,14 +70,14 @@ readmodel(int fd)
 	if(bin == nil)
 		sysfatal("Bfdopen: %r");
 
-	pa = mkitemarray(sizeof(p));
-	na = mkitemarray(sizeof(n));
-	ta = mkitemarray(sizeof(t));
-	ca = mkitemarray(sizeof(c));
-	Ta = mkitemarray(sizeof(T));
-	va = mkitemarray(sizeof(v));
-	Pa = mkitemarray(sizeof(P));
-	ma = mkitemarray(sizeof(mtl));
+	pa = allocbunch(sizeof(p));
+	na = allocbunch(sizeof(n));
+	ta = allocbunch(sizeof(t));
+	ca = allocbunch(sizeof(c));
+	Ta = allocbunch(sizeof(T));
+	va = allocbunch(sizeof(v));
+	Pa = allocbunch(sizeof(P));
+	ma = allocbunch(sizeof(mtl));
 
 	memset(&curline, 0, sizeof curline);
 	if(fd2path(fd, curline.file, sizeof curline.file) != 0)
@@ -105,7 +105,7 @@ readmodel(int fd)
 				*s = 0;
 
 			if(strcmp(f[0], "}") == 0){
-				itemarrayadd(ma, &mtl);
+				bunchadd(ma, &mtl);
 				inamaterial--;
 			}else if(strcmp(f[0], "ambient") == 0){
 				if(nf != 4 && nf != 5){
@@ -225,7 +225,7 @@ notexture:
 			p.y = strtod(f[2], nil);
 			p.z = strtod(f[3], nil);
 			p.w = nf == 5? strtod(f[4], nil): 1;
-			itemarrayadd(pa, &p);
+			bunchadd(pa, &p);
 		}else if(strcmp(f[0], "n") == 0){
 			if(nf != 4){
 				error(&curline, "syntax error");
@@ -234,7 +234,7 @@ notexture:
 			n.x = strtod(f[1], nil);
 			n.y = strtod(f[2], nil);
 			n.z = strtod(f[3], nil);
-			itemarrayadd(na, &n);
+			bunchadd(na, &n);
 		}else if(strcmp(f[0], "t") == 0){
 			if(nf != 3){
 				error(&curline, "syntax error");
@@ -242,7 +242,7 @@ notexture:
 			}
 			t.x = strtod(f[1], nil);
 			t.y = strtod(f[2], nil);
-			itemarrayadd(ta, &t);
+			bunchadd(ta, &t);
 		}else if(strcmp(f[0], "c") == 0){
 			if(nf != 4 && nf != 5){
 				error(&curline, "syntax error");
@@ -252,7 +252,7 @@ notexture:
 			c.g = strtod(f[2], nil);
 			c.b = strtod(f[3], nil);
 			c.a = nf == 5? strtod(f[4], nil): 1;
-			itemarrayadd(ca, &c);
+			bunchadd(ca, &c);
 		}else if(strcmp(f[0], "T") == 0){
 			if(nf != 4){
 				error(&curline, "syntax error");
@@ -261,7 +261,7 @@ notexture:
 			T.x = strtod(f[1], nil);
 			T.y = strtod(f[2], nil);
 			T.z = strtod(f[3], nil);
-			itemarrayadd(Ta, &T);
+			bunchadd(Ta, &T);
 		}else if(strcmp(f[0], "v") == 0){
 			if(nf != 5){
 				error(&curline, "syntax error");
@@ -274,7 +274,7 @@ notexture:
 				goto getout;
 			}
 			idx = strtoul(f[1], nil, 10);
-			vp = itemarrayget(pa, idx);
+			vp = bunchget(pa, idx);
 			if(vp == nil){
 				error(&curline, "no position at idx %lud", idx);
 				goto getout;
@@ -283,7 +283,7 @@ notexture:
 
 			if(strcmp(f[2], "-") != 0){
 				idx = strtoul(f[2], nil, 10);
-				vp = itemarrayget(na, idx);
+				vp = bunchget(na, idx);
 				if(vp == nil){
 					error(&curline, "no normal at idx %lud", idx);
 					goto getout;
@@ -293,7 +293,7 @@ notexture:
 
 			if(strcmp(f[3], "-") != 0){
 				idx = strtoul(f[3], nil, 10);
-				vp = itemarrayget(ta, idx);
+				vp = bunchget(ta, idx);
 				if(vp == nil){
 					error(&curline, "no texture at idx %lud", idx);
 					goto getout;
@@ -303,7 +303,7 @@ notexture:
 
 			if(strcmp(f[4], "-") != 0){
 				idx = strtoul(f[4], nil, 10);
-				vp = itemarrayget(ca, idx);
+				vp = bunchget(ca, idx);
 				if(vp == nil){
 					error(&curline, "no color at idx %lud", idx);
 					goto getout;
@@ -311,7 +311,7 @@ notexture:
 				v.c = idx;
 			}
 
-			itemarrayadd(va, &v);
+			bunchadd(va, &v);
 		}else if(strcmp(f[0], "P") == 0){
 			if(nf < 3 || nf > 7){
 				error(&curline, "syntax error");
@@ -325,7 +325,7 @@ notexture:
 				P.type = PPoint;
 
 				idx = strtoul(f[2], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil){
 novertex:
 					error(&curline, "no vertex at idx %lud", idx);
@@ -347,7 +347,7 @@ novertex:
 				P.type = PLine;
 
 				idx = strtoul(f[2], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil)
 					goto novertex;
 				P.v[0] = idx;
@@ -358,7 +358,7 @@ notenough:
 					goto getout;
 				}
 				idx = strtoul(f[3], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil)
 					goto novertex;
 				P.v[1] = idx;
@@ -377,7 +377,7 @@ notenough:
 				P.type = PTriangle;
 
 				idx = strtoul(f[2], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil)
 					goto novertex;
 				P.v[0] = idx;
@@ -385,7 +385,7 @@ notenough:
 				if(nf < 4)
 					goto notenough;
 				idx = strtoul(f[3], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil)
 					goto novertex;
 				P.v[1] = idx;
@@ -393,7 +393,7 @@ notenough:
 				if(nf < 5)
 					goto notenough;
 				idx = strtoul(f[4], nil, 10);
-				vp = itemarrayget(va, idx);
+				vp = bunchget(va, idx);
 				if(vp == nil)
 					goto novertex;
 				P.v[2] = idx;
@@ -404,7 +404,7 @@ notenough:
 				}
 				if(strcmp(f[5], "-") != 0){
 					idx = strtoul(f[5], nil, 10);
-					vp = itemarrayget(Ta, idx);
+					vp = bunchget(Ta, idx);
 					if(vp == nil){
 						error(&curline, "no tangent at idx %lud", idx);
 						goto getout;
@@ -425,7 +425,7 @@ notenough:
 				goto getout;
 			}
 
-			itemarrayadd(Pa, &P);
+			bunchadd(Pa, &P);
 		}else if(strcmp(f[0], "mtl") == 0){
 			if(nf != 3 || strcmp(f[2], "{") != 0){
 				error(&curline, "syntax error");
@@ -447,24 +447,24 @@ notenough:
 	}
 
 	m = newmodel();
-	dupitemarray(pa, &m->positions);
-	dupitemarray(na, &m->normals);
-	dupitemarray(ta, &m->texcoords);
-	dupitemarray(ca, &m->colors);
-	dupitemarray(Ta, &m->tangents);
-	dupitemarray(va, &m->verts);
-	dupitemarray(Pa, &m->prims);
-	dupitemarray(ma, &m->materials);
+	m->positions	= refbunch(pa);
+	m->normals	= refbunch(na);
+	m->texcoords	= refbunch(ta);
+	m->colors	= refbunch(ca);
+	m->tangents	= refbunch(Ta);
+	m->verts	= refbunch(va);
+	m->prims	= refbunch(Pa);
+	m->materials	= refbunch(ma);
 
 getout:
-	rmitemarray(pa);
-	rmitemarray(na);
-	rmitemarray(ta);
-	rmitemarray(ca);
-	rmitemarray(Ta);
-	rmitemarray(va);
-	rmitemarray(Pa);
-	rmitemarray(ma);
+	freebunch(pa);
+	freebunch(na);
+	freebunch(ta);
+	freebunch(ca);
+	freebunch(Ta);
+	freebunch(va);
+	freebunch(Pa);
+	freebunch(ma);
 	Bterm(bin);
 	return m;
 }
@@ -582,7 +582,7 @@ BprintP(Biobuf *b, Primitive *p, Model *m)
 		n += Bprintidx(b, p->v[i]);
 	n += Bprintidx(b, p->tangent);
 	if(p->mtl != NaI){
-		mtl = itemarrayget(m->materials, p->mtl);
+		mtl = bunchget(m->materials, p->mtl);
 		if(mtl != nil){
 			s = _equotestrdup(mtl->name);
 			n += Bprint(b, " %s", s);
@@ -657,22 +657,22 @@ writemodel(int fd, Model *m)
 
 	n = 0;
 	for(i = 0; i < m->materials->nitems; i++)
-		n += Bprintmtl(out, itemarrayget(m->materials, i));
+		n += Bprintmtl(out, bunchget(m->materials, i));
 
 	for(i = 0; i < m->positions->nitems; i++)
-		n += Bprintp(out, itemarrayget(m->positions, i));
+		n += Bprintp(out, bunchget(m->positions, i));
 	for(i = 0; i < m->normals->nitems; i++)
-		n += Bprintn(out, itemarrayget(m->normals, i));
+		n += Bprintn(out, bunchget(m->normals, i));
 	for(i = 0; i < m->texcoords->nitems; i++)
-		n += Bprintt(out, itemarrayget(m->texcoords, i));
+		n += Bprintt(out, bunchget(m->texcoords, i));
 	for(i = 0; i < m->colors->nitems; i++)
-		n += Bprintc(out, itemarrayget(m->colors, i));
+		n += Bprintc(out, bunchget(m->colors, i));
 	for(i = 0; i < m->tangents->nitems; i++)
-		n += BprintT(out, itemarrayget(m->tangents, i));
+		n += BprintT(out, bunchget(m->tangents, i));
 	for(i = 0; i < m->verts->nitems; i++)
-		n += Bprintv(out, itemarrayget(m->verts, i));
+		n += Bprintv(out, bunchget(m->verts, i));
 	for(i = 0; i < m->prims->nitems; i++)
-		n += BprintP(out, itemarrayget(m->prims, i), m);
+		n += BprintP(out, bunchget(m->prims, i), m);
 
 	Bterm(out);
 	return n;

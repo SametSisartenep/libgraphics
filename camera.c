@@ -96,8 +96,8 @@ mkskyboxmodel(void)
 
 //			Point3 p0, p1;
 //			for(k = 0; k < 3; k++){
-//				p0 = *(Point3*)itemarrayget(m->positions, t.v[k]);
-//				p1 = *(Point3*)itemarrayget(m->positions, t.v[(k+1)%3]);
+//				p0 = *(Point3*)bunchget(m->positions, t.v[k]);
+//				p1 = *(Point3*)bunchget(m->positions, t.v[(k+1)%3]);
 //				if(eqpt3(p0, p1))
 //					fprint(2, "face %d disfigured (tri #%d, verts %d %V and %d %V)\n", f, j, k, p0, k+1, p1);
 //			}
