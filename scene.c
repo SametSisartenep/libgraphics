@@ -20,7 +20,6 @@ newlight(int t, Point3 p, Point3 d, Color c, double coff, double θu, double θp
 	l->cutoff = coff;
 	l->θu = θu;
 	l->θp = θp;
-	l->prev = l->next = nil;
 	return l;
 }
 
@@ -105,14 +104,10 @@ scene_getent(Scene *s, char *name)
 	return nil;
 }
 
-static void
+static ulong
 scene_addlight(Scene *s, LightSource *l)
 {
-	l->prev = s->lights.prev;
-	l->next = s->lights.prev->next;
-	s->lights.prev->next = l;
-	s->lights.prev = l;
-	s->nlights++;
+	return bunchadd(s->lights, &l);
 }
 
 Scene *
@@ -124,8 +119,7 @@ newscene(char *name)
 	s->name = name == nil? nil: _estrdup(name);
 	s->ents.prev = s->ents.next = &s->ents;
 	s->nents = 0;
-	s->lights.prev = s->lights.next = &s->lights;
-	s->nlights = 0;
+	s->lights = allocbunch(sizeof(LightSource*));
 	s->skybox = nil;
 	s->addent = scene_addent;
 	s->delent = scene_delent;
@@ -135,30 +129,23 @@ newscene(char *name)
 }
 
 void
-clearscene(Scene *s)
+delscene(Scene *s)
 {
 	Entity *e, *ne;
-	LightSource *l, *nl;
+	LightSource **l, **le;
 
+	if(s == nil)
+		return;
+
+	freecubemap(s->skybox);
 	for(e = s->ents.next; e != &s->ents; e = ne){
 		ne = e->next;
 		s->delent(s, e);
 		delentity(e);
 	}
-	for(l = s->lights.next; l != &s->lights; l = nl){
-		nl = l->next;
-		dellight(l);
-	}
-	freecubemap(s->skybox);
-}
-
-void
-delscene(Scene *s)
-{
-	if(s == nil)
-		return;
-
-	clearscene(s);
+	l = s->lights->items;
+	for(le = l + s->lights->nitems; l < le; l++)
+		dellight(*l);
 	free(s->name);
 	free(s);
 }

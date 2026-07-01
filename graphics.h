@@ -184,9 +184,6 @@ struct LightSource
 	/* spotlights only */
 	double		θu;		/* umbra angle. anything beyond is unlit */
 	double		θp;		/* penumbra angle. anything within is fully lit */
-
-	LightSource	*prev;
-	LightSource	*next;
 };
 
 struct Material
@@ -248,14 +245,13 @@ struct Scene
 	char		*name;
 	Entity		ents;
 	ulong		nents;
-	LightSource	lights;
-	ulong		nlights;
+	Bunch		*lights;
 	Cubemap		*skybox;
 
 	void		(*addent)(Scene*, Entity*);
 	void		(*delent)(Scene*, Entity*);
 	Entity*		(*getent)(Scene*, char*);
-	void		(*addlight)(Scene*, LightSource*);
+	ulong		(*addlight)(Scene*, LightSource*);
 };
 
 struct Shaderparams
@@ -461,7 +457,6 @@ void		dellight(LightSource*);
 Entity*		newentity(char*, Model*);
 void		delentity(Entity*);
 Scene*		newscene(char*);
-void		clearscene(Scene*);
 void		delscene(Scene*);
 
 /* model */
