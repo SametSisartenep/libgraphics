@@ -472,7 +472,8 @@ void		compactmodel(Model*);
 
 /* texture */
 Texture*	alloctexture(int, Memimage*);
-Texture*	duptexture(Texture*, Texture**);
+Texture*	reftexture(Texture*);
+Texture*	duptexture(Texture*);
 void		freetexture(Texture*);
 Color		neartexsampler(Texture*, Point2);
 Color		bilitexsampler(Texture*, Point2);

@@ -140,12 +140,20 @@ alloctexture(int type, Memimage *i)
 }
 
 Texture *
-duptexture(Texture *s, Texture **d)
+reftexture(Texture *t)
 {
-	incref(s);
-	freetexture(*d);
-	*d = s;
-	return *d;
+	incref(t);
+	return t;
+}
+
+Texture *
+duptexture(Texture *t)
+{
+	Texture *n;
+
+	n = alloctexture(t->type, nil);
+	n->image = dupmemimage(t->image);
+	return n;
 }
 
 void
